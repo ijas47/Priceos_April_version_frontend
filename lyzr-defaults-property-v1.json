@@ -1,12 +1,23 @@
 {
-  "base_url": "https://sadistically-calycine-carry.ngrok-free.dev/api/agent-tools/v1",
+  "base_url": "${AGENT_TOOLS_BASE_URL}/api/agent-tools/v1",
   "default_headers": {
     "Content-Type": "application/json"
   },
   "default_query_params": {
-    "apiKey": "43353cf49c7515357d6daa53aa016d096726c87b3f7b5aa125dfb6cc09c50df9"
+    "apiKey": "${AGENT_TOOLS_API_KEY}"
   },
   "default_body_params": {},
   "endpoint_defaults": {},
-  "enhance_descriptions": false
+  "enhance_descriptions": false,
+  "model_override": "gpt-4o",
+  "tool_filter": {
+    "context": "property",
+    "allowed_operations": [
+      "get_property_profile",
+      "get_property_calendar_metrics",
+      "get_property_reservations",
+      "get_property_market_events",
+      "get_property_benchmark"
+    ]
+  }
 }
