@@ -1,7 +1,23 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { verifyAccessToken } from "./jwt";
 
 export const COOKIE_NAME = "priceos-session";
+
+/**
+ * Resolve the session token from the cookie (browser requests) or the
+ * Authorization: Bearer header (server-to-server fetches from our own
+ * server components, which have no cookie jar).
+ */
+async function resolveToken(): Promise<string | undefined> {
+  const cookieStore = await cookies();
+  const fromCookie = cookieStore.get(COOKIE_NAME)?.value;
+  if (fromCookie) return fromCookie;
+
+  const h = await headers();
+  const auth = h.get("authorization");
+  if (auth?.startsWith("Bearer ")) return auth.slice(7);
+  return undefined;
+}
 
 export interface SessionPayload {
   userId: string;
@@ -18,8 +34,7 @@ export interface SessionPayload {
  */
 export async function getSession(): Promise<SessionPayload | null> {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get(COOKIE_NAME)?.value;
+    const token = await resolveToken();
     if (!token) return null;
     const payload = verifyAccessToken(token) as unknown as SessionPayload;
     return payload;

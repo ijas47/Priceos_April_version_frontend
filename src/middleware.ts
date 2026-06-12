@@ -87,7 +87,11 @@ export default function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get(COOKIE_NAME)?.value;
+  // Cookie for browser requests; Authorization: Bearer for server-to-server
+  // fetches from our own server components (which have no cookie jar).
+  const authHeader = request.headers.get("authorization");
+  const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+  const token = request.cookies.get(COOKIE_NAME)?.value ?? bearer;
   const valid = token ? isValidToken(token) : false;
   const jwtPayload = token ? decodeToken(token) : null;
   // Legacy tokens (issued before onboardingStep was added) → treat as approved+complete
