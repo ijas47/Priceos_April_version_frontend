@@ -48,14 +48,22 @@ export async function GET() {
     .filter(([, v]) => v === "MISSING")
     .map(([k]) => k);
 
+  const hostawayMode = (process.env.HOSTAWAY_MODE ?? "db").toLowerCase();
+  const hasHostawayToken =
+    health.HOSTAWAY_API_KEY === "SET" || health.Hostaway_Authorization_token === "SET";
+
   return NextResponse.json({
     summary: missing.length === 0 ? "All expected keys are set" : `${missing.length} keys missing`,
     missing,
     health,
-    hostawayReady:
-      health.HOSTAWAY_API_BASE_URL === "SET" &&
-      (health.HOSTAWAY_API_KEY === "SET" || health.Hostaway_Authorization_token === "SET") &&
-      (process.env.HOSTAWAY_MODE ?? "").toLowerCase() === "live",
+    // BASE_URL and READ_ONLY have safe code defaults; only token + live mode are required.
+    hostawayMode,
+    hostawayReady: hasHostawayToken && hostawayMode === "live",
+    hostawayHint: !hasHostawayToken
+      ? "Set HOSTAWAY_API_KEY (or Hostaway_Authorization_token) in Vercel"
+      : hostawayMode !== "live"
+        ? `HOSTAWAY_MODE is "${hostawayMode}" — set it to "live" and redeploy`
+        : "Ready — use Sync page → Import from Hostaway",
     note: "Values are never exposed by this endpoint. After changing env vars in Vercel, you must Redeploy for them to take effect.",
   });
 }

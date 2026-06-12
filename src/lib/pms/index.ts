@@ -14,9 +14,9 @@ export function createPMSClient(): PMSClient {
   const mode = (process.env.HOSTAWAY_MODE || "db").toLowerCase();
 
   if (mode === "live") {
-    const apiKey = process.env.HOSTAWAY_API_KEY;
+    const apiKey = process.env.HOSTAWAY_API_KEY || process.env.Hostaway_Authorization_token;
     if (!apiKey) {
-      console.warn("[PMS] HOSTAWAY_MODE=live but HOSTAWAY_API_KEY is missing — falling back to mock");
+      console.warn("[PMS] HOSTAWAY_MODE=live but no Hostaway token is set — falling back to mock");
       return new MockPMSClient();
     }
     // Dynamic import to avoid pulling Hostaway deps into mock/db builds

@@ -30,7 +30,13 @@ export function getJwtSecrets() {
 // The frontend never calls Lyzr directly — do not add Lyzr env vars here.
 
 export function requireHostawayApiBaseUrl() {
-  return requireEnv("HOSTAWAY_API_BASE_URL");
+  // Public constant — only override for testing against a sandbox.
+  return getEnv("HOSTAWAY_API_BASE_URL") ?? "https://api.hostaway.com/v1";
+}
+
+/** Hostaway access token — supports both env names in circulation. */
+export function getHostawayApiKey() {
+  return getEnv("HOSTAWAY_API_KEY", "Hostaway_Authorization_token");
 }
 
 export function getDemoSeedCredentials() {
