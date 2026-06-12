@@ -11,7 +11,7 @@ export interface IMarketEvent extends Document {
   impactLevel: "high" | "medium" | "low";
   upliftPct: number;
   description?: string;
-  source: "ai_detected" | "ticketmaster" | "eventbrite" | "manual" | "market_template";
+  source: "ai_detected" | "ticketmaster" | "eventbrite" | "serpapi" | "newsapi" | "manual" | "market_template";
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -35,7 +35,7 @@ const MarketEventSchema = new Schema<IMarketEvent>(
     description: { type: String },
     source: {
       type: String,
-      enum: ["ai_detected", "ticketmaster", "eventbrite", "manual", "market_template"],
+      enum: ["ai_detected", "ticketmaster", "eventbrite", "serpapi", "newsapi", "manual", "market_template"],
       default: "ai_detected",
     },
     isActive: { type: Boolean, default: true },

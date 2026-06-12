@@ -15,6 +15,7 @@ import {
     BENCHMARK_AGENT_ID,
     GUARDRAILS_AGENT_ID,
 } from "@/lib/agents/constants";
+import { gatherMarketIntelligence } from "@/lib/research/aggregator";
 import mongoose from "mongoose";
 
 export const dynamic = "force-dynamic";
@@ -87,32 +88,46 @@ export async function POST(req: NextRequest) {
 
         // 1. Fetch Property Context
         const listing = await Listing.findById(listingObjectId).lean();
-        const area = listing?.area || "Dubai";
+        const city = listing?.city || "Dubai";
+        const area = listing?.area || city;
         const bedrooms = listing?.bedroomsNumber || 1;
-        console.log(`🏠 Property: "${listing?.name || "Unknown"}" in ${area} (${bedrooms}BR)`);
+        const currency = listing?.currencyCode || "AED";
+        console.log(`🏠 Property: "${listing?.name || "Unknown"}" in ${area}, ${city} (${bedrooms}BR)`);
 
-        // 2. Build prompts
+        // 2. Gather VERIFIED market intelligence first (SERP / Ticketmaster /
+        //    Eventbrite / news). This is structured ground truth — the Lyzr
+        //    agents receive it as input instead of being asked to invent
+        //    events from memory.
+        const intel = await gatherMarketIntelligence({
+            city,
+            area: area !== city ? area : undefined,
+            dateFrom: dateRange.from,
+            dateTo: dateRange.to,
+        });
+        console.log(`🔎 Verified intel: ${intel.findings.length} findings from [${intel.sourcesUsed.join(", ") || "none"}]` +
+            (intel.sourceErrors.length ? ` — errors: ${intel.sourceErrors.map(e => e.source).join(", ")}` : ""));
+
+        const verifiedEventsJson = JSON.stringify(
+            intel.findings.slice(0, 40).map((f) => ({
+                title: f.title,
+                date_start: f.dateStart,
+                date_end: f.dateEnd,
+                type: f.type,
+                impact: f.impact,
+                source: f.source,
+                suggested_premium_pct: f.suggestedPremiumPct,
+            }))
+        );
+
+        // 3. Build prompts — agents ASSESS verified data, they don't invent it.
         const currentDate = new Date().toISOString().split("T")[0];
-        let searchClusters = area;
-        if (area.toLowerCase().includes("marina") || area.toLowerCase().includes("jbr")) {
-            searchClusters = "Dubai Marina, JBR (Jumeirah Beach Residence), and Bluewaters Island";
-        } else if (area.toLowerCase().includes("downtown") || area.toLowerCase().includes("difc")) {
-            searchClusters = "Downtown Dubai, DIFC, and Business Bay";
-        } else if (area.toLowerCase().includes("palm")) {
-            searchClusters = "Palm Jumeirah, West Beach, and Pointe";
-        }
 
-        const month = parseInt(dateRange.from.substring(5, 7));
-        let eventHints = "";
-        if (month >= 1 && month <= 3) eventHints = "Dubai Shopping Festival, Art Dubai, Dubai International Boat Show.";
-        else if (month >= 3 && month <= 5) eventHints = "Dubai World Cup, Ramadan events, Eid celebrations.";
-        else if (month >= 6 && month <= 8) eventHints = "Dubai Summer Surprises (DSS), Eid Al Adha.";
-        else if (month >= 9 && month <= 10) eventHints = "GITEX Global, Dubai Design Week.";
-        else eventHints = "Dubai Airshow, UAE National Day, New Year events, Art Dubai.";
+        const marketingPrompt = `Today: ${currentDate}. City: ${city}. Area: ${area}. Date range: ${dateRange.from} to ${dateRange.to}. Property: ${bedrooms}BR, base price ${listing?.price || "Unknown"} ${currency}.
+VERIFIED_EVENTS (from Ticketmaster/Google Events/news feeds — treat as ground truth): ${verifiedEventsJson}
+Task: (1) Assess each verified event's pricing impact for this property. (2) Add public/school holidays for ${city} in range that you are CERTAIN of — mark them "holiday". (3) Do NOT invent concerts, conferences or festivals that are not in VERIFIED_EVENTS.
+Return JSON with events, holidays, news, daily_events arrays. Each item: title, date_start, date_end, impact, description, source, suggested_premium_pct, sentiment, demand_impact.`;
 
-        const marketingPrompt = `Today: ${currentDate}. Area: ${searchClusters}. Date range: ${dateRange.from} to ${dateRange.to}. Property: ${bedrooms}BR, base price ${listing?.price || "Unknown"} AED. Events: ${eventHints}. Return JSON with events, holidays, news, daily_events arrays. Each event needs: title, date_start, date_end, impact, description, source, suggested_premium_pct, sentiment, demand_impact.`;
-
-        const benchmarkPrompt = `Area: ${searchClusters}. ${bedrooms}BR. Base price: ${listing?.price || "Unknown"} AED. Date range: ${dateRange.from} to ${dateRange.to}. Find 10-15 comparable properties. Return JSON with rate_distribution (p25,p50,p75,p90,avg_weekday,avg_weekend), pricing_verdict (verdict,percentile,your_price), rate_trend (direction,pct_change), recommended_rates (weekday,weekend,event_peak,reasoning), comps array.`;
+        const benchmarkPrompt = `City: ${city}. Area: ${area}. ${bedrooms}BR. Base price: ${listing?.price || "Unknown"} ${currency}. Date range: ${dateRange.from} to ${dateRange.to}. Find 10-15 comparable short-term rental properties. Return JSON with rate_distribution (p25,p50,p75,p90,avg_weekday,avg_weekend), pricing_verdict (verdict,percentile,your_price), rate_trend (direction,pct_change), recommended_rates (weekday,weekend,event_peak,reasoning), comps array.`;
 
         const [marketingRes, benchmarkRes] = await Promise.all([
             callLyzrAgent(MARKETING_AGENT_ID || MARKET_RESEARCH_ID, marketingPrompt),
@@ -122,12 +137,44 @@ export async function POST(req: NextRequest) {
         const agentMkt = marketingRes.parsedJson || {};
         const agentBench = benchmarkRes.parsedJson || {};
 
-        console.log(`✅ Research complete. Events: ${agentMkt?.events?.length || 0}, News: ${agentMkt?.news?.length || 0}`);
+        console.log(`✅ Research complete. Verified: ${intel.findings.length}, Agent events: ${agentMkt?.events?.length || 0}, News: ${agentMkt?.news?.length || 0}`);
 
-        // 3. Save Market Events (upsert by orgId+name+startDate)
+        // 4. Save Market Events (upsert by orgId+name+startDate)
         const allFindings: any[] = [];
 
+        // 4a. Verified findings first — stored with their real source so the
+        //     UI can distinguish "Ticketmaster confirmed" from "AI guessed".
+        const sourceTag = (s: string): "ticketmaster" | "eventbrite" | "serpapi" | "newsapi" | "ai_detected" => {
+            if (s === "ticketmaster") return "ticketmaster";
+            if (s === "eventbrite") return "eventbrite";
+            if (s.startsWith("serpapi")) return "serpapi";
+            if (s === "newsapi") return "newsapi";
+            return "ai_detected";
+        };
+        for (const f of intel.findings) {
+            allFindings.push({
+                orgId,
+                listingId: listingObjectId,
+                name: f.title,
+                startDate: f.dateStart,
+                endDate: f.dateEnd,
+                area,
+                impactLevel: f.impact,
+                upliftPct: f.suggestedPremiumPct,
+                description: `[${f.type}] ${f.description}${f.url ? ` (${f.url})` : ""}`,
+                source: sourceTag(f.source),
+                isActive: true,
+            });
+        }
+
+        // 4b. Agent assessments (holidays it is certain of, impact notes).
+        const verifiedNames = new Set(intel.findings.map((f) => f.title.toLowerCase().trim()));
         const pushFinding = (e: any, eventType: string) => {
+            const name = e.title || e.headline || e.name;
+            if (!name) return;
+            // Skip agent duplicates of verified events — verified copy wins.
+            if (verifiedNames.has(String(name).toLowerCase().trim())) return;
+
             const impactLevel = (e.impact || e.demand_impact || "medium").toLowerCase().includes("high")
                 ? "high"
                 : (e.impact || e.demand_impact || "medium").toLowerCase().includes("low")
@@ -137,7 +184,7 @@ export async function POST(req: NextRequest) {
             allFindings.push({
                 orgId,
                 listingId: listingObjectId,
-                name: e.title || e.headline || e.name,
+                name,
                 startDate: e.date_start || e.date || dateRange.from,
                 endDate: e.date_end || e.date || dateRange.from,
                 area,
@@ -285,6 +332,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             success: true,
             eventsCount: allFindings.length,
+            verifiedEventsCount: intel.findings.length,
+            researchSourcesUsed: intel.sourcesUsed,
+            researchSourceErrors: intel.sourceErrors,
             duration: `${duration}s`,
             guardrailsSetByAi,
             guardrails: generatedGuardrails,

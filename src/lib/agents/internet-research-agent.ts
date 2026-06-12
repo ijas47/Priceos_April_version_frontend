@@ -1,19 +1,30 @@
 /**
  * Internet Research Agent
- * 
- * A subordinate agent that uses Perplexity's Sonar API to search the internet
- * for real-time Dubai events, market rates, area intelligence, and tourism trends.
- * 
- * The Pricing Agent (manager) delegates research tasks to this agent 
- * and uses the structured results to inform pricing suggestions.
+ *
+ * Multi-source market research with a strict trust ladder:
+ *
+ *   1. STRUCTURED SOURCES (preferred — verifiable data)
+ *      SERP API (Google Events / News / Search), Ticketmaster, Eventbrite,
+ *      NewsAPI — via src/lib/research/aggregator.ts
+ *   2. PERPLEXITY SONAR (fallback synthesis only)
+ *      Used only when structured sources return nothing. Findings are
+ *      capped at confidence 0.5 and labeled "perplexity (unverified)" —
+ *      Perplexity states wrong facts confidently and must never be the
+ *      sole basis for a pricing decision.
+ *   3. SEASONAL SNAPSHOT (last resort)
+ *      Deterministic season-level demand hints only. NEVER fabricates
+ *      events, news, or specific dates.
  */
+
+import { gatherMarketIntelligence } from "@/lib/research/aggregator";
+import { serpGoogleSearch } from "@/lib/research/sources";
 
 export interface ResearchFinding {
     title: string;
     date_start: string;
     date_end: string;
     expected_impact: "high" | "medium" | "low";
-    confidence: number;
+    confidence: number; // 0-1
     description: string;
     source: string;
     pricing_relevance: string;
@@ -29,169 +40,214 @@ export interface MarketSnapshot {
 export interface ResearchResult {
     query_type: "events" | "market_rates" | "area_intelligence" | "tourism_trends";
     location: string;
-    date_range: {
-        start: string;
-        end: string;
-    };
+    date_range: { start: string; end: string };
     findings: ResearchFinding[];
     market_snapshot: MarketSnapshot;
     summary: string;
     cached: boolean;
     timestamp: string;
+    sources_used: string[];
 }
 
-// Simple in-memory cache to avoid hitting Perplexity repeatedly for same queries
 const researchCache = new Map<string, { result: ResearchResult; expiresAt: number }>();
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-const PERPLEXITY_SYSTEM_PROMPT = `You are an Internet Research Agent for PriceOS, a short-term rental pricing platform focused on Dubai properties. Your job is to search the internet and provide accurate, real-time information that helps make better pricing decisions for short-term rentals.
+const PERPLEXITY_SYSTEM_PROMPT = `You are a research assistant for a short-term rental pricing platform. Search the internet and return accurate, real-time information relevant to rental demand in the requested city.
 
-You are NOT making pricing decisions. You are the researcher — find the facts.
-
-Always respond in this EXACT JSON format (no markdown, no code blocks, just raw JSON):
-
+Always respond in EXACT JSON (no markdown):
 {
-  "query_type": "events" | "market_rates" | "area_intelligence" | "tourism_trends",
-  "location": "the area or city searched",
-  "date_range": {
-    "start": "YYYY-MM-DD",
-    "end": "YYYY-MM-DD"
-  },
   "findings": [
-    {
-      "title": "Name of event or finding",
-      "date_start": "YYYY-MM-DD",
-      "date_end": "YYYY-MM-DD",
-      "expected_impact": "high" | "medium" | "low",
-      "confidence": 0.0 to 1.0,
-      "description": "Brief description with specific details",
-      "source": "URL or source name",
-      "pricing_relevance": "How this affects short-term rental pricing"
-    }
+    { "title": "...", "date_start": "YYYY-MM-DD", "date_end": "YYYY-MM-DD",
+      "expected_impact": "high"|"medium"|"low", "confidence": 0.0-1.0,
+      "description": "...", "source": "URL or name", "pricing_relevance": "..." }
   ],
   "market_snapshot": {
-    "average_nightly_rate": number or null,
-    "occupancy_trend": "increasing" | "stable" | "decreasing" | null,
-    "demand_level": "high" | "medium" | "low" | null,
-    "notable_factors": ["factor1", "factor2"]
+    "average_nightly_rate": number|null,
+    "occupancy_trend": "increasing"|"stable"|"decreasing"|null,
+    "demand_level": "high"|"medium"|"low"|null,
+    "notable_factors": ["..."]
   },
-  "summary": "2-3 sentence summary of key findings and pricing implications"
+  "summary": "2-3 sentences"
 }
 
-Rules:
-1. Always include real sources with URLs when possible
-2. Be specific with dates — use YYYY-MM-DD format
-3. Confidence: 0.9+ = confirmed, 0.7-0.9 = highly likely, 0.5-0.7 = probable, <0.5 = speculative
-4. Focus on information that DIRECTLY affects short-term rental demand
-5. Consider area-specific impact — events in Downtown may not affect JBR equally
-6. Include specific numbers (attendance, visitors, price ranges) when available
-7. If you cannot find reliable info, say so — don't fabricate data`;
-
+Rules: cite real sources; use YYYY-MM-DD dates; if you cannot find reliable info, return empty findings — NEVER fabricate.`;
 
 export class InternetResearchAgent {
-    private apiKey: string;
-    private baseUrl: string = "https://api.perplexity.ai/chat/completions";
+    private perplexityKey: string | undefined;
+    private perplexityUrl = "https://api.perplexity.ai/chat/completions";
 
     constructor(apiKey?: string) {
-        this.apiKey = apiKey || process.env.PERPLEXITY_API_KEY!;
+        this.perplexityKey = apiKey || process.env.PERPLEXITY_API_KEY;
     }
 
-    /**
-     * Search for upcoming events that could affect rental demand
-     */
+    /** Events affecting rental demand — structured sources first. */
     async searchEvents(
         area: string,
         startDate: Date,
-        endDate: Date
+        endDate: Date,
+        city?: string
     ): Promise<ResearchResult> {
-        const query = `Search for upcoming events in Dubai between ${this.formatDate(startDate)} and ${this.formatDate(endDate)} that could affect short-term rental demand, especially in the ${area} area. Include concerts, festivals, conferences, exhibitions, sports events, and any major gatherings. Also check for public holidays, school holidays, and Ramadan dates if applicable.`;
+        const targetCity = city || this.cityFromArea(area);
+        const from = this.formatDate(startDate);
+        const to = this.formatDate(endDate);
+        const cacheKey = `events:${targetCity}:${area}:${from}:${to}`;
+        const hit = researchCache.get(cacheKey);
+        if (hit && hit.expiresAt > Date.now()) return { ...hit.result, cached: true };
 
-        return this.query(query, "events", area, startDate, endDate);
+        // 1. Structured sources
+        const intel = await gatherMarketIntelligence({
+            city: targetCity,
+            area: area !== targetCity ? area : undefined,
+            dateFrom: from,
+            dateTo: to,
+        });
+
+        let result: ResearchResult;
+        if (intel.findings.length > 0) {
+            result = {
+                query_type: "events",
+                location: intel.location,
+                date_range: { start: from, end: to },
+                findings: intel.findings.map((f) => ({
+                    title: f.title,
+                    date_start: f.dateStart,
+                    date_end: f.dateEnd,
+                    expected_impact: f.impact,
+                    confidence: f.confidence,
+                    description: f.description,
+                    source: f.source,
+                    pricing_relevance:
+                        f.suggestedPremiumPct >= 0
+                            ? `Demand uplift — consider +${f.suggestedPremiumPct}% on overlapping nights.`
+                            : `Demand risk — consider ${f.suggestedPremiumPct}% and flexible cancellation.`,
+                })),
+                market_snapshot: this.seasonalSnapshot(targetCity, startDate),
+                summary: `${intel.findings.length} verified findings for ${intel.location} from ${intel.sourcesUsed.join(", ")}.`,
+                cached: false,
+                timestamp: new Date().toISOString(),
+                sources_used: intel.sourcesUsed,
+            };
+        } else {
+            // 2. Perplexity fallback (labeled, capped)
+            const query = `Upcoming events in ${targetCity}${area && area !== targetCity ? ` (especially the ${area} area)` : ""} between ${from} and ${to} that affect short-term rental demand: concerts, festivals, conferences, sports, public holidays, school holidays.`;
+            result = await this.perplexityQuery(query, "events", intel.location, startDate, endDate);
+            if (intel.sourceErrors.length > 0) {
+                result.summary += ` [Structured sources unavailable: ${intel.sourceErrors.map((e) => e.source).join(", ")} — configure SERP_API_KEY / TICKETMASTER_API_KEY for verified data.]`;
+            }
+        }
+
+        researchCache.set(cacheKey, { result, expiresAt: Date.now() + CACHE_TTL_MS });
+        return result;
     }
 
-    /**
-     * Get current market rates for comparable properties
-     */
+    /** Market nightly rates — SERP search snippets first, Perplexity synthesis fallback. */
     async searchMarketRates(
         area: string,
         bedrooms: number,
         startDate: Date,
-        endDate: Date
+        endDate: Date,
+        city?: string
     ): Promise<ResearchResult> {
-        const query = `What are the current average nightly rates for ${bedrooms}-bedroom Airbnb and short-term rental properties in ${area}, Dubai for the period ${this.formatDate(startDate)} to ${this.formatDate(endDate)}? Include comparison with nearby hotel rates and mention any seasonal pricing trends.`;
+        const targetCity = city || this.cityFromArea(area);
+        const from = this.formatDate(startDate);
+        const to = this.formatDate(endDate);
+        const cacheKey = `rates:${targetCity}:${area}:${bedrooms}:${from}:${to}`;
+        const hit = researchCache.get(cacheKey);
+        if (hit && hit.expiresAt > Date.now()) return { ...hit.result, cached: true };
 
-        return this.query(query, "market_rates", area, startDate, endDate);
+        const serp = await serpGoogleSearch(
+            `average nightly rate ${bedrooms} bedroom short term rental Airbnb ${area} ${targetCity} ${startDate.getFullYear()}`
+        );
+
+        let result: ResearchResult;
+        if (serp.results.length > 0) {
+            result = {
+                query_type: "market_rates",
+                location: `${area}, ${targetCity}`,
+                date_range: { start: from, end: to },
+                findings: serp.results.slice(0, 6).map((r) => ({
+                    title: r.title,
+                    date_start: from,
+                    date_end: to,
+                    expected_impact: "medium" as const,
+                    confidence: 0.7,
+                    description: r.snippet,
+                    source: r.url || "google_search",
+                    pricing_relevance: "Market-rate reference for comp benchmarking.",
+                })),
+                market_snapshot: this.seasonalSnapshot(targetCity, startDate),
+                summary: `${serp.results.length} market-rate references found via Google for ${bedrooms}BR in ${area}, ${targetCity}.`,
+                cached: false,
+                timestamp: new Date().toISOString(),
+                sources_used: ["serpapi_google"],
+            };
+        } else {
+            const query = `Current average nightly rates for ${bedrooms}-bedroom short-term rentals in ${area}, ${targetCity} for ${from} to ${to}. Include hotel comparison and seasonal trends.`;
+            result = await this.perplexityQuery(query, "market_rates", `${area}, ${targetCity}`, startDate, endDate);
+        }
+
+        researchCache.set(cacheKey, { result, expiresAt: Date.now() + CACHE_TTL_MS });
+        return result;
     }
 
-    /**
-     * Get area-specific intelligence
-     */
-    async searchAreaIntelligence(area: string): Promise<ResearchResult> {
+    /** Area outlook — events + news for the next 30 days. */
+    async searchAreaIntelligence(area: string, city?: string): Promise<ResearchResult> {
         const now = new Date();
-        const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-        const query = `What is the current rental demand outlook for ${area}, Dubai? Consider upcoming developments, transport changes, tourist attractions, new restaurants or attractions, and any local factors that could affect short-term rental demand in the next 30 days.`;
-
-        return this.query(query, "area_intelligence", area, now, thirtyDaysLater);
+        const thirty = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        return this.searchEvents(area, now, thirty, city);
     }
 
-    /**
-     * Get tourism trends for a specific period  
-     */
+    /** Tourism trends — news-driven. */
     async searchTourismTrends(
         startDate: Date,
-        endDate: Date
+        endDate: Date,
+        city = "Dubai"
     ): Promise<ResearchResult> {
-        const query = `What are the current tourism trends in Dubai for the period ${this.formatDate(startDate)} to ${this.formatDate(endDate)}? Include visitor numbers, popular source markets, airline capacity changes, new hotel openings, and any factors that could affect short-term rental occupancy.`;
-
-        return this.query(query, "tourism_trends", "Dubai", startDate, endDate);
+        return this.searchEvents(city, startDate, endDate, city);
     }
 
-    /**
-     * General-purpose research query — the Pricing Agent can ask anything
-     */
-    async generalQuery(
-        userQuery: string,
-        area: string = "Dubai"
-    ): Promise<ResearchResult> {
+    /** Free-form question — Perplexity with structured-source context when available. */
+    async generalQuery(userQuery: string, area: string = "Dubai", city?: string): Promise<ResearchResult> {
+        const targetCity = city || this.cityFromArea(area);
         const now = new Date();
-        const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-        // Wrap the user's query with context
-        const query = `For a short-term rental property in ${area}, Dubai: ${userQuery}. Please focus on information relevant to pricing decisions.`;
-
-        return this.query(query, "events", area, now, thirtyDaysLater);
+        const thirty = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const query = `For a short-term rental property in ${area}, ${targetCity}: ${userQuery}. Focus on information relevant to pricing decisions.`;
+        return this.perplexityQuery(query, "events", `${area}, ${targetCity}`, now, thirty);
     }
 
-    /**
-     * Core query method — calls Perplexity Sonar API
-     */
-    private async query(
+    // ── Perplexity (fallback only — capped confidence) ──────────────────────────
+
+    private async perplexityQuery(
         userQuery: string,
         queryType: ResearchResult["query_type"],
         location: string,
         startDate: Date,
         endDate: Date
     ): Promise<ResearchResult> {
-        // Check cache first
-        const cacheKey = `${queryType}:${location}:${this.formatDate(startDate)}:${this.formatDate(endDate)}`;
-        const cached = researchCache.get(cacheKey);
-        if (cached && cached.expiresAt > Date.now()) {
-            return { ...cached.result, cached: true };
-        }
+        const empty = (summary: string): ResearchResult => ({
+            query_type: queryType,
+            location,
+            date_range: { start: this.formatDate(startDate), end: this.formatDate(endDate) },
+            findings: [],
+            market_snapshot: this.seasonalSnapshot(location, startDate),
+            summary,
+            cached: false,
+            timestamp: new Date().toISOString(),
+            sources_used: [],
+        });
 
-        // If no API key, return a structured fallback
-        if (!this.apiKey) {
-            console.warn("[InternetResearchAgent] No PERPLEXITY_API_KEY set. Returning fallback data.");
-            return this.getFallbackResult(queryType, location, startDate, endDate);
+        if (!this.perplexityKey) {
+            return empty(
+                "No verified findings. Structured sources returned nothing and PERPLEXITY_API_KEY is not set. " +
+                "Seasonal snapshot only — no events were fabricated."
+            );
         }
 
         try {
-            console.log(`[InternetResearchAgent] Querying: "${userQuery.substring(0, 50)}..."`);
-            const response = await fetch(this.baseUrl, {
+            const response = await fetch(this.perplexityUrl, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${this.apiKey}`,
+                    Authorization: `Bearer ${this.perplexityKey}`,
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
@@ -200,262 +256,86 @@ export class InternetResearchAgent {
                         { role: "system", content: PERPLEXITY_SYSTEM_PROMPT },
                         { role: "user", content: userQuery },
                     ],
-                    temperature: 0.3,
-                    top_p: 0.9,
-                    max_tokens: 1000,
+                    temperature: 0.2,
+                    max_tokens: 1200,
                 }),
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`[InternetResearchAgent] Perplexity API error: ${response.status} — ${errorText}`);
-                return this.getFallbackResult(queryType, location, startDate, endDate);
+                console.error(`[InternetResearchAgent] Perplexity error ${response.status}: ${errorText.slice(0, 200)}`);
+                return empty(`Perplexity unavailable (${response.status}). No findings — nothing fabricated.`);
             }
 
             const data = await response.json();
             const content = data.choices?.[0]?.message?.content || "";
-
-            // Parse the JSON response from Perplexity
-            const result = this.parseResponse(content, queryType, location, startDate, endDate);
-
-            console.log(`[InternetResearchAgent] Success: Received ${result.findings.length} findings.`);
-
-            // Cache the result
-            researchCache.set(cacheKey, {
-                result,
-                expiresAt: Date.now() + CACHE_TTL_MS,
-            });
-
-            return result;
-        } catch (error) {
-            console.error("[InternetResearchAgent] Error calling Perplexity:", error);
-            return this.getFallbackResult(queryType, location, startDate, endDate);
-        }
-    }
-
-    /**
-     * Parse and validate the response from Perplexity
-     */
-    private parseResponse(
-        content: string,
-        queryType: ResearchResult["query_type"],
-        location: string,
-        startDate: Date,
-        endDate: Date
-    ): ResearchResult {
-        try {
-            // Try to extract JSON from the response (Perplexity sometimes wraps in markdown)
-            let jsonStr = content;
             const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                jsonStr = jsonMatch[0];
-            }
+            if (!jsonMatch) return empty("Perplexity returned unparseable output. No findings.");
 
-            const parsed = JSON.parse(jsonStr);
+            const parsed = JSON.parse(jsonMatch[0]);
+            const findings: ResearchFinding[] = (parsed.findings || []).map((f: any) => ({
+                title: f.title || "Unknown",
+                date_start: f.date_start || this.formatDate(startDate),
+                date_end: f.date_end || this.formatDate(endDate),
+                expected_impact: f.expected_impact || "low",
+                // Hard cap: Perplexity output is unverified.
+                confidence: Math.min(0.5, Math.max(0, Number(f.confidence) || 0.4)),
+                description: f.description || "",
+                source: `perplexity (unverified): ${f.source || "no citation"}`,
+                pricing_relevance: f.pricing_relevance || "",
+            }));
 
-            // Validate and normalize the response
             return {
-                query_type: parsed.query_type || queryType,
-                location: parsed.location || location,
-                date_range: parsed.date_range || {
-                    start: this.formatDate(startDate),
-                    end: this.formatDate(endDate),
-                },
-                findings: (parsed.findings || []).map((f: any) => ({
-                    title: f.title || "Unknown",
-                    date_start: f.date_start || this.formatDate(startDate),
-                    date_end: f.date_end || this.formatDate(endDate),
-                    expected_impact: f.expected_impact || "medium",
-                    confidence: Math.min(1.0, Math.max(0, f.confidence || 0.5)),
-                    description: f.description || "",
-                    source: f.source || "Internet search",
-                    pricing_relevance: f.pricing_relevance || "",
-                })),
+                query_type: queryType,
+                location,
+                date_range: { start: this.formatDate(startDate), end: this.formatDate(endDate) },
+                findings,
                 market_snapshot: {
                     average_nightly_rate: parsed.market_snapshot?.average_nightly_rate ?? null,
                     occupancy_trend: parsed.market_snapshot?.occupancy_trend ?? null,
                     demand_level: parsed.market_snapshot?.demand_level ?? null,
                     notable_factors: parsed.market_snapshot?.notable_factors || [],
                 },
-                summary: parsed.summary || "No summary available",
+                summary: `[UNVERIFIED — Perplexity fallback, verify before pricing on this] ${parsed.summary || ""}`,
                 cached: false,
                 timestamp: new Date().toISOString(),
+                sources_used: ["perplexity"],
             };
-        } catch (parseError) {
-            // If JSON parsing fails, extract what we can from the text
-            console.warn("[InternetResearchAgent] Could not parse JSON response, extracting text summary");
-            return {
-                query_type: queryType,
-                location,
-                date_range: {
-                    start: this.formatDate(startDate),
-                    end: this.formatDate(endDate),
-                },
-                findings: [],
-                market_snapshot: {
-                    average_nightly_rate: null,
-                    occupancy_trend: null,
-                    demand_level: null,
-                    notable_factors: [],
-                },
-                summary: content.substring(0, 500),
-                cached: false,
-                timestamp: new Date().toISOString(),
-            };
+        } catch (error) {
+            console.error("[InternetResearchAgent] Perplexity call failed:", error);
+            return empty("Research providers unreachable. No findings — nothing fabricated.");
         }
     }
 
-    /**
-     * Fallback data when Perplexity is not available
-     * Uses known Dubai event calendar and seasonal patterns
-     */
-    private getFallbackResult(
-        queryType: ResearchResult["query_type"],
-        location: string,
-        startDate: Date,
-        endDate: Date
-    ): ResearchResult {
+    // ── Helpers ─────────────────────────────────────────────────────────────────
+
+    /** Seasonal demand snapshot — deterministic, city-aware, no fabricated events. */
+    private seasonalSnapshot(cityOrLocation: string, startDate: Date): MarketSnapshot {
         const month = startDate.getMonth(); // 0-based
-        const now = new Date();
+        const city = cityOrLocation.toLowerCase();
 
-        // Known Dubai events (approximate annual schedule)
-        const knownEvents: ResearchFinding[] = [];
-
-        // Dubai Shopping Festival (late Dec - late Jan)
-        if (month === 11 || month === 0) {
-            knownEvents.push({
-                title: "Dubai Shopping Festival",
-                date_start: `${startDate.getFullYear()}-12-15`,
-                date_end: `${startDate.getFullYear() + 1}-01-31`,
-                expected_impact: "high",
-                confidence: 0.9,
-                description: "Annual retail festival attracting millions of visitors with deals, entertainment, and fireworks.",
-                source: "Known annual event",
-                pricing_relevance: "Drives 20-30% increase in short-term rental bookings city-wide.",
-            });
-        }
-
-        // New Year's Eve
-        if (month === 11) {
-            knownEvents.push({
-                title: "New Year's Eve Celebrations",
-                date_start: `${startDate.getFullYear()}-12-30`,
-                date_end: `${startDate.getFullYear() + 1}-01-02`,
-                expected_impact: "high",
-                confidence: 0.95,
-                description: "Iconic Burj Khalifa fireworks and citywide celebrations. Peak tourism period.",
-                source: "Known annual event",
-                pricing_relevance: "Premium pricing opportunity. Rates can be 50-100% above normal for Dec 30 - Jan 2.",
-            });
-        }
-
-        // Art Dubai (usually March)
-        if (month === 2) {
-            knownEvents.push({
-                title: "Art Dubai",
-                date_start: `${startDate.getFullYear()}-03-06`,
-                date_end: `${startDate.getFullYear()}-03-09`,
-                expected_impact: "medium",
-                confidence: 0.8,
-                description: "International art fair at Madinat Jumeirah. Attracts 30,000+ visitors, primarily high-net-worth.",
-                source: "Known annual event",
-                pricing_relevance: "Premium properties in Jumeirah and Marina can command 10-15% higher rates.",
-            });
-        }
-
-        // F1 Abu Dhabi (usually late November)
-        if (month === 10) {
-            knownEvents.push({
-                title: "F1 Abu Dhabi Grand Prix",
-                date_start: `${startDate.getFullYear()}-11-20`,
-                date_end: `${startDate.getFullYear()}-11-23`,
-                expected_impact: "high",
-                confidence: 0.85,
-                description: "F1 race weekend at Yas Marina Circuit. Spillover demand into Dubai from visitors.",
-                source: "Known annual event",
-                pricing_relevance: "15-25% rate increase opportunity, especially for properties near highways to Abu Dhabi.",
-            });
-        }
-
-        // Ramadan (approximate — shifts each year)
-        if (month === 2 || month === 3) {
-            knownEvents.push({
-                title: "Ramadan (approximate dates)",
-                date_start: `${startDate.getFullYear()}-03-01`,
-                date_end: `${startDate.getFullYear()}-03-30`,
-                expected_impact: "medium",
-                confidence: 0.6,
-                description: "Islamic holy month. Tourist patterns shift — some decrease in party tourism, increase in family visitors.",
-                source: "Islamic calendar (approximate)",
-                pricing_relevance: "Weekday rates may dip 10-15%, but Iftar/Suhoor tourism creates unique demand.",
-            });
-        }
-
-        // Eid al-Fitr (approximate)
-        if (month === 3 || month === 4) {
-            knownEvents.push({
-                title: "Eid al-Fitr Holiday",
-                date_start: `${startDate.getFullYear()}-04-01`,
-                date_end: `${startDate.getFullYear()}-04-05`,
-                expected_impact: "high",
-                confidence: 0.6,
-                description: "Major holiday marking end of Ramadan. Strong domestic and regional travel demand.",
-                source: "Islamic calendar (approximate)",
-                pricing_relevance: "Rates can increase 20-30% during Eid. High demand from GCC travelers.",
-            });
-        }
-
-        // National Day (Dec 2-3)
-        if (month === 11) {
-            knownEvents.push({
-                title: "UAE National Day",
-                date_start: `${startDate.getFullYear()}-12-02`,
-                date_end: `${startDate.getFullYear()}-12-03`,
-                expected_impact: "medium",
-                confidence: 0.95,
-                description: "UAE National Day celebrations with fireworks, parades, and public events.",
-                source: "Known national holiday",
-                pricing_relevance: "Strong domestic and regional demand. 10-20% rate increase feasible.",
-            });
-        }
-
-        // Determine season
-        const isPeak = month >= 10 || month <= 2; // Nov-Mar
-        const isShoulder = month >= 3 && month <= 4 || month >= 8 && month <= 9; // Apr-May, Sep-Oct
-        const isLow = month >= 5 && month <= 7; // Jun-Aug
-
-        const demandLevel = isPeak ? "high" : isShoulder ? "medium" : "low";
-        const occupancyTrend = isPeak ? "increasing" : isShoulder ? "stable" : "decreasing";
-
-        const seasonNote = isPeak
-            ? "Peak tourist season — pleasant weather, major events, highest demand"
-            : isShoulder
-                ? "Shoulder season — moderate demand, good value period"
-                : "Low season — summer heat reduces tourist footfall significantly";
+        // Gulf cities: winter peak, summer trough. Default (temperate): summer peak.
+        const gulf = /dubai|abu dhabi|doha|riyadh|jeddah|muscat|kuwait|bahrain|sharjah/.test(city);
+        const peak = gulf ? month >= 10 || month <= 2 : month >= 5 && month <= 8;
+        const low = gulf ? month >= 5 && month <= 7 : month === 0 || month === 1;
 
         return {
-            query_type: queryType,
-            location,
-            date_range: {
-                start: this.formatDate(startDate),
-                end: this.formatDate(endDate),
-            },
-            findings: knownEvents,
-            market_snapshot: {
-                average_nightly_rate: null, // Can't determine without API
-                occupancy_trend: occupancyTrend,
-                demand_level: demandLevel,
-                notable_factors: [seasonNote, `${knownEvents.length} events in range`],
-            },
-            summary: `Fallback data: ${knownEvents.length} known events found for ${location}. ${seasonNote}. For real-time accuracy, configure the PERPLEXITY_API_KEY.`,
-            cached: false,
-            timestamp: now.toISOString(),
+            average_nightly_rate: null,
+            occupancy_trend: peak ? "increasing" : low ? "decreasing" : "stable",
+            demand_level: peak ? "high" : low ? "low" : "medium",
+            notable_factors: [
+                `Seasonal pattern (${gulf ? "Gulf climate" : "temperate"}): ${peak ? "peak" : low ? "low" : "shoulder"} season`,
+            ],
         };
     }
 
-    /**
-     * Clear the research cache
-     */
+    private cityFromArea(area: string): string {
+        // Known Dubai sub-areas map to Dubai; otherwise treat the area as the city.
+        const dubaiAreas = /marina|jbr|downtown|difc|business bay|palm|jumeirah|deira|barsha|jlt|bluewaters|creek/i;
+        if (dubaiAreas.test(area)) return "Dubai";
+        return area || "Dubai";
+    }
+
     clearCache(): void {
         researchCache.clear();
     }
@@ -465,9 +345,6 @@ export class InternetResearchAgent {
     }
 }
 
-/**
- * Create an Internet Research Agent instance
- */
 export function createInternetResearchAgent(apiKey?: string): InternetResearchAgent {
     return new InternetResearchAgent(apiKey);
 }

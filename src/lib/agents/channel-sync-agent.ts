@@ -51,6 +51,12 @@ export class ChannelSyncAgent {
             const dateStr = proposal.date;
             const dates = [parseISO(dateStr)];
 
+            // The price to execute: the staged proposedPrice if still present,
+            // else currentPrice (the approve route moves proposedPrice into
+            // currentPrice before calling us). This makes execution correct
+            // regardless of caller ordering.
+            const priceToPush = Number(proposal.proposedPrice ?? proposal.currentPrice);
+
             let verified = false;
 
             // If hostawayId exists, push to HostAway API
@@ -60,7 +66,7 @@ export class ChannelSyncAgent {
 
                 const updates: HostawayCalendarUpdate[] = dates.map((date) => ({
                     date: format(date, "yyyy-MM-dd"),
-                    price: Number(proposal.currentPrice),
+                    price: priceToPush,
                 }));
 
                 const client = createHostawayClient(this.hostawayApiKey);
@@ -70,7 +76,7 @@ export class ChannelSyncAgent {
                     hostawayId,
                     format(dates[0], "yyyy-MM-dd"),
                     format(dates[dates.length - 1], "yyyy-MM-dd"),
-                    Number(proposal.currentPrice)
+                    priceToPush
                 );
             } else {
                 // No hostawayId - database-only mode

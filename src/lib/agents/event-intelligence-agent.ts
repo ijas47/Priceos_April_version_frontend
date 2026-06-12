@@ -1,6 +1,7 @@
-import { connectDB, MarketEvent } from "@/lib/db";
+import { connectDB, MarketEvent, Listing } from "@/lib/db";
 import { format } from "date-fns";
 import mongoose from "mongoose";
+import { gatherMarketIntelligence } from "@/lib/research/aggregator";
 
 export interface EventSignal {
   name: string;
@@ -24,36 +25,52 @@ export interface EventAnalysisResult {
   highImpactEvents: number;
 }
 
+export interface EventQueryScope {
+  orgId?: mongoose.Types.ObjectId | string;
+  city?: string;
+}
+
 /**
  * Event Intelligence Agent
- * Reads from the `MarketEvent` collection (populated during Setup)
+ * Reads from the `MarketEvent` collection. Events are populated by
+ * fetchAndCacheEvents() from verified feeds (SERP Google Events,
+ * Ticketmaster, Eventbrite) — never fabricated.
  */
 export class EventIntelligenceAgent {
-  async getEvents(startDate: Date, endDate: Date): Promise<EventSignal[]> {
+  async getEvents(startDate: Date, endDate: Date, scope?: EventQueryScope): Promise<EventSignal[]> {
     await connectDB();
     const startDateStr = format(startDate, "yyyy-MM-dd");
     const endDateStr = format(endDate, "yyyy-MM-dd");
 
-    const cachedEvents = await MarketEvent.find({
+    const filter: Record<string, unknown> = {
       endDate: { $gte: startDateStr },
       startDate: { $lte: endDateStr },
       isActive: true,
-    }).lean();
+    };
+    // Scope to the org so one tenant's events never leak into another's pricing.
+    if (scope?.orgId) {
+      filter.orgId = typeof scope.orgId === "string"
+        ? new mongoose.Types.ObjectId(scope.orgId)
+        : scope.orgId;
+    }
+
+    const cachedEvents = await MarketEvent.find(filter).lean();
+    const fallbackCity = scope?.city || "";
 
     return cachedEvents.map((event) => ({
       name: event.name,
       startDate: event.startDate,
       endDate: event.endDate,
-      location: event.area || "Dubai",
+      location: event.area || fallbackCity || "Unknown",
       expectedImpact: event.impactLevel,
-      confidence: 75,
+      confidence: event.source === "ai_detected" ? 50 : 85,
       description: event.description,
-      metadata: {},
+      metadata: { source: event.source },
     }));
   }
 
-  async analyzeEvents(startDate: Date, endDate: Date): Promise<EventAnalysisResult> {
-    const events = await this.getEvents(startDate, endDate);
+  async analyzeEvents(startDate: Date, endDate: Date, scope?: EventQueryScope): Promise<EventAnalysisResult> {
+    const events = await this.getEvents(startDate, endDate, scope);
     const highImpactEvents = events.filter((e) => e.expectedImpact === "high").length;
 
     let summary = "";
@@ -77,86 +94,104 @@ export class EventIntelligenceAgent {
     };
   }
 
-  async hasEventImpact(date: Date): Promise<boolean> {
+  async hasEventImpact(date: Date, scope?: EventQueryScope): Promise<boolean> {
     await connectDB();
     const dateStr = format(date, "yyyy-MM-dd");
 
-    const count = await MarketEvent.countDocuments({
+    const filter: Record<string, unknown> = {
       startDate: { $lte: dateStr },
       endDate: { $gte: dateStr },
       isActive: true,
-    });
+    };
+    if (scope?.orgId) {
+      filter.orgId = typeof scope.orgId === "string"
+        ? new mongoose.Types.ObjectId(scope.orgId)
+        : scope.orgId;
+    }
 
+    const count = await MarketEvent.countDocuments(filter);
     return count > 0;
   }
 
-  async fetchAndCacheEvents(orgId: mongoose.Types.ObjectId): Promise<{ cached: number; error?: string }> {
+  /**
+   * Fetch real events from verified feeds (SERP / Ticketmaster / Eventbrite)
+   * for the org's market city and cache them in MarketEvent.
+   *
+   * City resolution: explicit param → most common city across the org's
+   * listings → error (no silent Dubai default).
+   */
+  async fetchAndCacheEvents(
+    orgId: mongoose.Types.ObjectId,
+    opts: { city?: string; daysAhead?: number } = {}
+  ): Promise<{ cached: number; sourcesUsed: string[]; error?: string }> {
     try {
       await connectDB();
 
-      const mockEvents: EventSignal[] = [
-        {
-          name: "Dubai Shopping Festival",
-          startDate: "2026-01-01",
-          endDate: "2026-02-01",
-          location: "Dubai",
-          expectedImpact: "high",
-          confidence: 95,
-          description: "Annual shopping festival attracting millions of visitors",
-        },
-        {
-          name: "Dubai World Cup",
-          startDate: "2026-03-28",
-          endDate: "2026-03-28",
-          location: "Dubai",
-          expectedImpact: "high",
-          confidence: 85,
-          description: "World's richest horse race",
-        },
-        {
-          name: "Ramadan",
-          startDate: "2026-02-17",
-          endDate: "2026-03-18",
-          location: "Dubai",
-          expectedImpact: "medium",
-          confidence: 70,
-          description: "Lower tourist demand during Ramadan",
-        },
-        {
-          name: "GITEX Global",
-          startDate: "2026-10-12",
-          endDate: "2026-10-16",
-          location: "Dubai",
-          expectedImpact: "high",
-          confidence: 90,
-          description: "Global tech event, massive demand spike",
-        },
-      ];
+      let city = opts.city;
+      if (!city) {
+        const listings = await Listing.find({ orgId }).select("city").lean();
+        const counts = new Map<string, number>();
+        for (const l of listings) {
+          const c = (l.city || "").trim();
+          if (c) counts.set(c, (counts.get(c) || 0) + 1);
+        }
+        city = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      }
+      if (!city) {
+        return {
+          cached: 0,
+          sourcesUsed: [],
+          error: "Cannot determine market city — org has no listings with a city set. Pass city explicitly.",
+        };
+      }
+
+      const daysAhead = opts.daysAhead ?? 180;
+      const from = format(new Date(), "yyyy-MM-dd");
+      const to = format(new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000), "yyyy-MM-dd");
+
+      const intel = await gatherMarketIntelligence({ city, dateFrom: from, dateTo: to });
+
+      if (intel.findings.length === 0) {
+        return {
+          cached: 0,
+          sourcesUsed: intel.sourcesUsed,
+          error: intel.sourceErrors.length > 0
+            ? `No events found. Source errors: ${intel.sourceErrors.map((e) => `${e.source}: ${e.error}`).join("; ")}`
+            : "No events found in range.",
+        };
+      }
+
+      const sourceTag = (s: string): "ticketmaster" | "eventbrite" | "serpapi" | "newsapi" | "manual" => {
+        if (s === "ticketmaster") return "ticketmaster";
+        if (s === "eventbrite") return "eventbrite";
+        if (s.startsWith("serpapi")) return "serpapi";
+        if (s === "newsapi") return "newsapi";
+        return "manual";
+      };
 
       let cachedCount = 0;
-
-      for (const event of mockEvents) {
-        const existing = await MarketEvent.findOne({ orgId, name: event.name, startDate: event.startDate });
+      for (const f of intel.findings.filter((x) => x.type === "event")) {
+        const existing = await MarketEvent.findOne({ orgId, name: f.title, startDate: f.dateStart });
         if (!existing) {
           await MarketEvent.create({
             orgId,
-            name: event.name,
-            startDate: event.startDate,
-            endDate: event.endDate,
-            area: event.location,
-            impactLevel: event.expectedImpact,
-            upliftPct: event.expectedImpact === "high" ? 30 : event.expectedImpact === "medium" ? 15 : 5,
-            description: event.description,
-            source: "manual",
+            name: f.title,
+            startDate: f.dateStart,
+            endDate: f.dateEnd,
+            area: city,
+            impactLevel: f.impact,
+            upliftPct: f.suggestedPremiumPct,
+            description: `${f.description}${f.url ? ` (${f.url})` : ""}`,
+            source: sourceTag(f.source),
             isActive: true,
           });
           cachedCount++;
         }
       }
 
-      return { cached: cachedCount };
+      return { cached: cachedCount, sourcesUsed: intel.sourcesUsed };
     } catch (error) {
-      return { cached: 0, error: (error as Error).message };
+      return { cached: 0, sourcesUsed: [], error: (error as Error).message };
     }
   }
 

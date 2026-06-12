@@ -18,7 +18,7 @@ import { createInternetResearchAgent } from "@/lib/agents/internet-research-agen
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { type, area, startDate, endDate, bedrooms, query } = body;
+        const { type, area, city, startDate, endDate, bedrooms, query } = body;
 
         if (!type) {
             return NextResponse.json(
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
         switch (type) {
             case "events":
-                result = await agent.searchEvents(area || "Dubai", start, end);
+                result = await agent.searchEvents(area || "Dubai", start, end, city);
                 break;
 
             case "market_rates":
@@ -46,16 +46,17 @@ export async function POST(req: NextRequest) {
                     area || "Dubai",
                     bedrooms || 1,
                     start,
-                    end
+                    end,
+                    city
                 );
                 break;
 
             case "area_intelligence":
-                result = await agent.searchAreaIntelligence(area || "Dubai");
+                result = await agent.searchAreaIntelligence(area || "Dubai", city);
                 break;
 
             case "tourism_trends":
-                result = await agent.searchTourismTrends(start, end);
+                result = await agent.searchTourismTrends(start, end, city);
                 break;
 
             case "general":
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
                         { status: 400 }
                     );
                 }
-                result = await agent.generalQuery(query, area || "Dubai");
+                result = await agent.generalQuery(query, area || "Dubai", city);
                 break;
 
             default:

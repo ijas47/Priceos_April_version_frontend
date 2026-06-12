@@ -46,7 +46,12 @@ export class PricingAnalystAgent {
       throw new Error(`Listing ${listingId} not found`);
     }
 
-    const eventAnalysis = await this.eventAgent.analyzeEvents(startDate, endDate);
+    // Scope events to this listing's org and city — without this, events
+    // cached by other tenants (or other cities) leak into pricing.
+    const eventAnalysis = await this.eventAgent.analyzeEvents(startDate, endDate, {
+      orgId: listing.orgId,
+      city: listing.city,
+    });
 
     const calendar = await InventoryMaster.find({
       listingId: lid,
@@ -62,7 +67,11 @@ export class PricingAnalystAgent {
     for (const day of days) {
       const dateStr = format(day, "yyyy-MM-dd");
       const calendarDay = calendar.find((d) => d.date === dateStr);
-      const currentPrice = calendarDay ? Number(calendarDay.currentPrice) : Number(listing.price);
+      // Guard against 0/NaN currentPrice — fall back to listing base price
+      // so changePct never divides by zero.
+      const rawCurrent = calendarDay ? Number(calendarDay.currentPrice) : NaN;
+      const currentPrice = rawCurrent > 0 ? rawCurrent : Number(listing.price) || 0;
+      if (currentPrice <= 0) continue;
 
       const basePrice = Number(listing.price);
       const priceFloor = listing.priceFloor > 0 ? listing.priceFloor : Math.round(basePrice * 0.5);
@@ -136,6 +145,13 @@ export class PricingAnalystAgent {
   async saveProposals(analysisResult: AnalysisResult): Promise<string[]> {
     await connectDB();
     const proposalIds: string[] = [];
+    if (analysisResult.proposals.length === 0) return proposalIds;
+
+    // Resolve orgId once from the listing so every proposal row carries it —
+    // org-scoped dashboards can't see proposals without it.
+    const firstLid = new mongoose.Types.ObjectId(analysisResult.proposals[0].listingId);
+    const owner = await Listing.findById(firstLid).select("orgId").lean();
+    const orgId = owner?.orgId;
 
     for (const proposal of analysisResult.proposals) {
       const updated = await InventoryMaster.findOneAndUpdate(
@@ -149,6 +165,7 @@ export class PricingAnalystAgent {
             changePct: proposal.changePct,
             proposalStatus: "pending",
             reasoning: proposal.reasoning,
+            ...(orgId ? { orgId } : {}),
           },
         },
         { new: true }
