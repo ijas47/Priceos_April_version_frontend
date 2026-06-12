@@ -4,12 +4,12 @@ import { verifyAccessToken } from "./jwt";
 export const COOKIE_NAME = "priceos-session";
 
 export interface SessionPayload {
-  userId: string; // Organization._id as string
-  orgId: string;  // same as userId
+  userId: string;
+  orgId: string;
   email: string;
   role: string;
-  isApproved: boolean;
-  onboardingStep: string;
+  isApproved?: boolean;
+  onboardingStep?: string;
 }
 
 /**

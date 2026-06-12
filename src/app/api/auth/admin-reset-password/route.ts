@@ -1,52 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
+import { connectDB, Organization } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
-const BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const email = searchParams.get("email");
-    if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+/**
+ * POST /api/auth/admin-reset-password
+ * Directly resets a user's password by email (admin only, no token needed)
+ */
+export async function POST(req: NextRequest) {
+    try {
+        const { email, newPassword } = await req.json();
+
+        if (!email || !newPassword) {
+            return NextResponse.json({ error: "Email and new password are required" }, { status: 400 });
+        }
+
+        await connectDB();
+
+        const org = await Organization.findOne({ email: email.trim().toLowerCase() });
+        if (!org) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+        await Organization.findByIdAndUpdate(org._id, { $set: { passwordHash } });
+
+        return NextResponse.json({ success: true, message: "Password updated successfully" });
+    } catch (error: any) {
+        console.error("[admin-reset-password] Error:", error);
+        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
     }
-
-    const backendRes = await fetch(`${BACKEND}/auth/admin-reset-password?email=${encodeURIComponent(email)}`);
-    const data = await backendRes.json();
-
-    if (!backendRes.ok) {
-      return NextResponse.json(data, { status: backendRes.status });
-    }
-    return NextResponse.json(data, { status: 200 });
-  } catch (err) {
-    console.error("[auth/check-reset proxy]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    
-    // Fix: Frontend sends newPassword, backend expects password
-    const backendPayload = {
-      email: body.email,
-      password: body.newPassword || body.password
-    };
+/**
+ * GET /api/auth/admin-reset-password?email=xxx
+ * Check if a user with the given email exists
+ */
+export async function GET(req: NextRequest) {
+    const email = req.nextUrl.searchParams.get("email");
+    if (!email) return NextResponse.json({ exists: false }, { status: 400 });
 
-    const backendRes = await fetch(`${BACKEND}/auth/admin-reset-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(backendPayload),
-    });
-
-    const data = await backendRes.json();
-
-    if (!backendRes.ok) {
-      return NextResponse.json(data, { status: backendRes.status });
+    try {
+        await connectDB();
+        const org = await Organization.findOne({ email: email.trim().toLowerCase() })
+            .select("fullName name")
+            .lean();
+        return NextResponse.json({ exists: !!org, name: org?.fullName || org?.name || null });
+    } catch {
+        return NextResponse.json({ exists: false }, { status: 500 });
     }
-    return NextResponse.json(data, { status: 200 });
-  } catch (err) {
-    console.error("[auth/reset proxy]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
 }

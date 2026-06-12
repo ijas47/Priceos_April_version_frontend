@@ -1,9 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { COOKIE_NAME } from "@/lib/auth/server";
 
-export async function POST(_req: NextRequest) {
+export async function POST() {
   const response = NextResponse.json({ success: true });
-  // Clear both auth cookies
-  response.cookies.set("priceos-session", "", { maxAge: 0, path: "/" });
-  response.cookies.set("priceos-refresh", "", { maxAge: 0, path: "/" });
+  response.cookies.set(COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 0,
+    path: "/",
+  });
   return response;
 }

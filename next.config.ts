@@ -55,23 +55,25 @@ const nextConfig: NextConfig = {
   typescript: { ignoreBuildErrors: false },
 
   // Server-side packages that must not be bundled into client chunks
-  // (mongoose removed - no longer used in frontend)
-  serverExternalPackages: [],
+  serverExternalPackages: ["mongoose", "bcryptjs", "jsonwebtoken"],
 
   // Anchor webpack's file tracing to this directory, preventing it from
   // crawling to /Original_priceos and failing to resolve tailwindcss
   outputFileTracingRoot: __dirname,
 
   // ── API Rewrites ────────────────────────────────────────────────────────────
-  // Proxies unmatched /api/* to the FastAPI backend.
-  // Next.js API routes (src/app/api/*) take precedence; only unmatched paths proxy.
+  // Only proxy if an external backend is configured (absolute URL).
+  // When NEXT_PUBLIC_API_URL=/api, all routes are handled by Next.js API routes.
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${backendUrl}/:path*`,
-      },
-    ];
+    if (backendUrl.startsWith("http")) {
+      return [
+        {
+          source: "/api/:path*",
+          destination: `${backendUrl}/:path*`,
+        },
+      ];
+    }
+    return [];
   },
 
   // ── Docker optimization ────────────────────────────────────────────────────
