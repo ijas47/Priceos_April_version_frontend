@@ -5,6 +5,7 @@ import { ContextPanel } from "@/components/layout/context-panel";
 import { RightSidebarLayout } from "@/components/layout/right-sidebar-layout";
 import { SidebarTabbedView } from "@/components/layout/sidebar-tabbed-view";
 import type { PropertyWithMetrics } from "@/types";
+import { apiBase } from "@/lib/api/absolute-url";
 
 export const metadata = {
   title: "Aria | PriceOS Intelligence",
@@ -19,7 +20,7 @@ export default async function AgentChatPage() {
 
   let propertiesWithMetrics: PropertyWithMetrics[] = [];
   try {
-    const backend = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+    const backend = await apiBase();
     const res = await fetch(
       `${backend}/properties?orgId=${encodeURIComponent(orgObjectId)}`,
       { next: { revalidate: 120 } }

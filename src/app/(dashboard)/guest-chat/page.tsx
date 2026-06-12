@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { verifyAccessToken } from "@/lib/auth/jwt";
 import { GuestInboxWired } from "@/components/chat/guest-inbox-wired";
 import type { PropertyWithMetrics } from "@/types";
+import { apiBase } from "@/lib/api/absolute-url";
 
 export const metadata = {
     title: "Guest Inbox | PriceOS Intelligence",
@@ -24,7 +25,7 @@ export default async function GuestChatPage() {
 
     let propertiesWithMetrics: PropertyWithMetrics[] = [];
     try {
-        const backend = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+        const backend = await apiBase();
         const res = await fetch(
             `${backend}/properties?orgId=${encodeURIComponent(orgObjectId)}`,
             { next: { revalidate: 120 } }

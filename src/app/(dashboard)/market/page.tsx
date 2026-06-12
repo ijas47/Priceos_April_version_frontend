@@ -2,10 +2,11 @@ import { MarketIntelligenceClient } from "./market-client";
 import { getSession } from "@/lib/auth/server";
 import { cookies } from "next/headers";
 import { format, addDays } from "date-fns";
+import { apiBase } from "@/lib/api/absolute-url";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
 export default async function MarketPage() {
+  const API = await apiBase();
   const session = await getSession();
   if (!session?.orgId) {
     return null;

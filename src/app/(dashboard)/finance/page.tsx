@@ -2,15 +2,16 @@ import { getSession } from "@/lib/auth/server";
 import { redirect } from "next/navigation";
 import { FinanceDashboard } from "./finance-dashboard";
 import { format, addDays } from "date-fns";
+import { apiBase } from "@/lib/api/absolute-url";
 
 export const metadata = {
   title: "Finance | PriceOS Intelligence",
   description: "Revenue overview, property performance, and pricing impact.",
 };
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
 export default async function FinancePage() {
+  const API = await apiBase();
   const session = await getSession();
   if (!session?.orgId) redirect("/login");
 

@@ -8,10 +8,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { verifyAccessToken } from "@/lib/auth/jwt";
 import { OverviewClient } from "./overview-client";
+import { apiBase } from "@/lib/api/absolute-url";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
 export default async function OverviewPage() {
+  const API = await apiBase();
   const cookieStore = await cookies();
   const token = cookieStore.get("priceos-session")?.value;
   if (!token) redirect("/login");

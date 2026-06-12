@@ -1,12 +1,13 @@
 import { getSession } from "@/lib/auth/server";
 import { PricingPageTabs } from "./pricing-page-tabs";
 import { cookies } from "next/headers";
+import { apiBase } from "@/lib/api/absolute-url";
 
 export const dynamic = "force-dynamic";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
 export default async function PricingPage() {
+  const API = await apiBase();
   const session = await getSession();
   if (!session?.orgId) {
     return null;
