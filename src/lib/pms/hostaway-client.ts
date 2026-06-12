@@ -3,10 +3,18 @@
  *
  * All direct Hostaway API communication has been moved to the FastAPI backend.
  * The frontend uses these wrapper functions that proxy through /api/hostaway/*.
+ *
+ * HOSTAWAY_READ_ONLY defaults to "true". When enabled, sendReply() is blocked
+ * to prevent accidental guest messages being sent through Hostaway.
  */
 
 const API =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+
+function isReadOnly(): boolean {
+  const flag = (process.env.HOSTAWAY_READ_ONLY ?? "true").toLowerCase();
+  return flag !== "false" && flag !== "0";
+}
 
 async function hostawayProxy<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}/hostaway${path}`, {
@@ -48,6 +56,12 @@ export async function sendReply(params: {
   message: string;
   listingId?: string;
 }) {
+  if (isReadOnly()) {
+    throw new Error(
+      "[PriceOS] sendReply() blocked — HOSTAWAY_READ_ONLY is enabled. " +
+      "Set HOSTAWAY_READ_ONLY=false to allow sending guest messages."
+    );
+  }
   return hostawayProxy(`/reply`, {
     method: "POST",
     body: JSON.stringify(params),

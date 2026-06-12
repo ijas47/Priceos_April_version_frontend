@@ -2,7 +2,6 @@ import type {
   HostawayListing,
   HostawayCalendarDay,
   HostawayReservation,
-  HostawayCalendarUpdate,
   HostawayApiError,
   HostawayRateLimit,
 } from "./types";
@@ -111,21 +110,6 @@ export class HostawayClient {
     return this.request<HostawayCalendarDay[]>(
       `/listings/${listingId}/calendar?${params}`
     );
-  }
-
-  /**
-   * Update calendar intervals (batch price updates)
-   * @param listingId - HostAway listing ID
-   * @param updates - Array of calendar updates
-   */
-  async updateCalendar(
-    listingId: number,
-    updates: HostawayCalendarUpdate[]
-  ): Promise<void> {
-    await this.request<void>(`/listings/${listingId}/calendar/intervals`, {
-      method: "PUT",
-      body: JSON.stringify({ intervals: updates }),
-    });
   }
 
   /**

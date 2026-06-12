@@ -3,23 +3,26 @@ import { MockPMSClient } from "./mock-client";
 
 /**
  * PMS Client Factory
- * Returns appropriate client based on environment variable
  * HOSTAWAY_MODE=mock|live|db (default: db)
  *
- * - "db"   → DbPMSClient (Neon Postgres via Drizzle) — default
+ * - "db"   → DbPMSClient (delegates to backend/Neon Postgres)
  * - "mock" → MockPMSClient (in-memory arrays)
- * - "live" → HostawayClient (real Hostaway API)
- *
- * Falls back to MockPMSClient if DATABASE_URL is not set and mode is "db".
+ * - "live" → LivePMSClient (real Hostaway API, READ-ONLY by default)
  */
 
 export function createPMSClient(): PMSClient {
   const mode = (process.env.HOSTAWAY_MODE || "db").toLowerCase();
 
   if (mode === "live") {
-    // Live Hostaway client implementation is not available in this frontend package.
-    // Fall back to mock client to keep builds and local development stable.
-    return new MockPMSClient();
+    const apiKey = process.env.HOSTAWAY_API_KEY;
+    if (!apiKey) {
+      console.warn("[PMS] HOSTAWAY_MODE=live but HOSTAWAY_API_KEY is missing — falling back to mock");
+      return new MockPMSClient();
+    }
+    // Dynamic import to avoid pulling Hostaway deps into mock/db builds
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { LivePMSClient } = require("./live-client") as typeof import("./live-client");
+    return new LivePMSClient(apiKey);
   }
 
   if (mode === "mock") {
@@ -31,7 +34,6 @@ export function createPMSClient(): PMSClient {
     return new MockPMSClient();
   }
 
-  // Dynamic require to avoid eager evaluation of DB connection at build time
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { DbPMSClient } = require("./db-client") as typeof import("./db-client");
   return new DbPMSClient();
