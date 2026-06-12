@@ -1,10 +1,7 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  throw new Error("MONGODB_URI is not defined in environment variables");
-}
+// NOTE: validated lazily inside connectDB() — not at module load —
+// so `next build` succeeds without runtime env vars present.
 
 declare global {
   // eslint-disable-next-line no-var
@@ -20,8 +17,13 @@ global._mongooseCache = cache;
 export async function connectDB(): Promise<typeof mongoose> {
   if (cache.conn) return cache.conn;
 
+  const MONGODB_URI = process.env.MONGODB_URI;
+  if (!MONGODB_URI) {
+    throw new Error("MONGODB_URI is not defined in environment variables");
+  }
+
   if (!cache.promise) {
-    cache.promise = mongoose.connect(MONGODB_URI!, {
+    cache.promise = mongoose.connect(MONGODB_URI, {
       bufferCommands: false,
     });
   }

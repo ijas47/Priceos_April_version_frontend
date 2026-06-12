@@ -9,7 +9,13 @@ import {
 import type { BookingObservation } from "@/lib/elasticity/types";
 import { differenceInDays, parseISO, format, subDays, getDay } from "date-fns";
 
-const BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+const RAW_BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+
+/** Resolve the backend base to an absolute URL (handles NEXT_PUBLIC_API_URL=/api). */
+function backendBase(req: NextRequest): string {
+  if (RAW_BACKEND.startsWith("http")) return RAW_BACKEND;
+  return `${req.nextUrl.origin}${RAW_BACKEND}`.replace(/\/$/, "");
+}
 
 // ---------------------------------------------------------------------------
 // Request validation
@@ -63,24 +69,27 @@ export async function GET(req: NextRequest) {
     // 1. Fetch booking history from backend
     // -----------------------------------------------------------------------
     const reservationsUrl =
-      `${BACKEND}/agent-tools/property-reservations` +
+      `${backendBase(req)}/agent-tools/property-reservations` +
       `?orgId=${encodeURIComponent(orgId)}` +
       `&listingId=${encodeURIComponent(listingId)}` +
       `&dateFrom=${encodeURIComponent(dateFrom)}` +
       `&dateTo=${encodeURIComponent(dateTo)}` +
       `&limit=500`;
 
-    const reservationsRes = await fetch(reservationsUrl);
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let reservations: any[] = [];
-    if (reservationsRes.ok) {
-      const data = await reservationsRes.json();
-      reservations = Array.isArray(data)
-        ? data
-        : Array.isArray(data.reservations)
-          ? data.reservations
-          : [];
+    try {
+      const reservationsRes = await fetch(reservationsUrl);
+      if (reservationsRes.ok) {
+        const data = await reservationsRes.json();
+        reservations = Array.isArray(data)
+          ? data
+          : Array.isArray(data.reservations)
+            ? data.reservations
+            : [];
+      }
+    } catch {
+      // Booking history unavailable — model falls back to cold-start defaults
     }
 
     // -----------------------------------------------------------------------
@@ -89,7 +98,7 @@ export async function GET(req: NextRequest) {
     let airbticAdr: number | undefined;
     try {
       const pacingUrl =
-        `${BACKEND}/agent-tools/demand-pacing` +
+        `${backendBase(req)}/agent-tools/demand-pacing` +
         `?dateFrom=${encodeURIComponent(dateFrom)}` +
         `&dateTo=${encodeURIComponent(dateTo)}` +
         `&marketId=2286`; // Dubai default market

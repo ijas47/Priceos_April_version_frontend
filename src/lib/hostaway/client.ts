@@ -2,10 +2,20 @@ import type {
   HostawayListing,
   HostawayCalendarDay,
   HostawayReservation,
+  HostawayCalendarUpdate,
   HostawayApiError,
   HostawayRateLimit,
 } from "./types";
 import { requireHostawayApiBaseUrl } from "@/lib/env";
+
+/**
+ * Hostaway writes are disabled unless HOSTAWAY_READ_ONLY is explicitly "false".
+ * This guarantees PriceOS never pushes prices or messages by accident.
+ */
+export function isHostawayReadOnly(): boolean {
+  const flag = (process.env.HOSTAWAY_READ_ONLY ?? "true").toLowerCase();
+  return flag !== "false" && flag !== "0";
+}
 
 export class HostawayClient {
   private apiKey: string;
@@ -110,6 +120,27 @@ export class HostawayClient {
     return this.request<HostawayCalendarDay[]>(
       `/listings/${listingId}/calendar?${params}`
     );
+  }
+
+  /**
+   * Update calendar intervals (batch price updates).
+   * BLOCKED unless HOSTAWAY_READ_ONLY=false — PriceOS must never
+   * push prices to Hostaway without explicit operator opt-in.
+   */
+  async updateCalendar(
+    listingId: number,
+    updates: HostawayCalendarUpdate[]
+  ): Promise<void> {
+    if (isHostawayReadOnly()) {
+      throw new Error(
+        "[PriceOS] updateCalendar() blocked — Hostaway is in READ-ONLY mode. " +
+        "Set HOSTAWAY_READ_ONLY=false to enable price pushes (not recommended)."
+      );
+    }
+    await this.request<void>(`/listings/${listingId}/calendar/intervals`, {
+      method: "PUT",
+      body: JSON.stringify({ intervals: updates }),
+    });
   }
 
   /**

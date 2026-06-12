@@ -3,7 +3,13 @@ import { z } from "zod";
 import { verifyAccessToken } from "@/lib/auth/jwt";
 import type { BacktestResult, BacktestDecision } from "@/lib/backtest/types";
 
-const BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+const RAW_BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+
+/** Resolve the backend base to an absolute URL (handles NEXT_PUBLIC_API_URL=/api). */
+function backendBase(req: NextRequest): string {
+  if (RAW_BACKEND.startsWith("http")) return RAW_BACKEND;
+  return `${req.nextUrl.origin}${RAW_BACKEND}`.replace(/\/$/, "");
+}
 
 const replaySchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
@@ -208,7 +214,7 @@ export async function POST(req: NextRequest) {
 
     // Try proxying to backend first
     try {
-      const backendRes = await fetch(`${BACKEND}/audit/replay`, {
+      const backendRes = await fetch(`${backendBase(req)}/audit/replay`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

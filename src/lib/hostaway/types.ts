@@ -50,6 +50,15 @@ export interface HostawayReservation {
   checkOutTime?: string;
 }
 
+export interface HostawayCalendarUpdate {
+  date: string; // YYYY-MM-DD
+  price?: number;
+  status?: 'available' | 'booked' | 'blocked';
+  minimumStay?: number;
+  maximumStay?: number;
+  note?: string;
+}
+
 export interface HostawayApiError {
   status: number;
   message: string;

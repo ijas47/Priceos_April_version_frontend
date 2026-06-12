@@ -22,7 +22,13 @@ import {
   type DemandSignal,
 } from "@/lib/demand/modifiers";
 
-const BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+const RAW_BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+
+/** Resolve the backend base to an absolute URL (handles NEXT_PUBLIC_API_URL=/api). */
+function backendBase(req: NextRequest): string {
+  if (RAW_BACKEND.startsWith("http")) return RAW_BACKEND;
+  return `${req.nextUrl.origin}${RAW_BACKEND}`.replace(/\/$/, "");
+}
 
 const querySchema = z.object({
   marketTemplate: z.string().min(1),
@@ -66,7 +72,7 @@ export async function GET(req: NextRequest) {
       if (dateTo) q.set("dateTo", dateTo);
 
       const backendRes = await fetch(
-        `${BACKEND}/demand/source-market-signals?${q}`,
+        `${backendBase(req)}/demand/source-market-signals?${q}`,
         { signal: AbortSignal.timeout(5000) },
       );
 
