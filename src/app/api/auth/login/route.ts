@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { connectDB, User } from "@/lib/db";
+import { connectDB, Organization } from "@/lib/db";
 import { signAccessToken, signRefreshToken } from "@/lib/auth/jwt";
 import { COOKIE_NAME } from "@/lib/auth/server";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
@@ -23,20 +23,20 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
     console.log("[Auth/Login] Looking up email:", loginEmail);
-    const user = await User.findOne({ email: loginEmail });
-    console.log("[Auth/Login] User found:", !!user, user ? `id=${user._id} approved=${user.isApproved}` : "");
+    const org = await Organization.findOne({ email: loginEmail });
+    console.log("[Auth/Login] Org found:", !!org, org ? `id=${org._id} approved=${org.isApproved}` : "");
 
-    if (!user) {
-      console.log("[Auth/Login] ❌ No user found for:", loginEmail);
+    if (!org) {
+      console.log("[Auth/Login] ❌ No account found for:", loginEmail);
       return apiError("UNAUTHORIZED", "Invalid credentials", 401);
     }
 
-    if (!user.isApproved) {
-      console.log("[Auth/Login] ❌ User not approved:", loginEmail);
+    if (!org.isApproved) {
+      console.log("[Auth/Login] ❌ Account not approved:", loginEmail);
       return apiError("FORBIDDEN", "Account pending approval", 403);
     }
 
-    const isValid = await bcrypt.compare(password, user.passwordHash);
+    const isValid = await bcrypt.compare(password, org.passwordHash);
     console.log("[Auth/Login] Password valid:", isValid);
     if (!isValid) {
       console.log("[Auth/Login] ❌ Wrong password for:", loginEmail);
@@ -44,28 +44,27 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = {
-      userId: user._id.toString(),
-      orgId:  user._id.toString(),
-      email:  user.email,
-      role:   user.role,
+      userId: org._id.toString(),
+      orgId:  org._id.toString(),
+      email:  org.email,
+      role:   org.role,
     };
 
     const accessToken  = signAccessToken(payload);
-    const refreshToken = signRefreshToken(user._id.toString());
+    const refreshToken = signRefreshToken(org._id.toString());
 
-    // Save refresh token
-    user.refreshToken = refreshToken;
-    await user.save();
+    org.refreshToken = refreshToken;
+    await org.save();
 
     const response = NextResponse.json({
       success: true,
       user: {
-        id:    user._id.toString(),
-        email: user.email,
-        name:  user.fullName || user.name,
-        role:  user.role,
-        orgId: user._id.toString(),
-        plan:  user.plan,
+        id:    org._id.toString(),
+        email: org.email,
+        name:  org.fullName || org.name,
+        role:  org.role,
+        orgId: org._id.toString(),
+        plan:  org.plan,
       },
     });
 
@@ -73,7 +72,7 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
 
