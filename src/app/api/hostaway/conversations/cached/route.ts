@@ -16,8 +16,8 @@ export async function GET(request: Request) {
     const dateFrom = searchParams.get("from");
     const dateTo = searchParams.get("to");
 
-    if (!listingId || !dateFrom || !dateTo) {
-        return NextResponse.json({ error: "listingId, from, to required" }, { status: 400 });
+    if (!listingId) {
+        return NextResponse.json({ error: "listingId required" }, { status: 400 });
     }
 
     try {
@@ -30,11 +30,12 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: "Invalid listingId" }, { status: 400 });
         }
 
-        const rows = await HostawayConversation.find({
-            listingId: listingObjectId,
-            dateFrom: { $lte: dateTo },
-            dateTo: { $gte: dateFrom },
-        }).lean();
+        const filter: Record<string, unknown> = { listingId: listingObjectId };
+        if (dateFrom && dateTo) {
+            filter.dateFrom = { $lte: dateTo };
+            filter.dateTo = { $gte: dateFrom };
+        }
+        const rows = await HostawayConversation.find(filter).lean();
 
         if (rows.length === 0) {
             return NextResponse.json({ success: true, conversations: [] });

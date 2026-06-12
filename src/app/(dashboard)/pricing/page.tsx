@@ -20,11 +20,11 @@ export default async function PricingPage() {
   const [listingsRes, proposalsRes] = await Promise.all([
     fetch(`${API}/listings/?orgId=${session.orgId}`, {
       headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 30 },
+      cache: "no-store",
     }),
     fetch(`${API}/v1/revenue/proposals?orgId=${session.orgId}&status=all`, {
       headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 30 },
+      cache: "no-store",
     }),
 
   ]).catch(() => [null, null]);

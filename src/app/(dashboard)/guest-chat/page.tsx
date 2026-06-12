@@ -28,7 +28,7 @@ export default async function GuestChatPage() {
         const backend = await apiBase();
         const res = await fetch(
             `${backend}/properties?orgId=${encodeURIComponent(orgObjectId)}`,
-            { next: { revalidate: 120 } }
+            { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
         );
         const data = await res.json().catch(() => ({} as Record<string, unknown>));
         const properties = Array.isArray(data?.properties) ? data.properties : [];

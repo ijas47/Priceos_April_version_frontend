@@ -554,7 +554,13 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
     if (!draftText.trim() || !conv) return;
     setIsSending(true);
     try {
-      await new Promise((r) => setTimeout(r, 400));
+      const hostawayConvId = conv.id.slice(conv.propertyId.length + 1);
+      const res = await fetch(`${api}/hostaway/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: hostawayConvId, text: draftText.trim() }),
+      });
+      if (!res.ok) throw new Error("API error");
       const newMsg: InboxMessage = {
         id: `msg-${Date.now()}`,
         role: "host",
@@ -565,9 +571,9 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
         prev.map((c) => c.id === conv.id ? { ...c, messages: [...c.messages, newMsg], status: "resolved", unread: 0 } : c)
       );
       setDraftText("");
-      toast.success("Reply sent");
+      toast.success("Reply saved (local — not sent to guest via Hostaway)");
     } catch {
-      toast.error("Failed to send reply");
+      toast.error("Failed to save reply");
     } finally {
       setIsSending(false);
     }
