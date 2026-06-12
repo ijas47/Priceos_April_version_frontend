@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB, InventoryMaster } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    const query: Record<string, unknown> = { orgId: session.orgId };
+    const query: Record<string, unknown> = { orgId: new mongoose.Types.ObjectId(session.orgId) };
     if (startDate && endDate) query.date = { $gte: startDate, $lte: endDate };
 
     const docs = await InventoryMaster.find(query)

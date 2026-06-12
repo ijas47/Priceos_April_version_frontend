@@ -44,7 +44,8 @@ async function performBackgroundSync(orgId: string) {
         await syncListingsToDb(hListings.map(l => ({ ...l, id: Number(l.id) })), orgId);
 
         // Map Hostaway IDs -> Internal MongoDB ObjectIds
-        const dbListings = await Listing.find({ orgId }, { hostawayId: 1 }).lean();
+        const orgOid = new mongoose.Types.ObjectId(orgId);
+        const dbListings = await Listing.find({ orgId: orgOid }, { hostawayId: 1 }).lean();
         const hostawayToInternalIdMap = new Map<number, mongoose.Types.ObjectId>(
             dbListings
                 .filter(l => l.hostawayId)

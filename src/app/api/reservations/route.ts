@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB, Reservation } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status");
 
     const query: Record<string, unknown> = {};
-    if (session?.orgId) query.orgId = session.orgId;
+    if (session?.orgId) query.orgId = new mongoose.Types.ObjectId(session.orgId);
     if (context === "property" && propertyId) query.listingId = propertyId;
     if (status) query.status = status;
 

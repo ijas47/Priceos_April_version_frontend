@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB, Listing, InventoryMaster, Reservation } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 import { format, addDays } from "date-fns";
@@ -15,17 +16,17 @@ export async function GET() {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await connectDB();
-    const orgId = session.orgId;
+    const orgOid = new mongoose.Types.ObjectId(session.orgId);
 
     const today = format(new Date(), "yyyy-MM-dd");
     const plus29 = format(addDays(new Date(), 29), "yyyy-MM-dd");
 
     const [listings, inventory, reservations] = await Promise.all([
-      Listing.find({ orgId }).sort({ name: 1 }).lean(),
-      InventoryMaster.find({ orgId, date: { $gte: today, $lte: plus29 } })
+      Listing.find({ orgId: orgOid }).sort({ name: 1 }).lean(),
+      InventoryMaster.find({ orgId: orgOid, date: { $gte: today, $lte: plus29 } })
         .select("listingId date status currentPrice")
         .lean(),
-      Reservation.find({ orgId, status: { $ne: "cancelled" } })
+      Reservation.find({ orgId: orgOid, status: { $ne: "cancelled" } })
         .select("listingId totalPrice channelName")
         .lean(),
     ]);

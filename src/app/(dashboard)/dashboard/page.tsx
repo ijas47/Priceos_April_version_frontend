@@ -40,16 +40,16 @@ export default async function OverviewPage() {
   const [listingsResS, inventoryResS, reservationsResS] = await Promise.allSettled([
     fetch(`${API}/listings/?orgId=${orgId}`, {
       headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 120 },
+      cache: "no-store",
     }),
     fetch(`${API}/inventory/portfolio?orgId=${orgId}&startDate=${todayStr}&endDate=${plus29Str}`, {
       headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 60 },
+      cache: "no-store",
     }),
     // Wide date range: past 365 days through next 30 days so Revenue By Channel shows historical data
     fetch(`${API}/reservations?orgId=${orgId}&checkIn=${minus365Str}&checkOut=${plus29Str}`, {
       headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 30 },
+      cache: "no-store",
     }),
   ]);
 
