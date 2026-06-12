@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createPMSClient } from "@/lib/pms";
+import { getSession } from "@/lib/auth/server";
 import { connectDB, Listing, Reservation } from "@/lib/db";
 import { syncListingsToDb, syncReservationsToDb, syncCalendarToDb, syncConversationsToDb } from "@/lib/sync-server-utils";
 import mongoose from "mongoose";
@@ -11,7 +12,11 @@ declare global {
 
 globalThis.syncStatus = globalThis.syncStatus || { status: 'idle', message: '' };
 
-async function performBackgroundSync() {
+// Sync of 30+ properties takes minutes — allow the function to run long.
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
+
+async function performBackgroundSync(orgId: string) {
     globalThis.syncStatus = { status: 'syncing', message: 'Starting sync...', startedAt: Date.now() };
     try {
         const client = createPMSClient();
@@ -28,10 +33,10 @@ async function performBackgroundSync() {
 
         console.log(`📥 Step 1: Fetched ${hListings.length} total listings from Hostaway.`);
 
-        await syncListingsToDb(hListings.map(l => ({ ...l, id: Number(l.id) })));
+        await syncListingsToDb(hListings.map(l => ({ ...l, id: Number(l.id) })), orgId);
 
         // Map Hostaway IDs -> Internal MongoDB ObjectIds
-        const dbListings = await Listing.find({}, { hostawayId: 1 }).lean();
+        const dbListings = await Listing.find({ orgId }, { hostawayId: 1 }).lean();
         const hostawayToInternalIdMap = new Map<number, mongoose.Types.ObjectId>(
             dbListings
                 .filter(l => l.hostawayId)
@@ -111,6 +116,11 @@ async function performBackgroundSync() {
 }
 
 export async function POST() {
+    const session = await getSession();
+    if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     // Prevent duplicate syncs
     if (globalThis.syncStatus?.status === 'syncing') {
         return NextResponse.json({
@@ -120,15 +130,14 @@ export async function POST() {
         }, { status: 409 });
     }
 
-    // Fire the heavy syncing function without awaiting it
-    performBackgroundSync()
-        .then(() => console.log("Background sync promise resolved."))
-        .catch((err) => console.error("Unhandled background sync error:", err));
+    // Awaited: fire-and-forget work is killed when the serverless
+    // function returns, so the request stays open until sync completes.
+    await performBackgroundSync(session.orgId);
 
-    // Return immediately to the client
+    const final = globalThis.syncStatus;
     return NextResponse.json({
-        success: true,
-        status: "syncing",
-        message: "Hostaway synchronization started."
-    }, { status: 202 });
+        success: final.status === 'complete',
+        status: final.status,
+        message: final.message,
+    }, { status: final.status === 'complete' ? 200 : 500 });
 }

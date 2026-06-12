@@ -38,7 +38,8 @@ export async function syncListingsToDb(
         currencyCode: string;
         personCapacity?: number;
         amenities?: string[];
-    }>
+    }>,
+    orgId?: string
 ) {
     if (pmsListings.length === 0) return;
 
@@ -59,6 +60,8 @@ export async function syncListingsToDb(
                     currencyCode: listing.currencyCode,
                     personCapacity: listing.personCapacity,
                     amenities: listing.amenities,
+                    // Stamp the owning org so org-scoped queries can see synced listings
+                    ...(orgId ? { orgId: new mongoose.Types.ObjectId(orgId) } : {}),
                 },
             },
             upsert: true,
@@ -188,7 +191,7 @@ export async function syncCalendarToDb(
 export async function syncConversationsToDb(
     hostawayToInternalIdMap: Map<number, mongoose.Types.ObjectId>
 ) {
-    const token = process.env.Hostaway_Authorization_token;
+    const token = process.env.Hostaway_Authorization_token || process.env.HOSTAWAY_API_KEY;
     if (!token) {
         console.error("No Hostaway token for syncing conversations.");
         return { synced: 0, errors: 1 };

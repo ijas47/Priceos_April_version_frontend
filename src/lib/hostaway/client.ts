@@ -152,12 +152,14 @@ export class HostawayClient {
   async getReservations(
     listingId?: number,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
+    limit = 500
   ): Promise<HostawayReservation[]> {
     const params = new URLSearchParams();
     if (listingId) params.append("listingMapId", listingId.toString());
     if (startDate) params.append("arrivalDateFrom", startDate);
     if (endDate) params.append("arrivalDateTo", endDate);
+    params.append("limit", String(limit));
 
     const query = params.toString() ? `?${params}` : "";
     return this.request<HostawayReservation[]>(`/reservations${query}`);

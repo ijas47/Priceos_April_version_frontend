@@ -114,6 +114,7 @@ export class LivePMSClient implements PMSClient {
       filters?.listingMapId ? Number(filters.listingMapId) : undefined,
       filters?.startDate ? format(filters.startDate, "yyyy-MM-dd") : undefined,
       filters?.endDate ? format(filters.endDate, "yyyy-MM-dd") : undefined,
+      filters?.limit ?? 500,
     );
     let results = raw.map(toReservation);
     if (filters?.channelName) results = results.filter((r) => r.channelName === filters.channelName);
