@@ -8,6 +8,8 @@ import {
 } from "@/lib/elasticity/model";
 import type { BookingObservation } from "@/lib/elasticity/types";
 import { differenceInDays, parseISO, format, subDays, getDay } from "date-fns";
+import { connectDB, Listing } from "@/lib/db";
+import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
 
 const RAW_BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
@@ -93,33 +95,22 @@ export async function GET(req: NextRequest) {
     }
 
     // -----------------------------------------------------------------------
-    // 2. Fetch Airbtics ADR from demand-pacing endpoint (cold-start fallback)
+    // 2. Fetch Airbtics market ADR directly (cold-start fallback)
     // -----------------------------------------------------------------------
     let airbticAdr: number | undefined;
     try {
-      const pacingUrl =
-        `${backendBase(req)}/agent-tools/demand-pacing` +
-        `?dateFrom=${encodeURIComponent(dateFrom)}` +
-        `&dateTo=${encodeURIComponent(dateTo)}` +
-        `&marketId=2286`; // Dubai default market
-
-      const pacingRes = await fetch(pacingUrl);
-      if (pacingRes.ok) {
-        const pacingData = await pacingRes.json();
-        const pacing = pacingData.pacing ?? pacingData;
-        if (Array.isArray(pacing) && pacing.length > 0) {
-          const validPrices = pacing
-            .map((d: { avgPrice?: number | null }) => d.avgPrice)
-            .filter((p: number | null | undefined): p is number => typeof p === "number" && p > 0);
-          if (validPrices.length > 0) {
-            airbticAdr = Math.round(
-              validPrices.reduce((s: number, v: number) => s + v, 0) / validPrices.length,
-            );
-          }
-        }
+      await connectDB();
+      const listing = await Listing.findById(listingId).lean();
+      const city = listing?.city || "Dubai";
+      const cc = listing?.countryCode || "AE";
+      const br = String(listing?.bedroomsNumber || 2);
+      const mktId = await resolveMarketId(city, cc);
+      if (mktId) {
+        const ctx = await getMarketContext(mktId, br);
+        if (ctx.p50ADR) airbticAdr = Math.round(ctx.p50ADR);
       }
     } catch {
-      // Non-fatal — we can proceed without Airbtics ADR
+      // Non-fatal — model falls back to cold-start defaults
     }
 
     // -----------------------------------------------------------------------

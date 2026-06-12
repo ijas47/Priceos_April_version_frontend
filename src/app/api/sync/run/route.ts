@@ -43,6 +43,26 @@ export async function POST(req: NextRequest) {
 
     const orgOid = new mongoose.Types.ObjectId(session.orgId);
 
+    const runAirbtics = async () => {
+      const { resolveMarketId, getMarketContext } = await import("@/lib/airbtics/market-context");
+      const listings = await Listing.find({ orgId: orgOid, isActive: true }).lean();
+      const cities = [...new Set(listings.map(l => `${l.city || "Dubai"}|${l.countryCode || "AE"}`))];
+      const bedroomCounts = [...new Set(listings.map(l => l.bedroomsNumber || 1))];
+      let cached = 0;
+      for (const cityKey of cities) {
+        const [city, cc] = cityKey.split("|");
+        const mktId = await resolveMarketId(city, cc);
+        if (!mktId) { logs.push(`[airbtics] no market found for ${city}/${cc}`); continue; }
+        for (const br of bedroomCounts) {
+          const ctx = await getMarketContext(mktId, String(br));
+          if (ctx.p50ADR) cached++;
+          if (ctx.errors.length) logs.push(`[airbtics] ${city} ${br}BR: ${ctx.errors.join(", ")}`);
+        }
+      }
+      logs.push(`[airbtics] cached market data for ${cached} market/bedroom combos across ${cities.length} cities`);
+      recordsProcessed += cached;
+    };
+
     const runEvents = async () => {
       const { createEventIntelligenceAgent } = await import("@/lib/agents/event-intelligence-agent");
       const agent = createEventIntelligenceAgent();
@@ -63,8 +83,8 @@ export async function POST(req: NextRequest) {
     try {
       if (sourceId === "events" || sourceId === "all") await runEvents();
       if (sourceId === "hostaway" || sourceId === "all") await runHostaway();
-      if (sourceId === "competitors") {
-        logs.push(`[competitors] Benchmark data refreshes via "Run Aria" on a property (Lyzr Benchmark Agent). No standalone feed.`);
+      if (sourceId === "competitors" || sourceId === "all") {
+        try { await runAirbtics(); } catch (e) { logs.push(`[airbtics] ${(e as Error).message}`); }
       }
       if (sourceId === "seasonality") {
         logs.push(`[seasonality] Seasonal pricing comes from SEASON rules in Pricing Rules — nothing to sync.`);

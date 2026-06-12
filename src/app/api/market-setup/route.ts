@@ -16,6 +16,7 @@ import {
     GUARDRAILS_AGENT_ID,
 } from "@/lib/agents/constants";
 import { gatherMarketIntelligence } from "@/lib/research/aggregator";
+import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
 import mongoose from "mongoose";
 
 export const dynamic = "force-dynamic";
@@ -94,10 +95,25 @@ export async function POST(req: NextRequest) {
         const currency = listing?.currencyCode || "AED";
         console.log(`🏠 Property: "${listing?.name || "Unknown"}" in ${area}, ${city} (${bedrooms}BR)`);
 
-        // 2. Gather VERIFIED market intelligence first (SERP / Ticketmaster /
-        //    Eventbrite / news). This is structured ground truth — the Lyzr
-        //    agents receive it as input instead of being asked to invent
-        //    events from memory.
+        // 2a. Fetch Airbtics market context (ADR, seasonality, pacing)
+        let airbticsMktCtx: Awaited<ReturnType<typeof getMarketContext>> | null = null;
+        const countryCode = listing?.countryCode || "AE";
+        try {
+            const mktId = await resolveMarketId(city, countryCode);
+            if (mktId) {
+                airbticsMktCtx = await getMarketContext(mktId, String(bedrooms));
+                console.log(`📊 Airbtics: p50ADR=${airbticsMktCtx.p50ADR} occ=${airbticsMktCtx.occupancy} pacing=${airbticsMktCtx.futurePacing.length}days metrics=${airbticsMktCtx.monthlyMetrics.length}mo ${airbticsMktCtx.errors.length ? `(errors: ${airbticsMktCtx.errors.join(", ")})` : ""}`);
+            } else {
+                console.log(`⚠️ Airbtics: no market found for ${city}/${countryCode}`);
+            }
+        } catch (err) {
+            console.error(`[Airbtics]`, (err as Error).message);
+        }
+
+        // 2b. Gather VERIFIED market intelligence (SERP / Ticketmaster /
+        //     Eventbrite / news). This is structured ground truth — the Lyzr
+        //     agents receive it as input instead of being asked to invent
+        //     events from memory.
         const intel = await gatherMarketIntelligence({
             city,
             area: area !== city ? area : undefined,
@@ -127,7 +143,16 @@ VERIFIED_EVENTS (from Ticketmaster/Google Events/news feeds — treat as ground 
 Task: (1) Assess each verified event's pricing impact for this property. (2) Add public/school holidays for ${city} in range that you are CERTAIN of — mark them "holiday". (3) Do NOT invent concerts, conferences or festivals that are not in VERIFIED_EVENTS.
 Return JSON with events, holidays, news, daily_events arrays. Each item: title, date_start, date_end, impact, description, source, suggested_premium_pct, sentiment, demand_impact.`;
 
-        const benchmarkPrompt = `City: ${city}. Area: ${area}. ${bedrooms}BR. Base price: ${listing?.price || "Unknown"} ${currency}. Date range: ${dateRange.from} to ${dateRange.to}. Find 10-15 comparable short-term rental properties. Return JSON with rate_distribution (p25,p50,p75,p90,avg_weekday,avg_weekend), pricing_verdict (verdict,percentile,your_price), rate_trend (direction,pct_change), recommended_rates (weekday,weekend,event_peak,reasoning), comps array.`;
+        const airbticsContext = airbticsMktCtx?.p50ADR
+            ? `\nAIRBTICS_MARKET_DATA (real, use as anchor):
+  Market p50 ADR: ${airbticsMktCtx.p50ADR} ${currency}
+  Market occupancy: ${airbticsMktCtx.occupancy != null ? (airbticsMktCtx.occupancy * 100).toFixed(0) + "%" : "N/A"}
+  Active listings: ${airbticsMktCtx.activeListings ?? "N/A"}
+  Monthly metrics (last 12mo): ${JSON.stringify(airbticsMktCtx.monthlyMetrics.slice(0, 12).map(m => ({ month: m.month, p25: m.p25_adr, p50: m.p50_adr, p75: m.p75_adr, occ: m.occupancy })))}`
+            : "";
+
+        const benchmarkPrompt = `City: ${city}. Area: ${area}. ${bedrooms}BR. Base price: ${listing?.price || "Unknown"} ${currency}. Date range: ${dateRange.from} to ${dateRange.to}.${airbticsContext}
+Find 10-15 comparable short-term rental properties. Return JSON with rate_distribution (p25,p50,p75,p90,avg_weekday,avg_weekend), pricing_verdict (verdict,percentile,your_price), rate_trend (direction,pct_change), recommended_rates (weekday,weekend,event_peak,reasoning), comps array.`;
 
         const [marketingRes, benchmarkRes] = await Promise.all([
             callLyzrAgent(MARKETING_AGENT_ID || MARKET_RESEARCH_ID, marketingPrompt),
@@ -214,7 +239,10 @@ Return JSON with events, holidays, news, daily_events arrays. Each item: title, 
         }
 
         // 4. Save Benchmark Data (upsert by listingId+dateFrom+dateTo)
-        const medianRate = agentBench?.rate_distribution?.p50 || Number(listing?.price || 500);
+        //    Airbtics monthly metrics provide real ADR percentiles — prefer them
+        //    over LLM-estimated rates when available.
+        const airbticsP50 = airbticsMktCtx?.p50ADR;
+        const medianRate = airbticsP50 || agentBench?.rate_distribution?.p50 || Number(listing?.price || 500);
         const benchmarkDoc = {
             orgId,
             listingId: listingObjectId,
@@ -340,6 +368,15 @@ Return JSON with events, holidays, news, daily_events arrays. Each item: title, 
             guardrails: generatedGuardrails,
             calendarMetrics: { totalDays, bookedDays, blockedDays, bookableDays, occupancy },
             reservationsCount: resRows.length,
+            airbtics: airbticsMktCtx ? {
+                available: true,
+                p50ADR: airbticsMktCtx.p50ADR,
+                occupancy: airbticsMktCtx.occupancy,
+                activeListings: airbticsMktCtx.activeListings,
+                pacingDays: airbticsMktCtx.futurePacing.length,
+                monthlyMetrics: airbticsMktCtx.monthlyMetrics.length,
+                errors: airbticsMktCtx.errors,
+            } : { available: false },
         });
     } catch (error) {
         console.error("❌ Market Analysis failed:", error);
