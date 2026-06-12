@@ -408,17 +408,47 @@ function SyncPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tab = (searchParams.get("tab") || "sources") as "sources" | "detectors" | "signals";
+  const [importing, setImporting] = useState(false);
 
   const setTab = (id: string) => router.push(`/sync?tab=${id}`);
+
+  const handleHostawayImport = async () => {
+    setImporting(true);
+    toast.info("Importing from Hostaway — this can take a few minutes for large portfolios…");
+    try {
+      const res = await fetch("/api/sync/trigger", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        toast.success("Hostaway import complete! Your properties are now in PriceOS.");
+        router.push("/properties");
+      } else {
+        toast.error(data.message || data.error || "Hostaway import failed.");
+      }
+    } catch {
+      toast.error("Network error during Hostaway import.");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   return (
     <div className="p-8 max-w-5xl space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white tracking-tight mb-1">Pipeline</h1>
-        <p className="text-text-secondary text-sm">
-          Data sources, signal detectors, and pricing engine run history.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white tracking-tight mb-1">Pipeline</h1>
+          <p className="text-text-secondary text-sm">
+            Data sources, signal detectors, and pricing engine run history.
+          </p>
+        </div>
+        <Button
+          onClick={handleHostawayImport}
+          disabled={importing}
+          className="bg-amber text-black hover:bg-amber/90 gap-2 shrink-0"
+        >
+          <RefreshCw className={cn("h-4 w-4", importing && "animate-spin")} />
+          {importing ? "Importing…" : "Import from Hostaway"}
+        </Button>
       </div>
 
       {/* Tab bar */}

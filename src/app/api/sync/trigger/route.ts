@@ -20,6 +20,14 @@ async function performBackgroundSync(orgId: string) {
     globalThis.syncStatus = { status: 'syncing', message: 'Starting sync...', startedAt: Date.now() };
     try {
         const client = createPMSClient();
+
+        // Guard: never import mock/db placeholder data as if it were real.
+        if (client.getMode() !== "live") {
+            throw new Error(
+                "Hostaway live mode is not configured. Set HOSTAWAY_MODE=live, " +
+                "HOSTAWAY_API_KEY and HOSTAWAY_API_BASE_URL in Vercel, then redeploy."
+            );
+        }
         console.log("------------------------------------------");
         console.log("🚀 Starting Hostaway Synchronization (BACKGROUND)...");
         console.log("------------------------------------------");
