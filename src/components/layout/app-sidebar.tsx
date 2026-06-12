@@ -20,6 +20,7 @@ import {
   Clock3,
   X,
   BarChart2,
+  FlaskConical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ const BUSINESS_GROUP = [
   { name: "Properties", href: "/properties", icon: Home },
   { name: "Groups", href: "/groups", icon: Layers },
   { name: "Analytics", href: "/analytics", icon: BarChart2 },
+  { name: "Backtest", href: "/backtest", icon: FlaskConical },
 ];
 
 export function AppSidebar() {

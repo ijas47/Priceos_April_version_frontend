@@ -1,29 +1,27 @@
 {
-  "openapi": "3.0.0",
+  "openapi": "3.0.3",
   "info": {
-    "title": "Guest Agent Tools API",
-    "version": "1.0.0",
-    "description": "Tools for managing guest conversation threads, reservations, operations tickets, and upsell offers."
+    "title": "PriceOS Guest Agent Tools API",
+    "version": "2.0.0",
+    "description": "Guest conversation and operations tools for the PriceOS Guest Agent and Conversation Summary agent. Includes thread management, messaging, ops tickets, escalation, access details, and upsell offers."
   },
   "servers": [
+    { "url": "${AGENT_TOOLS_BASE_URL}/api/guest-agent" }
+  ],
+  "security": [
     {
-      "url": "https://sadistically-calycine-carry.ngrok-free.dev/api/guest-agent",
-      "description": "Production ngrok server"
+      "BearerAuth": [],
+      "ToolOrgId": []
     }
   ],
   "paths": {
     "/threads": {
       "get": {
         "summary": "List guest threads",
-        "description": "Return guest conversation threads for this org.",
+        "description": "Return guest conversation threads for this org, optionally filtered by status.",
         "operationId": "listThreads",
         "parameters": [
-          {
-            "name": "orgId",
-            "in": "query",
-            "required": true,
-            "schema": { "type": "string" }
-          },
+          { "name": "orgId", "in": "query", "required": true, "description": "Organization ID", "schema": { "type": "string" } },
           {
             "name": "status_filter",
             "in": "query",
@@ -37,7 +35,7 @@
         ],
         "responses": {
           "200": { "description": "List of threads returned successfully" },
-          "400": { "description": "Bad request" }
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
     },
@@ -48,18 +46,8 @@
         "description": "Fetch conversation details and reservation context for a thread.",
         "operationId": "readThread",
         "parameters": [
-          {
-            "name": "thread_id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          },
-          {
-            "name": "include_reservation",
-            "in": "query",
-            "required": false,
-            "schema": { "type": "boolean", "default": true }
-          }
+          { "name": "thread_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "include_reservation", "in": "query", "required": false, "schema": { "type": "boolean", "default": true } }
         ],
         "responses": {
           "200": { "description": "Thread details returned successfully" },
@@ -93,7 +81,7 @@
         },
         "responses": {
           "200": { "description": "Message sent or drafted successfully" },
-          "400": { "description": "Bad request" }
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
     },
@@ -132,7 +120,7 @@
         },
         "responses": {
           "201": { "description": "Ticket created successfully" },
-          "400": { "description": "Bad request" }
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
     },
@@ -224,7 +212,7 @@
         },
         "responses": {
           "200": { "description": "Access details sent successfully" },
-          "400": { "description": "Bad request" }
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
     },
@@ -235,18 +223,8 @@
         "description": "Get current property availability and event context.",
         "operationId": "getPropertyData",
         "parameters": [
-          {
-            "name": "listing_id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          },
-          {
-            "name": "orgId",
-            "in": "query",
-            "required": true,
-            "schema": { "type": "string" }
-          }
+          { "name": "listing_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "orgId", "in": "query", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
           "200": { "description": "Property data returned successfully" },
@@ -284,7 +262,43 @@
         },
         "responses": {
           "200": { "description": "Upsell offer sent successfully" },
-          "400": { "description": "Bad request" }
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "ToolOrgId": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-tool-org-id"
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid or missing parameters",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "string", "enum": ["error"] },
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": { "type": "string", "example": "VALIDATION_ERROR" },
+                    "message": { "type": "string", "example": "threadId is required" }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

@@ -2,79 +2,169 @@
   "openapi": "3.0.3",
   "info": {
     "title": "PriceOS Property Agent Tools API",
-    "version": "1.3.0"
+    "version": "2.0.0",
+    "description": "Property-level tools for the PriceOS Property Analyst, PriceGuard, Benchmark, and Guardrails agents. Includes property profile, calendar metrics, reservations, market events, and benchmark comparison."
   },
   "servers": [
-    { "url": "https://sadistically-calycine-carry.ngrok-free.dev/api/agent-tools/v1" }
+    { "url": "${AGENT_TOOLS_BASE_URL}/api/agent-tools/v1" }
+  ],
+  "security": [
+    {
+      "BearerAuth": [],
+      "ToolOrgId": []
+    }
   ],
   "paths": {
     "/get-property-profile": {
       "get": {
         "operationId": "get_property_profile",
-        "description": "Returns full profile of a listing: name, type, location, amenities, base price.",
+        "summary": "Property profile",
+        "description": "Returns full profile of a listing: name, type, location, amenities, base price, floor/ceiling.",
         "parameters": [
-          { "name": "apiKey", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "orgId", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "listingId", "in": "query", "required": true, "schema": { "type": "string" } }
+          { "name": "listingId", "in": "query", "required": true, "description": "MongoDB ObjectId of the listing", "schema": { "$ref": "#/components/schemas/ObjectIdString" } }
         ],
-        "responses": { "200": { "description": "OK" } }
+        "responses": {
+          "200": { "description": "Property profile data" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
       }
     },
     "/get-property-calendar-metrics": {
       "get": {
         "operationId": "get_property_calendar_metrics",
-        "description": "Returns occupancy, blocked dates, and booking lead time for a listing.",
+        "summary": "Calendar metrics",
+        "description": "Returns occupancy, blocked dates, and booking lead time for a listing over a date range.",
         "parameters": [
-          { "name": "apiKey", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "orgId", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "listingId", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "dateFrom", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "dateTo", "in": "query", "required": true, "schema": { "type": "string" } }
+          { "name": "listingId", "in": "query", "required": true, "description": "MongoDB ObjectId of the listing", "schema": { "$ref": "#/components/schemas/ObjectIdString" } },
+          { "name": "dateFrom", "in": "query", "required": true, "description": "Start date (YYYY-MM-DD)", "schema": { "$ref": "#/components/schemas/DateString" } },
+          { "name": "dateTo", "in": "query", "required": true, "description": "End date (YYYY-MM-DD)", "schema": { "$ref": "#/components/schemas/DateString" } }
         ],
-        "responses": { "200": { "description": "OK" } }
+        "responses": {
+          "200": { "description": "Calendar metrics data" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
       }
     },
     "/get-property-reservations": {
       "get": {
         "operationId": "get_property_reservations",
+        "summary": "Property reservations",
         "description": "Returns list of reservations for a listing over a date range.",
         "parameters": [
-          { "name": "apiKey", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "orgId", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "listingId", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "dateFrom", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "dateTo", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "default": 100 } }
+          { "name": "listingId", "in": "query", "required": true, "description": "MongoDB ObjectId of the listing", "schema": { "$ref": "#/components/schemas/ObjectIdString" } },
+          { "name": "dateFrom", "in": "query", "required": true, "description": "Start date (YYYY-MM-DD)", "schema": { "$ref": "#/components/schemas/DateString" } },
+          { "name": "dateTo", "in": "query", "required": true, "description": "End date (YYYY-MM-DD)", "schema": { "$ref": "#/components/schemas/DateString" } },
+          { "name": "limit", "in": "query", "required": false, "description": "Maximum number of reservations to return", "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 } }
         ],
-        "responses": { "200": { "description": "OK" } }
+        "responses": {
+          "200": { "description": "List of reservations" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
       }
     },
     "/get-property-market-events": {
       "get": {
         "operationId": "get_property_market_events",
-        "description": "Returns local market events and demand signals affecting pricing.",
+        "summary": "Market events",
+        "description": "Returns local market events and demand signals affecting pricing for a listing or area.",
         "parameters": [
-          { "name": "apiKey", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "orgId", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "listingId", "in": "query", "required": false, "schema": { "type": "string" } },
-          { "name": "dateFrom", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "dateTo", "in": "query", "required": true, "schema": { "type": "string" } }
+          { "name": "listingId", "in": "query", "required": false, "description": "MongoDB ObjectId of the listing (optional for area-wide events)", "schema": { "$ref": "#/components/schemas/ObjectIdString" } },
+          { "name": "dateFrom", "in": "query", "required": true, "description": "Start date (YYYY-MM-DD)", "schema": { "$ref": "#/components/schemas/DateString" } },
+          { "name": "dateTo", "in": "query", "required": true, "description": "End date (YYYY-MM-DD)", "schema": { "$ref": "#/components/schemas/DateString" } }
         ],
-        "responses": { "200": { "description": "OK" } }
+        "responses": {
+          "200": { "description": "Market events data" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
       }
     },
     "/get-property-benchmark": {
       "get": {
         "operationId": "get_property_benchmark",
-        "description": "Returns benchmark comparison against similar properties in the market.",
+        "summary": "Benchmark comparison",
+        "description": "Returns benchmark comparison against similar properties in the market: P25/P50/P75/P90 rates and competitor details.",
         "parameters": [
-          { "name": "apiKey", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "orgId", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "listingId", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "dateFrom", "in": "query", "required": true, "schema": { "type": "string" } },
-          { "name": "dateTo", "in": "query", "required": true, "schema": { "type": "string" } }
+          { "name": "listingId", "in": "query", "required": true, "description": "MongoDB ObjectId of the listing", "schema": { "$ref": "#/components/schemas/ObjectIdString" } },
+          { "name": "dateFrom", "in": "query", "required": true, "description": "Start date (YYYY-MM-DD)", "schema": { "$ref": "#/components/schemas/DateString" } },
+          { "name": "dateTo", "in": "query", "required": true, "description": "End date (YYYY-MM-DD)", "schema": { "$ref": "#/components/schemas/DateString" } }
         ],
-        "responses": { "200": { "description": "OK" } }
+        "responses": {
+          "200": { "description": "Benchmark comparison data" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "ToolOrgId": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-tool-org-id"
+      }
+    },
+    "schemas": {
+      "DateString": {
+        "type": "string",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+        "example": "2026-04-15"
+      },
+      "ObjectIdString": {
+        "type": "string",
+        "pattern": "^[a-fA-F0-9]{24}$",
+        "example": "67fcbf9f0fa9d36b6f447a90"
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Missing or invalid authentication",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "string", "enum": ["error"] },
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": { "type": "string", "example": "UNAUTHORIZED" },
+                    "message": { "type": "string", "example": "Invalid or missing API key" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Invalid or missing query parameters",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "string", "enum": ["error"] },
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": { "type": "string", "example": "VALIDATION_ERROR" },
+                    "message": { "type": "string", "example": "listingId is required" }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

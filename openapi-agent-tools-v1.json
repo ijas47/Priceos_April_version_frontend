@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://YOUR_DOMAIN/api/agent-tools/v1"
+      "url": "${AGENT_TOOLS_BASE_URL}/api/agent-tools/v1"
     }
   ],
   "security": [

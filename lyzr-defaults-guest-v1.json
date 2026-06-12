@@ -1,12 +1,27 @@
 {
-  "base_url": "https://sadistically-calycine-carry.ngrok-free.dev/api/agent-tools/v1",
+  "base_url": "${AGENT_TOOLS_BASE_URL}/api/guest-agent",
   "default_headers": {
     "Content-Type": "application/json"
   },
   "default_query_params": {
-    "apiKey": "43353cf49c7515357d6daa53aa016d096726c87b3f7b5aa125dfb6cc09c50df9"
+    "apiKey": "${AGENT_TOOLS_API_KEY}"
   },
   "default_body_params": {},
   "endpoint_defaults": {},
-  "enhance_descriptions": false
+  "enhance_descriptions": false,
+  "model_override": "gpt-4o-mini",
+  "tool_filter": {
+    "context": "guest",
+    "allowed_operations": [
+      "listThreads",
+      "readThread",
+      "sendGuestMessage",
+      "createOpsTicket",
+      "escalateThread",
+      "closeThread",
+      "sendAccessDetails",
+      "getPropertyData",
+      "sendUpsellOffer"
+    ]
+  }
 }
