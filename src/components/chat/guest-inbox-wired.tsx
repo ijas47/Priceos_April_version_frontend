@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format, differenceInDays } from "date-fns";
 import { toast } from "sonner";
-import { pollJob } from "@/lib/api/poll-job";
 import type { PropertyWithMetrics } from "@/types";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -249,7 +248,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
   const isResizing = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+  const api = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
   // Load persisted comms settings on mount
   useEffect(() => {
@@ -484,15 +483,13 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
         }),
       });
       if (!res.ok) throw new Error("Agent unavailable");
-      const { jobId } = await res.json();
-      const result = await pollJob<{ message: string; raw_json?: Record<string, unknown> }>(jobId);
-      let text = result.message || "";
-      const raw = result.raw_json as Record<string, unknown> | undefined;
-      if (raw) text = (raw.suggested_reply as { content?: string })?.content || (raw.chat_response as string) || text;
+      const data = await res.json();
+      const text: string = data.reply || "";
       const trimmed = text.trim();
+      if (!trimmed) throw new Error("Empty draft");
       setAiDraft(trimmed);
       setEditableDraft(trimmed);
-      setDraftSentiment(detectDraftSentiment(trimmed));
+      setDraftSentiment((data.sentiment as Sentiment) || detectDraftSentiment(trimmed));
       setDraftConfidence(detectDraftConfidence(trimmed, conv.guestName.split(" ")[0]));
       setDraftFeedback(null);
       setShowRewrite(false);
@@ -525,15 +522,13 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
         }),
       });
       if (!res.ok) throw new Error("Agent unavailable");
-      const { jobId } = await res.json();
-      const result = await pollJob<{ message: string; raw_json?: Record<string, unknown> }>(jobId);
-      let text = result.message || "";
-      const raw = result.raw_json as Record<string, unknown> | undefined;
-      if (raw) text = (raw.suggested_reply as { content?: string })?.content || (raw.chat_response as string) || text;
+      const data = await res.json();
+      const text: string = data.reply || "";
       const trimmed = text.trim();
+      if (!trimmed) throw new Error("Empty draft");
       setAiDraft(trimmed);
       setEditableDraft(trimmed);
-      setDraftSentiment(detectDraftSentiment(trimmed));
+      setDraftSentiment((data.sentiment as Sentiment) || detectDraftSentiment(trimmed));
       setDraftConfidence(detectDraftConfidence(trimmed, conv.guestName.split(" ")[0]));
       setDraftFeedback(null);
       setIsEditingDraft(false);
