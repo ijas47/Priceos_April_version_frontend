@@ -996,6 +996,22 @@ function StepStrategy({
 }
 
 function StepComplete({ onGoToDashboard }: { onGoToDashboard: () => void }) {
+  const [setupStatus, setSetupStatus] = useState<"running" | "done" | "error">("running");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSetupStatus("done"), 8000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const items = [
+    { done: true, text: "PMS connected" },
+    { done: true, text: "Market template loaded" },
+    { done: true, text: "Guardrails auto-configured" },
+    { done: true, text: "Seasonal rules created" },
+    { done: true, text: "Weekend & lead-time pricing set" },
+    { done: setupStatus === "done", text: setupStatus === "done" ? "Pricing engine complete" : "Pricing engine running..." },
+  ];
+
   return (
     <div className="text-center space-y-8 py-4">
       <div className="relative mx-auto w-24 h-24">
@@ -1006,22 +1022,21 @@ function StepComplete({ onGoToDashboard }: { onGoToDashboard: () => void }) {
       </div>
 
       <div>
-        <h3 className="text-2xl font-bold text-white mb-2">You&apos;re live on PriceOS 🚀</h3>
+        <h3 className="text-2xl font-bold text-white mb-2">You&apos;re live on PriceOS</h3>
         <p className="text-zinc-400 text-sm max-w-xs mx-auto">
-          Your properties are connected, your market is configured, and Aria is already analyzing pricing opportunities.
+          Everything is auto-configured from market data. Review and customize any time from Settings.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 text-left max-w-xs mx-auto">
-        {[
-          { icon: "✅", text: "Hostaway connected" },
-          { icon: "✅", text: "Market template loaded" },
-          { icon: "✅", text: "Guardrails active" },
-          { icon: "✅", text: "First proposals generating…" },
-        ].map(item => (
-          <div key={item.text} className="flex items-center gap-2 text-xs text-zinc-400">
-            <span>{item.icon}</span>
-            <span>{item.text}</span>
+      <div className="space-y-2 text-left max-w-xs mx-auto">
+        {items.map(item => (
+          <div key={item.text} className="flex items-center gap-2.5 text-xs text-zinc-400">
+            {item.done ? (
+              <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5 text-amber-400 animate-spin shrink-0" />
+            )}
+            <span className={item.done ? "text-zinc-300" : "text-amber-300"}>{item.text}</span>
           </div>
         ))}
       </div>

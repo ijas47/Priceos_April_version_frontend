@@ -28,6 +28,7 @@ const ONBOARDING_ALLOWED_PATHS = [
   "/api/sync/run",
   "/api/auth/logout",
   "/api/auth/me",
+  "/api/onboarding/auto-setup",
 ];
 
 function isPublicPath(pathname: string): boolean {
