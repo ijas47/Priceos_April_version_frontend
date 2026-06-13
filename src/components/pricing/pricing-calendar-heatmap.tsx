@@ -460,7 +460,7 @@ export function PricingCalendarHeatmap({ listings }: Props) {
         <div className="flex items-center gap-3">
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <Select value={selectedListing} onValueChange={setSelectedListing}>
-            <SelectTrigger className="h-9 w-72 text-sm bg-background border-border/70 text-foreground shadow-sm dark:bg-white/[0.04] dark:border-white/15">
+            <SelectTrigger className="h-9 w-48 sm:w-72 text-sm bg-background border-border/70 text-foreground shadow-sm dark:bg-white/[0.04] dark:border-white/15">
               <SelectValue placeholder="Select a property" />
             </SelectTrigger>
             <SelectContent className="max-h-64 overflow-y-auto">
