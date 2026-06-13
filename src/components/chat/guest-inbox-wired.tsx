@@ -556,6 +556,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
         body: JSON.stringify({ conversationId: hostawayConvId, text: draftText.trim() }),
       });
       if (!res.ok) throw new Error("API error");
+      const data = await res.json().catch(() => ({}));
       const newMsg: InboxMessage = {
         id: `msg-${Date.now()}`,
         role: "host",
@@ -566,7 +567,11 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
         prev.map((c) => c.id === conv.id ? { ...c, messages: [...c.messages, newMsg], status: "resolved", unread: 0 } : c)
       );
       setDraftText("");
-      toast.success("Reply saved (local — not sent to guest via Hostaway)");
+      toast.success(
+        data.delivered
+          ? "Reply sent to guest via Hostaway"
+          : "Reply saved (local only — guest delivery is disabled)"
+      );
     } catch {
       toast.error("Failed to save reply");
     } finally {

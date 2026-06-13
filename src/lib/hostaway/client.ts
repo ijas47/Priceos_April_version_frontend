@@ -17,6 +17,17 @@ export function isHostawayReadOnly(): boolean {
   return flag !== "false" && flag !== "0";
 }
 
+/**
+ * Guest-message sending is governed by a SEPARATE flag from pricing/calendar
+ * writes. Even when HOSTAWAY_READ_ONLY stays true (pricing pushes blocked),
+ * an operator can opt in to delivering reviewed guest replies by setting
+ * HOSTAWAY_ALLOW_GUEST_SEND=true. Off by default — replies stay local-only.
+ */
+export function isGuestSendEnabled(): boolean {
+  const flag = (process.env.HOSTAWAY_ALLOW_GUEST_SEND ?? "false").toLowerCase();
+  return flag === "true" || flag === "1";
+}
+
 export class HostawayClient {
   private apiKey: string;
   private rateLimit: HostawayRateLimit | null = null;
@@ -140,6 +151,30 @@ export class HostawayClient {
     await this.request<void>(`/listings/${listingId}/calendar/intervals`, {
       method: "PUT",
       body: JSON.stringify({ intervals: updates }),
+    });
+  }
+
+  /**
+   * Send a message into a guest conversation (delivers to the guest's
+   * Airbnb/Booking inbox via Hostaway).
+   * BLOCKED unless HOSTAWAY_ALLOW_GUEST_SEND=true — replies must never reach
+   * a real guest without explicit operator opt-in. Pricing pushes remain
+   * separately blocked by HOSTAWAY_READ_ONLY.
+   */
+  async sendMessage(
+    conversationId: string | number,
+    body: string,
+    communicationType = "channel"
+  ): Promise<void> {
+    if (!isGuestSendEnabled()) {
+      throw new Error(
+        "[PriceOS] sendMessage() blocked — HOSTAWAY_ALLOW_GUEST_SEND is not enabled. " +
+        "Replies are saved locally only. Set HOSTAWAY_ALLOW_GUEST_SEND=true to deliver to guests."
+      );
+    }
+    await this.request<void>(`/conversations/${conversationId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ body, isIncoming: 0, communicationType }),
     });
   }
 

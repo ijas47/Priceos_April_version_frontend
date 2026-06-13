@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB, HostawayConversation } from "@/lib/db";
+import { getSession } from "@/lib/auth/server";
 import mongoose from "mongoose";
 
 /**
@@ -11,6 +12,11 @@ import mongoose from "mongoose";
  * Query params: listingId, from, to
  */
 export async function GET(request: Request) {
+    const session = await getSession();
+    if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const listingId = searchParams.get("listingId");
     const dateFrom = searchParams.get("from");
@@ -30,7 +36,11 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: "Invalid listingId" }, { status: 400 });
         }
 
-        const filter: Record<string, unknown> = { listingId: listingObjectId };
+        // Scope to the caller's org so one tenant can't read another's threads.
+        const filter: Record<string, unknown> = {
+            listingId: listingObjectId,
+            orgId: new mongoose.Types.ObjectId(session.orgId),
+        };
         if (dateFrom && dateTo) {
             filter.dateFrom = { $lte: dateTo };
             filter.dateTo = { $gte: dateFrom };

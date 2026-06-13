@@ -30,6 +30,10 @@ export interface IOrganization extends Document {
       timezone?: string;
       weekendDefinition?: string;
     };
+    comms?: {
+      liveMode: boolean;
+      autoReply: boolean;
+    };
   };
   createdAt: Date;
   updatedAt: Date;
@@ -65,6 +69,10 @@ const OrgSchema = new Schema<IOrganization>(
         currency: { type: String },
         timezone: { type: String },
         weekendDefinition: { type: String },
+      },
+      comms: {
+        liveMode: { type: Boolean, default: false },
+        autoReply: { type: Boolean, default: false },
       },
     },
   },

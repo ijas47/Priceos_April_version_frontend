@@ -34,6 +34,9 @@ export type { IBenchmarkData } from "./BenchmarkData";
 export { PricingRule } from "./PricingRule";
 export type { IPricingRule } from "./PricingRule";
 
+export { DraftFeedback } from "./DraftFeedback";
+export type { IDraftFeedback } from "./DraftFeedback";
+
 export { EngineRun } from "./EngineRun";
 export type { IEngineRun } from "./EngineRun";
 

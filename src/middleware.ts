@@ -17,6 +17,7 @@ const PUBLIC_PATHS = [
   "/api/sync/run",          // needed by Go Live step
   "/api/v1/auth",
   "/api/agent-tools/v1",   // Bearer-token auth handled inside each route
+  "/api/webhooks/hostaway", // secret-verified inside the route
 ];
 
 // Extra paths allowed DURING onboarding (user is authenticated but not complete)
