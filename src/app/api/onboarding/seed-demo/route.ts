@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB, Listing, InventoryMaster, Reservation } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 import { SAMPLE_LISTINGS_SEED } from "@/lib/db/seed/listings";
+import { runAutoSetup } from "@/lib/engine/auto-setup";
 import { format, addDays, subDays } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -104,6 +105,15 @@ export async function GET(req: NextRequest) {
 
     // sanity reference so the demo window stays anchored to seed time
     console.log(`[seed-demo] Seeded org ${orgId} at ${format(subDays(today, 0), "yyyy-MM-dd")}`);
+
+    // Auto-setup: configure pricing defaults + run engine (non-blocking)
+    const allListingIds = await Listing.find({ orgId }).select("_id").lean();
+    runAutoSetup({
+      orgId: String(orgId),
+      listingIds: allListingIds.map((l) => l._id.toString()),
+      marketCode: "UAE_DXB",
+      strategy: "balanced",
+    }).catch((err) => console.error("[seed-demo] auto-setup:", err.message));
 
     return NextResponse.redirect(new URL("/dashboard?seeded=1", req.url));
   } catch (error: any) {
