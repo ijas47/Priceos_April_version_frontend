@@ -3,13 +3,32 @@ import bcrypt from "bcryptjs";
 import { connectDB, Organization, MarketTemplate } from "@/lib/db";
 import { signAccessToken } from "@/lib/auth/jwt";
 import { COOKIE_NAME } from "@/lib/auth/server";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req as any);
+  const rateCheck = checkRateLimit(`auth-register:${ip}`, RATE_LIMITS.auth);
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { error: `Too many registration attempts. Try again in ${Math.ceil(rateCheck.resetMs / 1000)}s.` },
+      { status: 429 },
+    );
+  }
+
   try {
     const { name, email, password, orgName, marketCode } = await req.json();
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "name, email and password are required" }, { status: 400 });
+    }
+
+    if (password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
 
     await connectDB();

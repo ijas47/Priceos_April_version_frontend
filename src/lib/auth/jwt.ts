@@ -1,10 +1,15 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "priceos_dev_secret_replace_in_production";
-const JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET ||
-  "priceos_dev_refresh_secret_replace_in_production";
+function requireEnv(name: string): string {
+  const v = process.env[name];
+  if (!v && process.env.NODE_ENV === "production") {
+    throw new Error(`${name} must be set in production`);
+  }
+  return v || `dev-only-${name}-${Date.now()}`;
+}
+
+const JWT_SECRET = requireEnv("JWT_SECRET");
+const JWT_REFRESH_SECRET = requireEnv("JWT_REFRESH_SECRET");
 
 export interface TokenPayload {
   userId: string;

@@ -77,9 +77,10 @@ export async function POST(req: NextRequest) {
 
         await connectDB();
         const session = await getSession();
-        const orgId = session?.orgId
-            ? new mongoose.Types.ObjectId(session.orgId)
-            : new mongoose.Types.ObjectId();
+        if (!session?.orgId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const orgId = new mongoose.Types.ObjectId(session.orgId);
 
         const lyzrSessionId =
             sessionId ||

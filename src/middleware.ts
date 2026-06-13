@@ -16,7 +16,6 @@ const PUBLIC_PATHS = [
   "/api/hostaway/metadata",
   "/api/sync/run",          // needed by Go Live step
   "/api/v1/auth",
-  "/api/debug",             // dev-only reset tools
   "/api/agent-tools/v1",   // Bearer-token auth handled inside each route
 ];
 

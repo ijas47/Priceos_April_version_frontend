@@ -11,9 +11,10 @@ export async function POST(req: NextRequest) {
 
         await connectDB();
         const session = await getSession();
-        const orgId = session?.orgId
-            ? new mongoose.Types.ObjectId(session.orgId)
-            : new mongoose.Types.ObjectId();
+        if (!session?.orgId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const orgId = new mongoose.Types.ObjectId(session.orgId);
 
         // Save user message
         await ChatMessage.create({
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
         const thirtyDaysAgoStr = format(addDays(new Date(), -30), "yyyy-MM-dd");
 
         if (lowerMessage.includes("underperform")) {
-            const allListings = await Listing.find().lean();
+            const allListings = await Listing.find({ orgId }).lean();
 
             const listingsWithMetrics = await Promise.all(
                 allListings.map(async (listing) => {
@@ -76,9 +77,9 @@ export async function POST(req: NextRequest) {
                 };
             }
         } else if (lowerMessage.includes("revenue") || lowerMessage.includes("income")) {
-            const recentReservations = await Reservation.find({ checkIn: { $gte: thirtyDaysAgoStr } }).lean();
+            const recentReservations = await Reservation.find({ orgId, checkIn: { $gte: thirtyDaysAgoStr } }).lean();
             const totalRevenue = recentReservations.reduce((s, r) => s + Number(r.totalPrice || 0), 0);
-            const allListings = await Listing.find().lean();
+            const allListings = await Listing.find({ orgId }).lean();
 
             responseMessage = `💰 Revenue Summary (Last 30 Days):\n\n`;
             responseMessage += `Total Revenue: AED ${totalRevenue.toLocaleString("en-US")}\n`;
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
             responseMessage += `This represents performance across ${allListings.length} properties.`;
             metadata = { propertyCount: allListings.length, totalRevenue: Math.round(totalRevenue) };
         } else {
-            const allListings = await Listing.find().lean();
+            const allListings = await Listing.find({ orgId }).lean();
 
             const occupancies = await Promise.all(
                 allListings.map(async (listing) => {
@@ -111,7 +112,7 @@ export async function POST(req: NextRequest) {
             );
 
             const avgOccupancy = Math.round(occupancies.reduce((s, o) => s + o, 0) / (occupancies.length || 1));
-            const recentReservations = await Reservation.find({ checkIn: { $gte: thirtyDaysAgoStr } }).lean();
+            const recentReservations = await Reservation.find({ orgId, checkIn: { $gte: thirtyDaysAgoStr } }).lean();
             const totalRevenue = recentReservations.reduce((s, r) => s + Number(r.totalPrice || 0), 0);
 
             responseMessage = `📊 Portfolio Overview:\n\n`;

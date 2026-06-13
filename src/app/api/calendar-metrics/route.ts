@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB, InventoryMaster, Listing, Reservation } from "@/lib/db";
+import { getSession } from "@/lib/auth/server";
 import mongoose from "mongoose";
 
 export async function GET(req: NextRequest) {
     try {
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const { searchParams } = new URL(req.url);
         const listingId = searchParams.get("listingId");
         const from = searchParams.get("from");
