@@ -61,18 +61,25 @@ export class PricingAnalystAgent {
       },
     }).lean();
 
-    const occupancy = await this.calculateOccupancy(lid, startDate, endDate);
     const days = eachDayOfInterval({ start: startDate, end: endDate });
+    const currencyCode = listing.currencyCode || "USD";
 
     for (const day of days) {
       const dateStr = format(day, "yyyy-MM-dd");
       const calendarDay = calendar.find((d) => d.date === dateStr);
-      // Guard against 0/NaN currentPrice — fall back to listing base price
-      // so changePct never divides by zero.
-      const rawCurrent = calendarDay ? Number(calendarDay.currentPrice) : NaN;
-      const currentPrice = rawCurrent > 0 ? rawCurrent : Number(listing.price) || 0;
-      if (currentPrice <= 0) continue;
 
+      // Anchor on the waterfall's proposedPrice if it ran; otherwise fall back
+      // to the current price. This layers event-specific adjustments ON TOP
+      // of the engine's market-anchored output instead of recomputing from
+      // scratch and discarding the waterfall's work.
+      const waterfallPrice = calendarDay?.proposedPrice;
+      const rawAnchor = waterfallPrice && waterfallPrice > 0
+        ? waterfallPrice
+        : calendarDay ? Number(calendarDay.currentPrice) : NaN;
+      const anchorPrice = rawAnchor > 0 ? rawAnchor : Number(listing.price) || 0;
+      if (anchorPrice <= 0) continue;
+
+      const currentPrice = calendarDay ? Number(calendarDay.currentPrice) || anchorPrice : anchorPrice;
       const basePrice = Number(listing.price);
       const priceFloor = listing.priceFloor > 0 ? listing.priceFloor : Math.round(basePrice * 0.5);
       const priceCeiling = listing.priceCeiling > 0 ? listing.priceCeiling : Math.round(basePrice * 3.0);
@@ -81,37 +88,26 @@ export class PricingAnalystAgent {
         (e) => e.startDate <= dateStr && e.endDate >= dateStr
       );
 
-      let proposedPrice = currentPrice;
-      let reasoning = "";
+      // No event → trust the waterfall result, no override needed.
+      if (dayEvents.length === 0) continue;
 
-      if (dayEvents.length > 0) {
-        const recommendation = this.eventAgent.getPricingRecommendation(dayEvents);
-        const increase = (currentPrice * recommendation.suggestedIncrease) / 100;
-        proposedPrice = currentPrice + increase;
-        reasoning = recommendation.reasoning;
-      } else {
-        if (occupancy > 80) {
-          proposedPrice = currentPrice * 1.1;
-          reasoning = `High occupancy (${occupancy}%). Demand is strong, increase pricing.`;
-        } else if (occupancy < 60) {
-          proposedPrice = currentPrice * 0.9;
-          reasoning = `Low occupancy (${occupancy}%). Decrease price to attract bookings.`;
-        } else {
-          proposedPrice = currentPrice;
-          reasoning = `Moderate occupancy (${occupancy}%). Maintain current pricing.`;
-        }
-      }
+      const recommendation = this.eventAgent.getPricingRecommendation(dayEvents);
+      const increase = (anchorPrice * recommendation.suggestedIncrease) / 100;
+      let proposedPrice = anchorPrice + increase;
+      let reasoning = `${recommendation.reasoning} (anchored on engine output ${currencyCode} ${Math.round(anchorPrice)})`;
 
       if (proposedPrice < priceFloor) {
         proposedPrice = priceFloor;
-        reasoning += ` (Capped at floor: AED ${priceFloor})`;
+        reasoning += ` (Capped at floor: ${currencyCode} ${priceFloor})`;
       } else if (proposedPrice > priceCeiling) {
         proposedPrice = priceCeiling;
-        reasoning += ` (Capped at ceiling: AED ${priceCeiling})`;
+        reasoning += ` (Capped at ceiling: ${currencyCode} ${priceCeiling})`;
       }
 
       proposedPrice = Math.round(proposedPrice / 10) * 10;
-      const changePct = Math.round(((proposedPrice - currentPrice) / currentPrice) * 100);
+      const changePct = currentPrice > 0
+        ? Math.round(((proposedPrice - currentPrice) / currentPrice) * 100)
+        : 0;
 
       if (Math.abs(changePct) < 1) continue;
 
@@ -217,22 +213,39 @@ export class PricingAnalystAgent {
 
   async generatePortfolioProposals(
     startDate: Date,
-    endDate: Date
+    endDate: Date,
+    orgId?: mongoose.Types.ObjectId | string
   ): Promise<Map<string, AnalysisResult>> {
     await connectDB();
-    const allListings = await Listing.find({ isActive: true }).lean();
+    const query: Record<string, unknown> = { isActive: true };
+    if (orgId) {
+      query.orgId = typeof orgId === "string" ? new mongoose.Types.ObjectId(orgId) : orgId;
+    }
+    const allListings = await Listing.find(query).lean();
     const results = new Map<string, AnalysisResult>();
 
-    for (const listing of allListings) {
-      const result = await this.generateProposals(
-        listing._id as mongoose.Types.ObjectId,
-        startDate,
-        endDate
-      );
-      if (result.totalProposals > 0) {
-        results.set(listing._id.toString(), result);
+    // Concurrency pool — 5 listings in parallel.
+    const CONCURRENCY = 5;
+    const queue = [...allListings];
+    const worker = async () => {
+      while (queue.length > 0) {
+        const listing = queue.shift();
+        if (!listing) return;
+        try {
+          const result = await this.generateProposals(
+            listing._id as mongoose.Types.ObjectId,
+            startDate,
+            endDate
+          );
+          if (result.totalProposals > 0) {
+            results.set(listing._id.toString(), result);
+          }
+        } catch (err) {
+          console.error(`[PricingAnalyst] listing ${listing._id}:`, (err as Error).message);
+        }
       }
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, allListings.length) }, worker));
 
     return results;
   }

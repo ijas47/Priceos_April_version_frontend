@@ -72,6 +72,21 @@ export interface BookingContext {
     gapEnd: string | null;
 }
 
+/**
+ * Per-date market signal derived from Airbtics or other comp-set sources.
+ * All fields optional — if not provided, the Market Anchor pass is a no-op.
+ */
+export interface MarketSignal {
+    /** Market p50 ADR for this date's month (anchor) */
+    monthAnchorAdr?: number;
+    /** Annual p50 ADR for the property's market */
+    annualAnchorAdr?: number;
+    /** Forward occupancy (0..1) for this date — drives demand multiplier */
+    forwardOccupancy?: number;
+    /** Market ADR for this exact date from future-pacing */
+    pacingAdr?: number;
+}
+
 export interface DayResult {
     price: number;
     minimumStay: number;
@@ -107,15 +122,61 @@ export function computeDay(
     today: Date,
     config: ListingConfig,
     allRules: Rule[],
-    bookingCtx: BookingContext
+    bookingCtx: BookingContext,
+    marketSignal?: MarketSignal
 ): DayResult {
     const notes: string[] = [];
     const dow = getDow(date);
     const leadTime = daysBetween(today, date);
 
+    // ── Pass 0 — Market Anchor (Airbtics / comp set data) ─────────────────────
+    // Adjusts basePrice multiplicatively for seasonality and forward demand.
+    // No-op when no market signal is provided — preserves backward compatibility.
+
+    let basePrice = config.basePrice;
+    if (marketSignal) {
+        // Seasonality: month anchor vs annual anchor (e.g. Dec p50=1100 vs annual p50=700 → 1.57x)
+        if (
+            marketSignal.monthAnchorAdr &&
+            marketSignal.annualAnchorAdr &&
+            marketSignal.annualAnchorAdr > 0
+        ) {
+            const seasonMult = marketSignal.monthAnchorAdr / marketSignal.annualAnchorAdr;
+            // Cap multiplier to sane range to avoid garbage data wrecking pricing
+            const capped = Math.min(2.0, Math.max(0.5, seasonMult));
+            const before = basePrice;
+            basePrice = basePrice * capped;
+            notes.push(
+                `[MARKET] Seasonality ${(capped * 100 - 100).toFixed(0)}% (month p50 ${marketSignal.monthAnchorAdr} vs annual ${marketSignal.annualAnchorAdr}) → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
+            );
+        }
+
+        // Demand: forward occupancy → surge / discount
+        if (
+            typeof marketSignal.forwardOccupancy === "number" &&
+            marketSignal.forwardOccupancy > 0
+        ) {
+            const occ = marketSignal.forwardOccupancy;
+            let demandMult = 1.0;
+            if (occ >= 0.90) demandMult = 1.25;
+            else if (occ >= 0.75) demandMult = 1.12;
+            else if (occ >= 0.60) demandMult = 1.05;
+            else if (occ < 0.30) demandMult = 0.88;
+            else if (occ < 0.45) demandMult = 0.95;
+
+            if (demandMult !== 1.0) {
+                const before = basePrice;
+                basePrice = basePrice * demandMult;
+                notes.push(
+                    `[MARKET] Demand ${(demandMult * 100 - 100).toFixed(0)}% (market occ ${(occ * 100).toFixed(0)}%) → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
+                );
+            }
+        }
+    }
+
     // ── Pass 1 — Foundation ────────────────────────────────────────────────────
 
-    let price = config.basePrice;
+    let price = basePrice;
     let minimumStay = config.defaultMinStay;
     let maximumStay = config.defaultMaxStay;
     let isAvailable = bookingCtx.isBooked ? 0 : 1;

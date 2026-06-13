@@ -17,10 +17,12 @@ import {
   Calendar,
   TrendingUp,
   TrendingDown,
-  Minus,
-  Info,
+  CalendarRange,
+  CalendarDays,
+  Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -206,9 +208,147 @@ function StatCard({ label, value, color }: { label: string; value: string; color
   );
 }
 
+// ── Year-View Heatmap ────────────────────────────────────────────────────────
+// Compact 12-month grid (GitHub-contributions style). Each month is a 7-col
+// micro grid; each cell is colored by changePct. Hover for tooltip, click to
+// drill into the month view.
+
+function YearMiniMonth({
+  monthDate,
+  dayMap,
+  onClickMonth,
+  currency,
+}: {
+  monthDate: Date;
+  dayMap: Map<string, CalendarDay>;
+  onClickMonth: (d: Date) => void;
+  currency: string;
+}) {
+  const monthDays = useMemo(() => {
+    return eachDayOfInterval({
+      start: startOfMonth(monthDate),
+      end: endOfMonth(monthDate),
+    });
+  }, [monthDate]);
+
+  const firstDayOffset = useMemo(() => {
+    const dow = getDay(startOfMonth(monthDate));
+    return dow === 0 ? 6 : dow - 1;
+  }, [monthDate]);
+
+  const monthStats = useMemo(() => {
+    let totalProposed = 0;
+    let countAvail = 0;
+    let booked = 0;
+    let changes = 0;
+    let avgChange = 0;
+    for (const d of monthDays) {
+      const ds = format(d, "yyyy-MM-dd");
+      const day = dayMap.get(ds);
+      if (!day) continue;
+      if (day.status === "booked") booked++;
+      if (day.status === "available") {
+        totalProposed += day.proposedPrice ?? day.currentPrice;
+        countAvail++;
+      }
+      if (day.changePct !== null && day.changePct !== 0) {
+        changes++;
+        avgChange += day.changePct;
+      }
+    }
+    return {
+      avgPrice: countAvail > 0 ? Math.round(totalProposed / countAvail) : 0,
+      occupancy: monthDays.length > 0 ? Math.round((booked / monthDays.length) * 100) : 0,
+      changes,
+      avgChange: changes > 0 ? Math.round(avgChange / changes) : 0,
+    };
+  }, [monthDays, dayMap]);
+
+  return (
+    <button
+      onClick={() => onClickMonth(monthDate)}
+      className="text-left rounded-xl border border-border/70 bg-card hover:border-amber/40 hover:shadow-md transition-all p-3 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-amber/50"
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div>
+          <p className="text-xs font-bold text-foreground">{format(monthDate, "MMM yyyy")}</p>
+          <p className="text-[9px] text-muted-foreground tabular-nums">
+            {currency} {monthStats.avgPrice.toLocaleString("en-US")} avg · {monthStats.occupancy}% occ
+          </p>
+        </div>
+        {monthStats.changes > 0 && (
+          <span
+            className={cn(
+              "text-[10px] font-bold tabular-nums",
+              monthStats.avgChange > 0 ? "text-green-500" : "text-red-500"
+            )}
+          >
+            {monthStats.avgChange > 0 ? "+" : ""}
+            {monthStats.avgChange}%
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-7 gap-[2px]">
+        {Array.from({ length: firstDayOffset }).map((_, i) => (
+          <div key={`empty-${i}`} className="aspect-square" />
+        ))}
+        {monthDays.map((d) => {
+          const ds = format(d, "yyyy-MM-dd");
+          const day = dayMap.get(ds);
+          const heat = day
+            ? getHeatColor(day.changePct, day.status, day.proposalStatus)
+            : "bg-muted/30 border-border/30";
+          return (
+            <div
+              key={ds}
+              className={cn("aspect-square rounded-[2px] border", heat)}
+              title={
+                day
+                  ? `${format(d, "MMM d")}: ${currency} ${(day.proposedPrice ?? day.currentPrice).toLocaleString("en-US")}${day.changePct ? ` (${day.changePct > 0 ? "+" : ""}${day.changePct}%)` : ""}`
+                  : format(d, "MMM d")
+              }
+            />
+          );
+        })}
+      </div>
+    </button>
+  );
+}
+
+function YearViewGrid({
+  dayMap,
+  currency,
+  onSelectMonth,
+}: {
+  dayMap: Map<string, CalendarDay>;
+  currency: string;
+  onSelectMonth: (d: Date) => void;
+}) {
+  const months = useMemo(() => {
+    const today = new Date();
+    return Array.from({ length: 12 }, (_, i) => startOfMonth(addMonths(today, i)));
+  }, []);
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      {months.map((m) => (
+        <YearMiniMonth
+          key={m.toISOString()}
+          monthDate={m}
+          dayMap={dayMap}
+          onClickMonth={onSelectMonth}
+          currency={currency}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ── Main Component ───────────────────────────────────────────────────────────
 
 const DOW_HEADERS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+type ViewMode = "month" | "year";
 
 export function PricingCalendarHeatmap({ listings }: Props) {
   const [selectedListing, setSelectedListing] = useState(listings[0]?.id || "");
@@ -216,6 +356,8 @@ export function PricingCalendarHeatmap({ listings }: Props) {
   const [loading, setLoading] = useState(false);
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [runningEngine, setRunningEngine] = useState(false);
 
   const fetchCalendar = useCallback(async (listingId: string) => {
     if (!listingId) return;
@@ -231,6 +373,29 @@ export function PricingCalendarHeatmap({ listings }: Props) {
       setLoading(false);
     }
   }, []);
+
+  const runEngine = useCallback(async () => {
+    if (!selectedListing) return;
+    setRunningEngine(true);
+    try {
+      const res = await fetch(`/api/engine/run-all`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trigger: "manual", listingIds: [selectedListing] }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(`Engine ran — ${data.summary?.totalDaysChanged ?? 0} days updated`);
+        await fetchCalendar(selectedListing);
+      } else {
+        toast.error(data.error || "Engine run failed");
+      }
+    } catch (err) {
+      toast.error((err as Error).message || "Engine run failed");
+    } finally {
+      setRunningEngine(false);
+    }
+  }, [selectedListing, fetchCalendar]);
 
   useEffect(() => {
     if (selectedListing) {
@@ -290,7 +455,7 @@ export function PricingCalendarHeatmap({ listings }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Listing Selector + Month Nav */}
+      {/* Listing Selector + View Toggle + Month Nav */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -309,22 +474,58 @@ export function PricingCalendarHeatmap({ listings }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={prevMonth}
-            disabled={!canGoPrev}
-            className="h-8 w-8 rounded-md bg-background border border-border/70 flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-30 transition-colors dark:bg-white/[0.04] dark:border-white/15 dark:hover:bg-white/[0.08]"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <span className="text-sm font-semibold text-foreground min-w-[140px] text-center">
-            {format(currentMonth, "MMMM yyyy")}
-          </span>
-          <button
-            onClick={nextMonth}
-            className="h-8 w-8 rounded-md bg-background border border-border/70 flex items-center justify-center text-foreground hover:bg-muted transition-colors dark:bg-white/[0.04] dark:border-white/15 dark:hover:bg-white/[0.08]"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          {/* View mode toggle */}
+          <div className="flex items-center rounded-md border border-border/70 bg-background overflow-hidden dark:bg-white/[0.04] dark:border-white/15">
+            <button
+              onClick={() => setViewMode("month")}
+              className={cn(
+                "h-8 px-3 flex items-center gap-1.5 text-xs font-semibold transition-colors",
+                viewMode === "month"
+                  ? "bg-amber/10 text-amber"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+              aria-pressed={viewMode === "month"}
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              Month
+            </button>
+            <button
+              onClick={() => setViewMode("year")}
+              className={cn(
+                "h-8 px-3 flex items-center gap-1.5 text-xs font-semibold transition-colors border-l border-border/70 dark:border-white/15",
+                viewMode === "year"
+                  ? "bg-amber/10 text-amber"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+              aria-pressed={viewMode === "year"}
+            >
+              <CalendarRange className="h-3.5 w-3.5" />
+              Year
+            </button>
+          </div>
+
+          {viewMode === "month" && (
+            <div className="flex items-center gap-2 ml-1">
+              <button
+                onClick={prevMonth}
+                disabled={!canGoPrev}
+                className="h-8 w-8 rounded-md bg-background border border-border/70 flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-30 transition-colors dark:bg-white/[0.04] dark:border-white/15 dark:hover:bg-white/[0.08]"
+                aria-label="Previous month"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-sm font-semibold text-foreground min-w-[140px] text-center">
+                {format(currentMonth, "MMMM yyyy")}
+              </span>
+              <button
+                onClick={nextMonth}
+                className="h-8 w-8 rounded-md bg-background border border-border/70 flex items-center justify-center text-foreground hover:bg-muted transition-colors dark:bg-white/[0.04] dark:border-white/15 dark:hover:bg-white/[0.08]"
+                aria-label="Next month"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -333,13 +534,49 @@ export function PricingCalendarHeatmap({ listings }: Props) {
           <Loader2 className="h-5 w-5 animate-spin" />
           <span className="text-sm">Loading calendar…</span>
         </div>
-      ) : !calendarData ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Info className="h-8 w-8 text-muted-foreground" />
-          <p className="text-muted-foreground text-sm">
-            No inventory data. Run the pricing engine first.
-          </p>
+      ) : !calendarData || calendarData.days.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 rounded-2xl border border-dashed border-border/70 bg-card dark:bg-white/[0.02] dark:border-white/10">
+          <div className="h-12 w-12 rounded-full bg-amber/10 flex items-center justify-center">
+            <Sparkles className="h-6 w-6 text-amber" />
+          </div>
+          <div className="text-center max-w-sm space-y-1">
+            <p className="text-sm font-semibold text-foreground">No pricing proposals yet</p>
+            <p className="text-xs text-muted-foreground">
+              Run the pricing engine to generate 365 days of market-aware proposals for this property.
+            </p>
+          </div>
+          <button
+            onClick={runEngine}
+            disabled={runningEngine}
+            className="h-9 px-4 rounded-md bg-amber text-amber-foreground text-xs font-bold flex items-center gap-2 hover:bg-amber/90 disabled:opacity-50 transition-colors"
+          >
+            {runningEngine ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Running engine…
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-3.5 w-3.5" />
+                Run Pricing Engine
+              </>
+            )}
+          </button>
         </div>
+      ) : viewMode === "year" ? (
+        <>
+          <YearViewGrid
+            dayMap={dayMap}
+            currency={calendarData.currency}
+            onSelectMonth={(d) => {
+              setCurrentMonth(d);
+              setViewMode("month");
+            }}
+          />
+          <p className="text-[10px] text-muted-foreground text-center">
+            Click any month to drill into the day-by-day view
+          </p>
+        </>
       ) : (
         <>
           {/* Month Stats */}

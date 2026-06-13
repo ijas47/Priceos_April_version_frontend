@@ -5,7 +5,9 @@ import {
     ListingConfig,
     Rule,
     BookingContext,
+    MarketSignal,
 } from "./waterfall";
+import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
 
 function toNum(val: string | number | null | undefined): number {
     if (val === null || val === undefined) return 0;
@@ -127,8 +129,18 @@ export async function runPipeline(
 
         const gapMap = computeGaps(today, endDate, bookingMap);
 
+        // ── Market signals from Airbtics (no-op if key/data missing) ──────────
+        const marketSignals = await buildMarketSignals(
+            listing.city || "Dubai",
+            listing.countryCode || "AE",
+            String(listing.bedroomsNumber || 2),
+            today,
+            365
+        );
+
         let daysChanged = 0;
         const bulkOps: any[] = [];
+        const listingBasePrice = toNum(listing.price);
 
         for (let i = 0; i < 365; i++) {
             const currentDate = addDays(today, i);
@@ -143,7 +155,13 @@ export async function runPipeline(
                 gapEnd: gap?.gapEnd ?? null,
             };
 
-            const result = computeDay(currentDate, today, config, allRules, bookingCtx);
+            const signal = marketSignals.get(ds);
+            const result = computeDay(currentDate, today, config, allRules, bookingCtx, signal);
+
+            // Compute change % vs listing base price (proposed - base) / base
+            const changePct = listingBasePrice > 0
+                ? Math.round(((result.price - listingBasePrice) / listingBasePrice) * 1000) / 10
+                : 0;
 
             bulkOps.push({
                 updateOne: {
@@ -154,14 +172,17 @@ export async function runPipeline(
                             listingId: lid,
                             date: ds,
                             status: bookingCtx.isBooked ? "booked" : "available",
-                            currentPrice: toNum(listing.price),
+                            currentPrice: listingBasePrice,
+                            basePrice: listingBasePrice,
                             proposedPrice: result.price,
+                            changePct,
                             reasoning: result.note,
                             proposalStatus: "pending",
                             minStay: result.minimumStay,
                             maxStay: result.maximumStay,
                             closedToArrival: result.closedToArrival === 1,
                             closedToDeparture: result.closedToDeparture === 1,
+                            batchId: startedAt.toISOString(),
                         },
                     },
                     upsert: true,
@@ -202,6 +223,55 @@ export async function runPipeline(
         });
         throw err;
     }
+}
+
+/**
+ * Build a date→MarketSignal map for the next N days using Airbtics data.
+ * Falls back to empty map (no-op) when API key/data missing.
+ */
+async function buildMarketSignals(
+    city: string,
+    countryCode: string,
+    bedrooms: string,
+    startDate: Date,
+    days: number
+): Promise<Map<string, MarketSignal>> {
+    const map = new Map<string, MarketSignal>();
+    try {
+        const mktId = await resolveMarketId(city, countryCode);
+        if (!mktId) return map;
+        const ctx = await getMarketContext(mktId, bedrooms);
+        if (!ctx.p50ADR) return map;
+
+        // Build a per-month anchor from monthly metrics
+        const monthAdr = new Map<string, number>();
+        for (const m of ctx.monthlyMetrics) {
+            if (m.month && m.p50_adr) monthAdr.set(m.month, m.p50_adr);
+        }
+        // Build a per-date pacing lookup
+        const pacingMap = new Map<string, { occ?: number; adr?: number }>();
+        for (const p of ctx.futurePacing) {
+            pacingMap.set(p.date, { occ: p.occupancy, adr: p.adr });
+        }
+
+        const annualAnchor = ctx.p50ADR;
+        for (let i = 0; i < days; i++) {
+            const d = addDays(startDate, i);
+            const ds = dateStr(d);
+            const ym = ds.slice(0, 7);
+            const monthAnchor = monthAdr.get(ym);
+            const pacing = pacingMap.get(ds);
+            const signal: MarketSignal = {};
+            if (monthAnchor) signal.monthAnchorAdr = monthAnchor;
+            if (annualAnchor) signal.annualAnchorAdr = annualAnchor;
+            if (pacing?.occ !== undefined) signal.forwardOccupancy = pacing.occ;
+            if (pacing?.adr !== undefined) signal.pacingAdr = pacing.adr;
+            if (Object.keys(signal).length > 0) map.set(ds, signal);
+        }
+    } catch (err) {
+        console.error("[buildMarketSignals]", (err as Error).message);
+    }
+    return map;
 }
 
 interface GapInfo {

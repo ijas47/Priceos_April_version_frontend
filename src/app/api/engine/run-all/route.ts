@@ -48,39 +48,48 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const results: Array<{
+    type RunResult = {
       listingId: string;
       name: string;
       status: "success" | "failed";
       runId?: string;
       daysChanged?: number;
       error?: string;
-    }> = [];
+    };
 
-    // Run pipeline for each listing sequentially to avoid overloading AI APIs
-    for (const listing of listings) {
-      const listingIdStr = listing._id.toString();
-      try {
-        const run = await runPipeline(
-          listingIdStr,
-          `${trigger} — engine/run-all`
-        );
-        results.push({
-          listingId: listingIdStr,
-          name: listing.name || listingIdStr,
-          status: run.status === "FAILED" ? "failed" : "success",
-          runId: run._id?.toString(),
-          daysChanged: run.daysChanged || 0,
-        });
-      } catch (err: any) {
-        results.push({
-          listingId: listingIdStr,
-          name: listing.name || listingIdStr,
-          status: "failed",
-          error: err?.message || "Pipeline error",
-        });
+    // Concurrency pool: process up to 5 listings in parallel.
+    // The pricing engine itself has no AI calls (waterfall + DB only),
+    // so the main bottleneck is bulk-write throughput on MongoDB.
+    const CONCURRENCY = 5;
+    const results: RunResult[] = [];
+    const queue = [...listings];
+
+    async function worker(): Promise<void> {
+      while (queue.length > 0) {
+        const listing = queue.shift();
+        if (!listing) return;
+        const listingIdStr = listing._id.toString();
+        try {
+          const run = await runPipeline(listingIdStr, `${trigger} — engine/run-all`);
+          results.push({
+            listingId: listingIdStr,
+            name: listing.name || listingIdStr,
+            status: run.status === "FAILED" ? "failed" : "success",
+            runId: run._id?.toString(),
+            daysChanged: run.daysChanged || 0,
+          });
+        } catch (err: any) {
+          results.push({
+            listingId: listingIdStr,
+            name: listing.name || listingIdStr,
+            status: "failed",
+            error: err?.message || "Pipeline error",
+          });
+        }
       }
     }
+
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, listings.length) }, worker));
 
     const succeeded = results.filter((r) => r.status === "success").length;
     const failed = results.filter((r) => r.status === "failed").length;
