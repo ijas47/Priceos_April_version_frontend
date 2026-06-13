@@ -14,6 +14,7 @@ export interface IOrganization extends Document {
   currency: string;
   timezone: string;
   plan: "starter" | "growth" | "scale";
+  pricingStrategy?: "conservative" | "balanced" | "aggressive";
   settings: {
     guardrails: {
       maxSingleDayChangePct: number;
@@ -54,6 +55,10 @@ const OrgSchema = new Schema<IOrganization>(
     currency: { type: String, default: "AED" },
     timezone: { type: String, default: "Asia/Dubai" },
     plan: { type: String, enum: ["starter", "growth", "scale"], default: "starter" },
+    pricingStrategy: {
+      type: String,
+      enum: ["conservative", "balanced", "aggressive"],
+    },
     settings: {
       guardrails: {
         maxSingleDayChangePct: { type: Number, default: 15 },

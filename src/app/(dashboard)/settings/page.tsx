@@ -10,7 +10,9 @@ import {
   Loader2,
   Save,
   Check,
+  Sparkles,
 } from "lucide-react";
+import { SmartPricingCard } from "@/components/settings/smart-pricing-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -197,6 +199,13 @@ export default function SettingsPage() {
           >
             <Link2 className="h-3.5 w-3.5 mr-2" />
             Connections
+          </TabsTrigger>
+          <TabsTrigger
+            value="pricing"
+            className="data-[state=active]:bg-surface-2 data-[state=active]:text-amber text-body-xs font-medium px-6"
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-2" />
+            Pricing
           </TabsTrigger>
           <TabsTrigger
             value="organization"
@@ -411,6 +420,14 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+        </TabsContent>
+
+        {/* ── TAB: Pricing ──────────────────────────────────────────────── */}
+        <TabsContent
+          value="pricing"
+          className="mt-8 space-y-8 animate-in fade-in-50 duration-500"
+        >
+          <SmartPricingCard />
         </TabsContent>
 
         {/* ── TAB: Organization ─────────────────────────────────────────── */}

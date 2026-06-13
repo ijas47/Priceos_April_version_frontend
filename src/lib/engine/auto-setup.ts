@@ -10,7 +10,7 @@ import { resolveMarketId, getMarketContext } from "@/lib/airbtics/market-context
 import { runPipeline } from "./pipeline";
 import mongoose from "mongoose";
 
-type Strategy = "conservative" | "balanced" | "aggressive";
+export type Strategy = "conservative" | "balanced" | "aggressive";
 
 interface PricingDefaults {
   weekendUpliftPct: number;
@@ -44,7 +44,7 @@ export interface AutoSetupResult {
   engineRan: boolean;
 }
 
-const STRATEGY_PRESETS: Record<Strategy, {
+export const STRATEGY_PRESETS: Record<Strategy, {
   floorMult: number;
   ceilingMult: number;
   lastMinuteDiscountPct: number;
@@ -93,6 +93,26 @@ const STRATEGY_PRESETS: Record<Strategy, {
     maxSingleDayChangePct: 25,
   },
 };
+
+/**
+ * Portfolio-level (org-wide) guardrail defaults derived from a strategy.
+ * These map onto Organization.settings.guardrails and act as the fallback
+ * envelope when a property has no explicit floor/ceiling of its own.
+ */
+export function portfolioGuardrailsFromStrategy(strategy: Strategy): {
+  maxSingleDayChangePct: number;
+  autoApproveThreshold: number;
+  absoluteFloorMultiplier: number;
+  absoluteCeilingMultiplier: number;
+} {
+  const preset = STRATEGY_PRESETS[strategy];
+  return {
+    maxSingleDayChangePct: preset.maxSingleDayChangePct,
+    autoApproveThreshold: preset.autoApproveThreshold,
+    absoluteFloorMultiplier: preset.floorMult,
+    absoluteCeilingMultiplier: preset.ceilingMult,
+  };
+}
 
 export async function runAutoSetup(input: AutoSetupInput): Promise<AutoSetupResult> {
   await connectDB();
