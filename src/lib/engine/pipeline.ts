@@ -8,6 +8,10 @@ import {
     MarketSignal,
 } from "./waterfall";
 import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
+import { fitElasticityModel } from "@/lib/elasticity/model";
+import type { BookingObservation, ElasticityParams } from "@/lib/elasticity/types";
+import { computeOptimizedPrice, isElasticityPricingEnabled } from "./optimization";
+import { computeDemandModifier, getDefaultSignals } from "@/lib/demand/modifiers";
 
 function toNum(val: string | number | null | undefined): number {
     if (val === null || val === undefined) return 0;
@@ -141,6 +145,31 @@ export async function runPipeline(
         let daysChanged = 0;
         const bulkOps: any[] = [];
         const listingBasePrice = toNum(listing.price);
+        const floor = config.absoluteMinPrice;
+        const ceiling = config.absoluteMaxPrice;
+
+        // ── Revenue optimization layer (elasticity + demand) ──────────────────
+        // Fit the booking-probability model from this listing's own history,
+        // and precompute the per-month source-market demand modifier. When the
+        // ELASTICITY_PRICING flag is off (default) the optimized price is only
+        // RECORDED as a shadow value; the rulebook price still drives proposals.
+        const elasticityParams = await buildElasticityParams(lid, today, listingBasePrice);
+        const elasticityEnabled = isElasticityPricingEnabled();
+        const marketTemplate = (listing.city || "dubai").toLowerCase();
+        const demandByMonth = new Map<number, number>();
+        const demandModifierFor = (month: number): number => {
+            const cached = demandByMonth.get(month);
+            if (cached !== undefined) return cached;
+            let pct = 0;
+            try {
+                const signals = getDefaultSignals(marketTemplate, month);
+                pct = computeDemandModifier(marketTemplate, month, signals).priceModifierPct;
+            } catch {
+                pct = 0;
+            }
+            demandByMonth.set(month, pct);
+            return pct;
+        };
 
         for (let i = 0; i < 365; i++) {
             const currentDate = addDays(today, i);
@@ -158,9 +187,31 @@ export async function runPipeline(
             const signal = marketSignals.get(ds);
             const result = computeDay(currentDate, today, config, allRules, bookingCtx, signal);
 
+            // ── Revenue optimization ──────────────────────────────────────────
+            // Only optimize bookable (available) days; booked/blocked days keep
+            // the rulebook output. The optimized price is always guardrail-safe.
+            let optimizedPrice = result.price;
+            let elasticityPrice: number | undefined;
+            let elasticityWeight: number | undefined;
+            let pBook: number | undefined;
+            if (result.isAvailable === 1 && ceiling > floor) {
+                const month = currentDate.getMonth() + 1;
+                const opt = computeOptimizedPrice({
+                    rulebookPrice: result.price,
+                    params: elasticityParams,
+                    floor,
+                    ceiling,
+                    demandModifierPct: demandModifierFor(month),
+                });
+                elasticityPrice = opt.finalPrice;
+                elasticityWeight = opt.weight;
+                pBook = opt.pBook;
+                if (elasticityEnabled) optimizedPrice = opt.finalPrice;
+            }
+
             // Compute change % vs listing base price (proposed - base) / base
             const changePct = listingBasePrice > 0
-                ? Math.round(((result.price - listingBasePrice) / listingBasePrice) * 1000) / 10
+                ? Math.round(((optimizedPrice - listingBasePrice) / listingBasePrice) * 1000) / 10
                 : 0;
 
             bulkOps.push({
@@ -174,7 +225,10 @@ export async function runPipeline(
                             status: bookingCtx.isBooked ? "booked" : "available",
                             currentPrice: listingBasePrice,
                             basePrice: listingBasePrice,
-                            proposedPrice: result.price,
+                            proposedPrice: optimizedPrice,
+                            elasticityPrice,
+                            elasticityWeight,
+                            pBook,
                             changePct,
                             reasoning: result.note,
                             proposalStatus: "pending",
@@ -272,6 +326,45 @@ async function buildMarketSignals(
         console.error("[buildMarketSignals]", (err as Error).message);
     }
     return map;
+}
+
+/**
+ * Fit the elasticity (booking-probability) model from this listing's own
+ * recent calendar history. Each past day is a (price, booked) observation.
+ * With little/no history the model returns cold-start defaults anchored on
+ * the listing base price, so the optimizer's confidence weight stays ~0 and
+ * pricing collapses back to the deterministic rulebook.
+ */
+async function buildElasticityParams(
+    lid: mongoose.Types.ObjectId,
+    today: Date,
+    fallbackAdr: number
+): Promise<ElasticityParams> {
+    const HISTORY_DAYS = 365;
+    const since = addDays(today, -HISTORY_DAYS);
+    const past = await InventoryMaster.find({
+        listingId: lid,
+        date: { $gte: dateStr(since), $lt: dateStr(today) },
+    })
+        .select("date currentPrice status")
+        .lean();
+
+    const observations: BookingObservation[] = [];
+    for (const day of past) {
+        const price = toNum(day.currentPrice);
+        if (!(price > 0)) continue;
+        const d = new Date(`${day.date}T00:00:00.000Z`);
+        const dow = d.getUTCDay(); // 0=Sun..6=Sat
+        observations.push({
+            date: day.date,
+            price,
+            booked: day.status !== "available",
+            leadTimeDays: 0,
+            isWeekend: dow === 5 || dow === 6, // Fri/Sat (Dubai weekend)
+        });
+    }
+
+    return fitElasticityModel(observations, fallbackAdr > 0 ? fallbackAdr : undefined);
 }
 
 interface GapInfo {

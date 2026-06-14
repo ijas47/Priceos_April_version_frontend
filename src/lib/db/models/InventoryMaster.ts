@@ -17,6 +17,10 @@ export interface IInventoryMaster extends Document {
   changePct?: number;
   reasoning?: string;
   batchId?: string;
+  // Revenue optimization (shadow / live) — elasticity + demand layer
+  elasticityPrice?: number;
+  elasticityWeight?: number;
+  pBook?: number;
   // Sync
   hostawayStatus?: string;
   lastSyncedAt?: Date;
@@ -48,6 +52,9 @@ const InventorySchema = new Schema<IInventoryMaster>(
     changePct: { type: Number },
     reasoning: { type: String },
     batchId: { type: String },
+    elasticityPrice: { type: Number },
+    elasticityWeight: { type: Number },
+    pBook: { type: Number },
     hostawayStatus: { type: String },
     lastSyncedAt: { type: Date },
   },
