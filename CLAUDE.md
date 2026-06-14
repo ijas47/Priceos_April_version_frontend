@@ -2,6 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> ⚠️ **AUTHORITATIVE STACK NOTE (read first).** Parts of this document below
+> describe an earlier Neon Postgres + Drizzle + Neon Auth design that has been
+> **replaced**. The current, actual stack is:
+>
+> - **Database:** MongoDB (Mongoose ODM) — `MONGODB_URI`. Models live in
+>   `src/lib/db/models/`, connection in `src/lib/db/client.ts`.
+> - **Auth:** Custom JWT (HS256) in httpOnly cookies — `JWT_SECRET` /
+>   `JWT_REFRESH_SECRET`. Issued in `src/lib/auth/jwt.ts`, verified in
+>   `src/middleware.ts` and `src/lib/auth/server.ts`.
+> - **Framework:** Next.js 15 (App Router). The app lives at the **repo root**
+>   (`src/…`), NOT under `priceos/app/`.
+> - There is **no Drizzle/Neon** in the codebase. Ignore `db:generate` /
+>   `db:migrate` / `db:push` commands below — they do not exist.
+> - Multi-tenancy: every tenant ("organization") is isolated by `orgId`.
+>   API routes must authenticate (`getSession()` / `requireScopedSession()`)
+>   and scope every query by `orgId`.
+
 ## Project Overview
 
 **PriceOS** is an AI-powered revenue management system for Dubai short-term rental property managers. It aggregates signals (events, competitor data, bookings), proposes pricing actions with risk classification, and executes approved changes through property management systems (PMS).
@@ -68,13 +85,13 @@ Schema matches Hostaway API field names for seamless future integration:
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 16 (App Router, Turbopack) |
+| Frontend | Next.js 15 (App Router) |
 | UI Components | shadcn/ui + Radix UI |
 | Styling | Tailwind CSS v4 |
 | State Management | Zustand |
-| Authentication | Neon Auth |
-| Database | Neon Postgres (serverless) |
-| ORM | Drizzle ORM |
+| Authentication | Custom JWT (HS256, httpOnly cookies) |
+| Database | MongoDB (serverless / Atlas / DocumentDB) |
+| ODM | Mongoose |
 | Date Handling | date-fns |
 | Deployment | Vercel |
 | AI Orchestration | Lyzr Manager-Worker |
