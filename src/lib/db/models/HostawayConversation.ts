@@ -17,6 +17,13 @@ export interface IHostawayConversation extends Document {
   dateFrom: string;
   dateTo: string;
   needsReply: boolean;
+  // Human handover: when the agent (or a human) flags a thread for takeover,
+  // auto-replies pause and the team is notified.
+  escalated: boolean;
+  escalationReason?: string;
+  escalationUrgency?: "low" | "medium" | "high" | "critical";
+  escalatedAt?: Date;
+  resolvedAt?: Date;
   syncedAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -40,6 +47,14 @@ const HostawayConversationSchema = new Schema<IHostawayConversation>(
     dateFrom: { type: String, required: true },
     dateTo: { type: String, required: true },
     needsReply: { type: Boolean, default: false },
+    escalated: { type: Boolean, default: false },
+    escalationReason: { type: String },
+    escalationUrgency: {
+      type: String,
+      enum: ["low", "medium", "high", "critical"],
+    },
+    escalatedAt: { type: Date },
+    resolvedAt: { type: Date },
     syncedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

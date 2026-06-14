@@ -215,6 +215,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
   const [aiDraft, setAiDraft] = useState("");
   const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isEscalating, setIsEscalating] = useState(false);
   const [testMode, setTestMode] = useState(false);
   const [autoReply, setAutoReply] = useState(false);
   const [isSavingComms, setIsSavingComms] = useState(false);
@@ -576,6 +577,40 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
       toast.error("Failed to save reply");
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleEscalate = async () => {
+    if (!conv) return;
+    setIsEscalating(true);
+    try {
+      const hostawayConvId = conv.id.slice(conv.propertyId.length + 1);
+      const res = await fetch(`${api}/guest-agent/escalate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: hostawayConvId,
+          reason: "Manually flagged for human review from inbox",
+          urgency: "high",
+          contextSummary: conv.lastMessage,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Escalation failed");
+      setConversations((prev) =>
+        prev.map((c) => (c.id === conv.id ? { ...c, status: "active", unread: 0 } : c))
+      );
+      if (data.notify?.skipped) {
+        toast.warning("Thread flagged — no alert channel configured (add Slack or WhatsApp)");
+      } else if (data.notify?.delivered?.length) {
+        toast.success(`Flagged for handover — team alerted via ${data.notify.delivered.join(", ")}`);
+      } else {
+        toast.success("Thread flagged for human handover");
+      }
+    } catch (e) {
+      toast.error((e as Error).message || "Failed to escalate");
+    } finally {
+      setIsEscalating(false);
     }
   };
 
@@ -1094,10 +1129,16 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
                     {isGeneratingDraft ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bot className="h-3 w-3" />}
                     Generate AI draft
                   </button>
-                  <Button size="sm" onClick={handleSend} disabled={!draftText.trim() || isSending} className="h-7 px-3 bg-amber text-black hover:bg-amber/90 text-[11px] gap-1 disabled:opacity-40">
-                    {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                    Send
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button size="sm" variant="outline" onClick={handleEscalate} disabled={isEscalating} className="h-7 px-2.5 text-[11px] gap-1 border-orange-500/40 text-orange-400 hover:bg-orange-500/10 disabled:opacity-40">
+                      {isEscalating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Activity className="h-3 w-3" />}
+                      Escalate to human
+                    </Button>
+                    <Button size="sm" onClick={handleSend} disabled={!draftText.trim() || isSending} className="h-7 px-3 bg-amber text-black hover:bg-amber/90 text-[11px] gap-1 disabled:opacity-40">
+                      {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                      Send
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
