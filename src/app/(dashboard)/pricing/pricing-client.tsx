@@ -40,6 +40,7 @@ import {
   Zap,
   Maximize2,
   Activity,
+  Sparkles,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,9 @@ export type ProposalData = {
   date: string;
   currentPrice: string;
   proposedPrice: string | null;
+  elasticityPrice?: string | null;
+  elasticityWeight?: number | null;
+  pBook?: number | null;
   changePct: number | null;
   reasoning: any;
   minStay: number | null;
@@ -122,6 +126,45 @@ function DeltaBadge({ pct }: { pct: number | null }) {
       {up ? "+" : ""}
       {pct}%
     </span>
+  );
+}
+
+/**
+ * Shows the revenue-optimized (elasticity + demand) "shadow" price alongside
+ * the rulebook proposal, so the operator can compare before enabling
+ * ELASTICITY_PRICING. Renders nothing until the engine has recorded one.
+ */
+function OptimizedPriceHint({ row }: { row: ProposalData }) {
+  if (row.elasticityPrice == null) return null;
+  const optimal = Number(row.elasticityPrice);
+  const proposed = Number(row.proposedPrice ?? row.currentPrice);
+  if (!Number.isFinite(optimal) || optimal <= 0) return null;
+
+  const conf = Math.round((row.elasticityWeight ?? 0) * 100);
+  const diff = proposed > 0 ? Math.round(((optimal - proposed) / proposed) * 1000) / 10 : 0;
+  const same = Math.abs(optimal - proposed) < 0.5;
+
+  return (
+    <div
+      className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-violet-400/90"
+      title={
+        `Aria revenue-optimized price (shadow). Model confidence ${conf}% — grows with booking history. ` +
+        (same
+          ? "Currently matches the proposal."
+          : "Not applied yet — set ELASTICITY_PRICING=on to let it drive proposals.")
+      }
+    >
+      <Sparkles className="h-2.5 w-2.5 shrink-0" />
+      <span className="font-semibold tabular-nums">
+        {row.currencyCode || "AED"} {optimal.toLocaleString("en-US")}
+      </span>
+      {!same && (
+        <span className={cn("tabular-nums", diff > 0 ? "text-green-400/80" : "text-red-400/80")}>
+          ({diff > 0 ? "+" : ""}{diff}%)
+        </span>
+      )}
+      <span className="text-muted-foreground/60">· conf {conf}%</span>
+    </div>
   );
 }
 
@@ -818,6 +861,7 @@ export function PricingClient({
                           {row.currencyCode || "AED"} {Number(row.proposedPrice).toLocaleString("en-US")}
                         </div>
                         <DeltaBadge pct={row.changePct} />
+                        <OptimizedPriceHint row={row} />
                       </div>
                     ) : (
                       <div className="space-y-0.5">

@@ -82,6 +82,10 @@ export async function GET(request: Request) {
                 date: r.date,
                 currentPrice: String(currentPrice),
                 proposedPrice: String(proposedPrice),
+                // Revenue-optimization shadow values (for the rulebook-vs-optimized comparison)
+                elasticityPrice: r.elasticityPrice != null ? String(r.elasticityPrice) : null,
+                elasticityWeight: r.elasticityWeight ?? null,
+                pBook: r.pBook ?? null,
                 changePct: r.changePct ?? 0,
                 reasoning: r.reasoning ?? "",
                 minStay: r.minStay ?? null,
