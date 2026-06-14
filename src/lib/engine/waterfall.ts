@@ -172,6 +172,24 @@ export function computeDay(
                 );
             }
         }
+
+        // Market pacing: blend toward date-specific comp-set ADR.
+        // If we have exact market pricing for this date, pull the listing's
+        // price 40% toward it. This is the core "comp-aware" signal that
+        // ensures the listing doesn't drift from what the market actually
+        // charges for this date.
+        if (marketSignal.pacingAdr && marketSignal.pacingAdr > 0) {
+            const target = marketSignal.pacingAdr;
+            const blendWeight = 0.4;
+            const before = basePrice;
+            basePrice = basePrice * (1 - blendWeight) + target * blendWeight;
+            const delta = Math.round(((basePrice - before) / before) * 100);
+            if (delta !== 0) {
+                notes.push(
+                    `[MARKET] Pacing blend ${delta > 0 ? "+" : ""}${delta}% toward market ${target.toFixed(0)} → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
+                );
+            }
+        }
     }
 
     // ── Pass 1 — Foundation ────────────────────────────────────────────────────
@@ -289,7 +307,6 @@ export function computeDay(
     // Far-out premium
     if (
         config.farOutEnabled &&
-        !suspendLastMinute && // spec says "if NOT suspended" for both
         leadTime >= config.farOutDaysOut &&
         isAvailable === 1
     ) {
@@ -378,16 +395,17 @@ export function computeDay(
 
     // ── Pass 4 — Integrity ────────────────────────────────────────────────────
 
-    const effectiveMinPrice = ruleMinPrice ?? config.absoluteMinPrice;
-    const effectiveMaxPrice = ruleMaxPrice ?? config.absoluteMaxPrice;
+    // A floor/ceiling of 0 means "not configured" — treat as no constraint.
+    const effectiveMinPrice = ruleMinPrice ?? (config.absoluteMinPrice > 0 ? config.absoluteMinPrice : 0);
+    const effectiveMaxPrice = ruleMaxPrice ?? (config.absoluteMaxPrice > 0 ? config.absoluteMaxPrice : Infinity);
 
-    if (price < effectiveMinPrice) {
+    if (effectiveMinPrice > 0 && price < effectiveMinPrice) {
         notes.push(
             `[CLAMP] Price ${price.toFixed(2)} clamped to min ${effectiveMinPrice}`
         );
         price = effectiveMinPrice;
     }
-    if (price > effectiveMaxPrice) {
+    if (effectiveMaxPrice < Infinity && price > effectiveMaxPrice) {
         notes.push(
             `[CLAMP] Price ${price.toFixed(2)} clamped to max ${effectiveMaxPrice}`
         );

@@ -74,7 +74,7 @@ export async function runPipeline(
             farOutMarkupPct: toNum(listing.farOutMarkupPct),
             farOutMinStay: listing.farOutMinStay ?? null,
             dowPricingEnabled: listing.dowPricingEnabled,
-            dowDays: toIntArray(listing.dowDays),
+            dowDays: listing.dowDays ?? [4, 5],
             dowPriceAdjPct: toNum(listing.dowPriceAdjPct),
             dowMinStay: listing.dowMinStay ?? null,
             gapPreventionEnabled: listing.gapPreventionEnabled,
@@ -123,8 +123,10 @@ export async function runPipeline(
         }).sort({ date: 1 }).lean();
 
         const bookingMap = new Map<string, { isBooked: boolean }>();
+        const existingPriceMap = new Map<string, number>();
         for (const day of existingInventory) {
             bookingMap.set(day.date, { isBooked: day.status !== "available" });
+            if (day.currentPrice) existingPriceMap.set(day.date, day.currentPrice);
         }
 
         const gapMap = computeGaps(today, endDate, bookingMap);
@@ -158,10 +160,22 @@ export async function runPipeline(
             const signal = marketSignals.get(ds);
             const result = computeDay(currentDate, today, config, allRules, bookingCtx, signal);
 
-            // Compute change % vs listing base price (proposed - base) / base
-            const changePct = listingBasePrice > 0
-                ? Math.round(((result.price - listingBasePrice) / listingBasePrice) * 1000) / 10
+            // Compare proposed vs the current live price on this date
+            // (what's already on the channel), not always vs listing base price.
+            // This way "0% change" truly means "no action needed."
+            const currentLivePrice = existingPriceMap.get(ds) ?? listingBasePrice;
+            const changePct = currentLivePrice > 0
+                ? Math.round(((result.price - currentLivePrice) / currentLivePrice) * 1000) / 10
                 : 0;
+
+            // Only reset proposalStatus to "pending" if the proposed price
+            // actually differs from what was previously proposed — don't clobber
+            // an existing approval with a re-run that produces the same number.
+            const existingDay = existingInventory.find((d) => d.date === ds);
+            const priceChanged = !existingDay ||
+                Math.round((existingDay.proposedPrice ?? 0) * 100) !== Math.round(result.price * 100);
+            const newStatus = priceChanged ? "pending"
+                : (existingDay?.proposalStatus ?? "pending");
 
             bulkOps.push({
                 updateOne: {
@@ -172,12 +186,12 @@ export async function runPipeline(
                             listingId: lid,
                             date: ds,
                             status: bookingCtx.isBooked ? "booked" : "available",
-                            currentPrice: listingBasePrice,
+                            currentPrice: currentLivePrice,
                             basePrice: listingBasePrice,
                             proposedPrice: result.price,
                             changePct,
                             reasoning: result.note,
-                            proposalStatus: "pending",
+                            proposalStatus: newStatus,
                             minStay: result.minimumStay,
                             maxStay: result.maximumStay,
                             closedToArrival: result.closedToArrival === 1,
