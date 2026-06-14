@@ -28,6 +28,11 @@ export function isGuestSendEnabled(): boolean {
   return flag === "true" || flag === "1";
 }
 
+/** Per-request network timeout (ms) and the cap on 429 retry attempts. */
+const REQUEST_TIMEOUT_MS = 20_000;
+const MAX_RATE_LIMIT_RETRIES = 3;
+const MAX_RETRY_WAIT_MS = 30_000;
+
 export class HostawayClient {
   private apiKey: string;
   private rateLimit: HostawayRateLimit | null = null;
@@ -38,14 +43,20 @@ export class HostawayClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    attempt = 0
   ): Promise<T> {
     const HOSTAWAY_API_BASE = requireHostawayApiBaseUrl();
     const url = `${HOSTAWAY_API_BASE}${endpoint}`;
 
+    // Abort the request if Hostaway hangs, so callers never block forever.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
     try {
       const response = await fetch(url, {
         ...options,
+        signal: controller.signal,
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json",
@@ -66,13 +77,25 @@ export class HostawayClient {
         };
       }
 
-      // Handle rate limiting (429)
+      // Handle rate limiting (429) — bounded retries, never unbounded recursion.
       if (response.status === 429) {
+        if (attempt >= MAX_RATE_LIMIT_RETRIES) {
+          throw {
+            status: 429,
+            message: `Rate limited by Hostaway after ${MAX_RATE_LIMIT_RETRIES} retries`,
+          } as HostawayApiError;
+        }
         const retryAfter = response.headers.get("Retry-After");
-        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 2000;
-        console.warn(`Rate limited. Retrying after ${waitTime}ms`);
+        const waitTime = Math.min(
+          retryAfter ? parseInt(retryAfter) * 1000 : 2000 * (attempt + 1),
+          MAX_RETRY_WAIT_MS
+        );
+        console.warn(
+          `Rate limited. Retry ${attempt + 1}/${MAX_RATE_LIMIT_RETRIES} after ${waitTime}ms`
+        );
+        clearTimeout(timeout);
         await new Promise((resolve) => setTimeout(resolve, waitTime));
-        return this.request<T>(endpoint, options);
+        return this.request<T>(endpoint, options, attempt + 1);
       }
 
       // Handle errors
@@ -90,10 +113,15 @@ export class HostawayClient {
       if ((error as HostawayApiError).status) {
         throw error;
       }
+      const isAbort = error instanceof Error && error.name === "AbortError";
       throw {
-        status: 500,
-        message: `Network error: ${(error as Error).message}`,
+        status: isAbort ? 504 : 500,
+        message: isAbort
+          ? `Hostaway request timed out after ${REQUEST_TIMEOUT_MS}ms`
+          : `Network error: ${(error as Error).message}`,
       } as HostawayApiError;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

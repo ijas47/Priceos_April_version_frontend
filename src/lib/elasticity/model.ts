@@ -62,7 +62,10 @@ const COLD_START_DEFAULTS: ElasticityParams = {
  * Returns a value clamped to [1e-15, 1 - 1e-15] to avoid numerical issues.
  */
 export function pBook(price: number, params: ElasticityParams): number {
-  const z = params.beta0 + params.beta1 * (price / params.adr);
+  // Guard against adr === 0 / NaN, which would make the ratio Infinity/NaN
+  // and poison the whole elasticity curve.
+  const adr = params.adr > 0 ? params.adr : 1;
+  const z = params.beta0 + params.beta1 * (price / adr);
   return sigmoid(z);
 }
 

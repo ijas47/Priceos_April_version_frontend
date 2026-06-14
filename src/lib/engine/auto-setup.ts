@@ -362,20 +362,12 @@ async function generateSeasonalRules(
       if (Math.abs(adjPct) < 5) continue;
 
       const label = adjPct > 15 ? "Peak" : adjPct > 0 ? "High" : adjPct < -15 ? "Low" : "Shoulder";
-      const startDate = `${currentYear}-${String(monthNum).padStart(2, "0")}-01`;
-      const endMonth = monthNum === 12 ? 1 : monthNum + 1;
-      const endYear = monthNum === 12 ? currentYear + 1 : currentYear;
-      const endDate = `${endYear}-${String(endMonth).padStart(2, "0")}-01`;
 
-      // Shift end date back by 1 day (last day of the month)
-      const endD = new Date(endDate);
-      endD.setDate(endD.getDate() - 1);
-      const endDateStr = endD.toISOString().split("T")[0];
-
-      // Also generate for next year
+      // Generate the season rule for the current year and the next year so the
+      // 365-day pricing window is always covered (start = 1st of month,
+      // end = last day of that month).
       for (const yearOffset of [0, 1]) {
-        const y = currentYear + yearOffset;
-        const sy = monthNum === 12 && yearOffset === 1 ? y : y;
+        const sy = currentYear + yearOffset;
         const sd = `${sy}-${String(monthNum).padStart(2, "0")}-01`;
         const eM = monthNum === 12 ? 1 : monthNum + 1;
         const eY = monthNum === 12 ? sy + 1 : sy;

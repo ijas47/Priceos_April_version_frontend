@@ -4,9 +4,15 @@
  * Frontend proxy for calling backend-hosted Lyzr agents.
  */
 
+/** Agent calls can be slow (LLM round-trips), but must not hang forever. */
+const AGENT_TIMEOUT_MS = 60_000;
+
 export async function callAIAgent(message: string, agentId: string, params: any = {}) {
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-  
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AGENT_TIMEOUT_MS);
+
   try {
     const res = await fetch(`${API_BASE}/market-setup/agent`, {
       method: "POST",
@@ -16,6 +22,7 @@ export async function callAIAgent(message: string, agentId: string, params: any 
         message: message,
         sessionId: params.session_id,
       }),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
@@ -38,10 +45,17 @@ export async function callAIAgent(message: string, agentId: string, params: any 
       }
     };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to connect to agent service" 
+    const isAbort = error instanceof Error && error.name === "AbortError";
+    return {
+      success: false,
+      error: isAbort
+        ? `Agent service timed out after ${AGENT_TIMEOUT_MS / 1000}s`
+        : error instanceof Error
+          ? error.message
+          : "Failed to connect to agent service",
     };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
