@@ -179,7 +179,7 @@ export function BenchmarkWidget({ listingId, dateFrom, dateTo, refreshKey = 0, c
                             </div>
                             <p className="text-[11px] font-black uppercase tracking-widest text-foreground/70">No benchmark data yet</p>
                             <p className="text-[10px] opacity-60 mt-1 max-w-[200px] mx-auto leading-relaxed">
-                                Click <strong className="text-foreground">Run Aria</strong> to populate competitor rates and positioning insights
+                                <strong className="text-foreground">Ask Aria</strong> a question to populate competitor rates and positioning insights
                             </p>
                         </div>
                     )}

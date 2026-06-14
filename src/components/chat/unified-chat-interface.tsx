@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Send, Loader2, Settings,
+  Send, Loader2,
   PanelRightClose, PanelRightOpen, Building2, MessageSquarePlus,
 } from "lucide-react";
 import {
@@ -432,10 +432,20 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
     fetchMetrics();
   }, [contextType, propertyId, dateRange?.from?.getTime(), dateRange?.to?.getTime(), setGlobalMetrics]);
 
-  const handleMarketSetup = async () => {
-    if (isSettingUp || !dateRange?.from || !dateRange?.to) return;
-
-    // Guardrails are no longer a blocker — Agent 10 will set them if they are 0!
+  /**
+   * Prime Aria for the current property + date scope: scans market events,
+   * benchmarks, and auto-configures guardrails. Returns the new thread
+   * sessionId on success (or null on failure).
+   *
+   * This used to be gated behind an explicit "Run Aria" button. It now runs
+   * lazily on the user's first message (see handleSubmit) so the operator can
+   * just ask a question and get an answer — no separate activation step.
+   *
+   * @param opts.clearMessages  Reset the visible thread (used by "New chat").
+   */
+  const primeAria = async (opts?: { clearMessages?: boolean }): Promise<string | null> => {
+    if (isSettingUp || !dateRange?.from || !dateRange?.to) return null;
+    const clearMessages = opts?.clearMessages ?? false;
 
     setIsSettingUp(true);
     useContextStore.getState().setIsMarketAnalysisRunning(true);
@@ -493,7 +503,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
       const baseScopeId = buildBaseScopeId(propertyId || undefined, newFrom, newTo);
       const newSessionId = generateThreadSessionId(baseScopeId);
 
-      setMessages([]);
+      if (clearMessages) setMessages([]);
       setSessionId(newSessionId);
       writeThreadPref(baseScopeId, newSessionId);
       ariaReadyScopeRef.current = baseScopeId;
@@ -518,7 +528,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
       }
 
       // Start with a clean chat — no trace messages
-      setMessages([]);
+      if (clearMessages) setMessages([]);
 
       toast.success("Aria is Ready", {
         description: `Analyzed ${data.eventsCount} market signals in ${data.duration}. Ask me anything!`,
@@ -538,17 +548,19 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
       // Data injection now happens automatically on the user's first real message
       // in route.ts — no need for a separate grounding call.
 
-
+      return newSessionId;
     } catch (error) {
       console.error("Market Analysis Error:", error);
       toast.error("Analysis Failed", {
         description: error instanceof Error ? error.message : "Marketing Agent could not be reached.",
       });
+      return null;
     } finally {
       setIsSettingUp(false);
       useContextStore.getState().setIsMarketAnalysisRunning(false);
     }
   };
+
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -568,8 +580,23 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
-    setStatusText("Connecting to PriceOS…");
     setShowLiveGraph(true);
+
+    // Lazy activation: the first question auto-primes Aria (market scan +
+    // guardrails) instead of requiring a separate "Run Aria" click. Use the
+    // freshly-returned sessionId locally since React state won't have updated
+    // by the time we call /api/chat below.
+    let effectiveSessionId = sessionId;
+    let effectiveActive = isChatActive;
+    if (!isChatActive && dateRange?.from && dateRange?.to) {
+      setStatusText("Priming Aria — pulling market intel…");
+      const primedSessionId = await primeAria({ clearMessages: false });
+      if (primedSessionId) {
+        effectiveSessionId = primedSessionId;
+        effectiveActive = true;
+      }
+    }
+    setStatusText("Connecting to PriceOS…");
 
     // Reset graph state immediately for new query
     setGraphEvents([]);
@@ -612,8 +639,8 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
             from: format(dateRange.from!, "yyyy-MM-dd"),
             to: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : format(dateRange.from!, "yyyy-MM-dd"),
           } : undefined,
-          isChatActive,
-          sessionId: sessionId,
+          isChatActive: effectiveActive,
+          sessionId: effectiveSessionId,
         }),
       });
 
@@ -953,25 +980,6 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
               />
             </div>
 
-            <TooltipProvider delayDuration={100}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span id="tour-run-aria" tabIndex={0} className="inline-flex">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleMarketSetup}
-                      disabled={isLoading || isSettingUp || !dateRange?.from || !dateRange?.to}
-                      className="h-9 gap-2 bg-background hover:bg-background/80 border-border/50 font-bold shadow-sm"
-                    >
-                      <Settings className={`h-4 w-4 ${isSettingUp ? "animate-spin text-amber-500" : ""}`} />
-                      <span className="hidden sm:inline">{isSettingUp ? "Processing..." : "Run Aria"}</span>
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-              </Tooltip>
-            </TooltipProvider>
-
             {contextType === "property" && propertyId && dateRange?.from && dateRange?.to && (
               <>
                 <Button
@@ -1010,11 +1018,11 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
                 <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">
                   Agent
                 </span>
-                <span className={`text-[10px] font-black tracking-widest leading-none ${isChatActive ? 'text-amber-500' : 'text-muted-foreground/50'}`}>
-                  {isChatActive ? 'ONLINE' : 'OFFLINE'}
+                <span className={`text-[10px] font-black tracking-widest leading-none ${isSettingUp ? 'text-amber-500 animate-pulse' : isChatActive ? 'text-amber-500' : 'text-muted-foreground/70'}`}>
+                  {isSettingUp ? 'PRIMING…' : isChatActive ? 'ONLINE' : 'AUTO'}
                 </span>
               </div>
-              <Switch checked={isChatActive} disabled={true} className="data-[state=checked]:bg-amber-500 scale-90" />
+              <Switch checked={isChatActive || isSettingUp} disabled={true} className="data-[state=checked]:bg-amber-500 scale-90" />
             </div>
 
           </div>
@@ -1369,15 +1377,15 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
                       <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder={!isChatActive ? "Select date range and click 'Run Aria' to start..." : "Ask about pricing, events, market rates..."}
-                        disabled={isLoading || !isChatActive}
+                        placeholder={isSettingUp ? "Priming Aria — pulling market intel…" : "Ask about pricing, events, market rates..."}
+                        disabled={isLoading}
                         className="w-full"
                       />
                     </div>
                   </TooltipTrigger>
                 </Tooltip>
               </TooltipProvider>
-              <Button type="submit" disabled={isLoading || !input.trim() || !isChatActive}>
+              <Button type="submit" disabled={isLoading || !input.trim()}>
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </form>
