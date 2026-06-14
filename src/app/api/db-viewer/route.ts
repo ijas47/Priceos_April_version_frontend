@@ -10,9 +10,17 @@ import {
     HostawayConversation,
     BenchmarkData,
 } from "@/lib/db";
+import { getSession } from "@/lib/auth/server";
 
 export async function GET() {
     try {
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        // Tenant isolation: every query below is scoped to the caller's org.
+        const scope = { orgId: session.orgId };
+
         await connectDB();
 
         const [
@@ -25,14 +33,14 @@ export async function GET() {
             hwConversationsCount,
             benchmarkCount,
         ] = await Promise.all([
-            Listing.countDocuments(),
-            InventoryMaster.countDocuments(),
-            Reservation.countDocuments(),
-            MarketEvent.countDocuments(),
-            ChatMessage.countDocuments(),
-            GuestSummary.countDocuments(),
-            HostawayConversation.countDocuments(),
-            BenchmarkData.countDocuments(),
+            Listing.countDocuments(scope),
+            InventoryMaster.countDocuments(scope),
+            Reservation.countDocuments(scope),
+            MarketEvent.countDocuments(scope),
+            ChatMessage.countDocuments(scope),
+            GuestSummary.countDocuments(scope),
+            HostawayConversation.countDocuments(scope),
+            BenchmarkData.countDocuments(scope),
         ]);
 
         const [
@@ -45,21 +53,23 @@ export async function GET() {
             hwConversationsData,
             benchmarkDataRows,
         ] = await Promise.all([
-            Listing.find().lean(),
-            InventoryMaster.find().sort({ date: -1 }).lean(),
-            Reservation.find().sort({ checkIn: -1 }).lean(),
-            MarketEvent.find().sort({ startDate: -1 }).lean(),
-            ChatMessage.find().sort({ createdAt: -1 }).lean(),
-            GuestSummary.find().sort({ createdAt: -1 }).lean(),
-            HostawayConversation.find().sort({ syncedAt: -1 }).lean(),
-            BenchmarkData.find().sort({ createdAt: -1 }).lean(),
+            Listing.find(scope).lean(),
+            InventoryMaster.find(scope).sort({ date: -1 }).lean(),
+            Reservation.find(scope).sort({ checkIn: -1 }).lean(),
+            MarketEvent.find(scope).sort({ startDate: -1 }).lean(),
+            ChatMessage.find(scope).sort({ createdAt: -1 }).lean(),
+            GuestSummary.find(scope).sort({ createdAt: -1 }).lean(),
+            HostawayConversation.find(scope).sort({ syncedAt: -1 }).lean(),
+            BenchmarkData.find(scope).sort({ createdAt: -1 }).lean(),
         ]);
 
-        // Date ranges from inventory
+        // Date ranges from inventory (org-scoped)
         const inventoryDates = await InventoryMaster.aggregate([
+            { $match: scope },
             { $group: { _id: null, min: { $min: "$date" }, max: { $max: "$date" } } },
         ]);
         const reservationDates = await Reservation.aggregate([
+            { $match: scope },
             { $group: { _id: null, min: { $min: "$checkIn" }, max: { $max: "$checkIn" } } },
         ]);
 

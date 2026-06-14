@@ -1,7 +1,22 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
 const COOKIE_NAME = "priceos-session";
+
+/**
+ * Resolve the HS256 signing key. Mirrors src/lib/auth/jwt.ts getSecret():
+ * a stable dev-only fallback outside production, fail-closed in production.
+ */
+function getSecretKey(): Uint8Array {
+  const secret =
+    process.env.JWT_SECRET ||
+    (process.env.NODE_ENV !== "production" ? "dev-only-insecure-JWT_SECRET" : "");
+  if (!secret) {
+    throw new Error("JWT_SECRET must be set in production");
+  }
+  return new TextEncoder().encode(secret);
+}
 
 const PUBLIC_PATHS = [
   "/login",
@@ -41,37 +56,26 @@ interface JwtPayload {
   onboardingStep?: string;
 }
 
-function decodeToken(token: string): JwtPayload | null {
+/**
+ * Verify the JWT signature AND expiry. Returns the decoded payload only if
+ * the token is cryptographically valid. Algorithm is pinned to HS256 to
+ * prevent "alg: none" / algorithm-confusion forgery.
+ *
+ * NOTE: this replaces the previous decode-only check, which trusted any
+ * structurally-valid token and allowed trivially forged sessions.
+ */
+async function verifyToken(token: string): Promise<JwtPayload | null> {
   try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
-    return JSON.parse(jsonPayload);
-  } catch (err) {
-    console.log("[Middleware] decodeToken error:", err);
+    const { payload } = await jwtVerify(token, getSecretKey(), {
+      algorithms: ["HS256"],
+    });
+    return payload as JwtPayload;
+  } catch {
     return null;
   }
 }
 
-function isValidToken(token: string): boolean {
-  const payload = decodeToken(token);
-  if (!payload) return false;
-  if (payload.exp) {
-    const now = Math.floor(Date.now() / 1000);
-    return payload.exp > now;
-  }
-  return true;
-}
-
-export default function middleware(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Static assets — always allow
@@ -93,8 +97,8 @@ export default function middleware(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
   const token = request.cookies.get(COOKIE_NAME)?.value ?? bearer;
-  const valid = token ? isValidToken(token) : false;
-  const jwtPayload = token ? decodeToken(token) : null;
+  const jwtPayload = token ? await verifyToken(token) : null;
+  const valid = jwtPayload !== null;
   // Legacy tokens (issued before onboardingStep was added) → treat as approved+complete
   const isApproved = jwtPayload?.isApproved ?? true;
   const onboardingStep = jwtPayload?.onboardingStep ?? "complete";

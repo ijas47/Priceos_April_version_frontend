@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB, ChatMessage } from "@/lib/db";
+import { getSession } from "@/lib/auth/server";
 import mongoose from "mongoose";
 
 export async function GET(req: NextRequest) {
+    const auth = await getSession();
+    if (!auth) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const propertyId = searchParams.get("propertyId");
     const sessionId = searchParams.get("sessionId");
@@ -10,7 +16,8 @@ export async function GET(req: NextRequest) {
     try {
         await connectDB();
 
-        const query: Record<string, unknown> = {};
+        // Tenant isolation: only ever return the caller's org chat history.
+        const query: Record<string, unknown> = { orgId: auth.orgId };
 
         if (propertyId && propertyId !== "null") {
             query["context.propertyId"] = new mongoose.Types.ObjectId(propertyId);

@@ -2,6 +2,7 @@ import { connectDB, HostawayConversation } from "@/lib/db";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { guestReplySchema, formatZodErrors } from "@/lib/validators";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
+import { requireScopedSession, handleToolError } from "@/lib/agent-tools/utils";
 
 /**
  * POST /api/v1/guests/reply
@@ -30,13 +31,19 @@ export async function POST(request: Request) {
 
     const { conversationId, text } = validation.data;
 
+    let orgId: string;
+    try {
+        ({ orgId } = await requireScopedSession(request, "v1/guests/reply"));
+    } catch (err) {
+        return handleToolError(err, "v1/guests/reply");
+    }
+
     try {
         await connectDB();
 
-        console.log(`📥 [v1/guests/reply] Saving reply for conversation: ${conversationId}`);
-
-        await HostawayConversation.findOneAndUpdate(
-            { hostawayConversationId: conversationId },
+        // Tenant isolation: only append to a conversation owned by the caller's org.
+        const updated = await HostawayConversation.findOneAndUpdate(
+            { hostawayConversationId: conversationId, orgId },
             {
                 $push: {
                     messages: {
@@ -48,7 +55,9 @@ export async function POST(request: Request) {
             }
         );
 
-        console.log("✅ [v1/guests/reply] Reply saved");
+        if (!updated) {
+            return apiError("NOT_FOUND", "Conversation not found", 404);
+        }
 
         return apiSuccess(
             { message: "Reply saved", conversationId },

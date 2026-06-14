@@ -2,12 +2,20 @@ import { connectDB, Listing } from "@/lib/db";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { getPropertiesSchema, formatZodErrors } from "@/lib/validators";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
+import { requireScopedSession, handleToolError } from "@/lib/agent-tools/utils";
 
 export async function GET(request: Request) {
     const ip = getClientIp(request);
     const rateCheck = checkRateLimit(`properties-list:${ip}`, RATE_LIMITS.standard);
     if (!rateCheck.allowed) {
         return apiError("RATE_LIMITED", `Try again in ${Math.ceil(rateCheck.resetMs / 1000)}s.`, 429);
+    }
+
+    let orgId: string;
+    try {
+        ({ orgId } = await requireScopedSession(request, "v1/properties"));
+    } catch (err) {
+        return handleToolError(err, "v1/properties");
     }
 
     const { searchParams } = new URL(request.url);
@@ -25,7 +33,7 @@ export async function GET(request: Request) {
     try {
         await connectDB();
 
-        const filter: Record<string, unknown> = { isActive: true };
+        const filter: Record<string, unknown> = { isActive: true, orgId };
         if (search) {
             filter.name = { $regex: search, $options: "i" };
         }

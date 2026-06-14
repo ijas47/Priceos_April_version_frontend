@@ -1,4 +1,5 @@
 import { connectDB, Listing } from "@/lib/db";
+import { getSession } from "@/lib/auth/server";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 
@@ -7,10 +8,22 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const { id } = await params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
+        }
         await connectDB();
 
-        const l = await Listing.findById(new mongoose.Types.ObjectId(id)).lean();
+        // Tenant isolation: scope the lookup to the caller's org.
+        const l = await Listing.findOne({
+            _id: new mongoose.Types.ObjectId(id),
+            orgId: session.orgId,
+        }).lean();
         if (!l) {
             return NextResponse.json({ error: "Listing not found" }, { status: 404 });
         }
@@ -44,8 +57,9 @@ export async function GET(
         };
 
         return NextResponse.json(config);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to load config";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -54,7 +68,15 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const { id } = await params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ error: "Invalid listing ID" }, { status: 400 });
+        }
         await connectDB();
 
         const body = await req.json();
@@ -74,9 +96,20 @@ export async function PATCH(
             if (body[key] !== undefined) updateFields[key] = body[key];
         }
 
-        await Listing.findByIdAndUpdate(new mongoose.Types.ObjectId(id), { $set: updateFields });
+        // Tenant isolation: only update a listing the caller owns.
+        const result = await Listing.findOneAndUpdate(
+            { _id: new mongoose.Types.ObjectId(id), orgId: session.orgId },
+            { $set: updateFields }
+        );
+        if (!result) {
+            return NextResponse.json(
+                { error: "Listing not found or access denied" },
+                { status: 404 }
+            );
+        }
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to update config";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

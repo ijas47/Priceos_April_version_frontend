@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB, InventoryMaster } from "@/lib/db";
 import { ChannelSyncAgent } from "@/lib/agents/channel-sync-agent";
+import { getSession } from "@/lib/auth/server";
 import mongoose from "mongoose";
 
 export async function POST(
@@ -8,13 +9,24 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const { id } = await params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return NextResponse.json({ error: "Invalid proposal ID" }, { status: 400 });
+        }
+
         await connectDB();
 
-        // Verify proposal exists
-        const proposal = await InventoryMaster.findById(
-            new mongoose.Types.ObjectId(id)
-        ).lean();
+        // Verify proposal exists AND belongs to the caller's org (tenant isolation)
+        const proposal = await InventoryMaster.findOne({
+            _id: new mongoose.Types.ObjectId(id),
+            orgId: session.orgId,
+        }).lean();
 
         if (!proposal) {
             return NextResponse.json(

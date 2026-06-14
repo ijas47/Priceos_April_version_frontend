@@ -2,6 +2,7 @@ import { connectDB, HostawayConversation } from "@/lib/db";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { getConversationsSchema, formatZodErrors } from "@/lib/validators";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
+import { requireScopedSession, handleToolError } from "@/lib/agent-tools/utils";
 import mongoose from "mongoose";
 
 export async function GET(request: Request) {
@@ -9,6 +10,13 @@ export async function GET(request: Request) {
     const rateCheck = checkRateLimit(`guests-conversations:${ip}`, RATE_LIMITS.standard);
     if (!rateCheck.allowed) {
         return apiError("RATE_LIMITED", `Too many requests. Try again in ${Math.ceil(rateCheck.resetMs / 1000)}s.`, 429);
+    }
+
+    let orgId: string;
+    try {
+        ({ orgId } = await requireScopedSession(request, "v1/guests/conversations"));
+    } catch (err) {
+        return handleToolError(err, "v1/guests/conversations");
     }
 
     const { searchParams } = new URL(request.url);
@@ -31,6 +39,7 @@ export async function GET(request: Request) {
         const listingObjectId = new mongoose.Types.ObjectId(String(listingId));
 
         const rows = await HostawayConversation.find({
+            orgId,
             listingId: listingObjectId,
             dateFrom: { $lte: dateTo },
             dateTo: { $gte: dateFrom },
