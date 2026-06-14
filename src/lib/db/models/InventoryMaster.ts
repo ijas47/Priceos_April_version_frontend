@@ -11,6 +11,10 @@ export interface IInventoryMaster extends Document {
   maxStay?: number;
   closedToArrival?: boolean;
   closedToDeparture?: boolean;
+  // Length-of-stay price factors (1.0 = no discount). Map onto Hostaway's
+  // weeklyPriceFactor / monthlyPriceFactor calendar fields.
+  weeklyPriceFactor?: number;
+  monthlyPriceFactor?: number;
   // Staged change (HITL)
   proposedPrice?: number;
   proposalStatus?: "pending" | "approved" | "rejected" | "pushed";
@@ -40,6 +44,8 @@ const InventorySchema = new Schema<IInventoryMaster>(
     maxStay: { type: Number },
     closedToArrival: { type: Boolean, default: false },
     closedToDeparture: { type: Boolean, default: false },
+    weeklyPriceFactor: { type: Number, default: 1 },
+    monthlyPriceFactor: { type: Number, default: 1 },
     proposedPrice: { type: Number },
     proposalStatus: {
       type: String,

@@ -70,6 +70,13 @@ export interface BookingContext {
     gapLength: number | null; // length of gap this day is part of, null if not in a gap
     gapStart: string | null;
     gapEnd: string | null;
+    /**
+     * Nights until the next booking starts, counting from this day. Used for
+     * PROACTIVE orphan prevention: if a booking is only a few nights away, a
+     * short stay starting here would strand an un-bookable remnant, so we raise
+     * minStay to reach the booking. null = no booking within the look-ahead.
+     */
+    daysUntilNextBooking?: number | null;
 }
 
 /**
@@ -85,6 +92,20 @@ export interface MarketSignal {
     forwardOccupancy?: number;
     /** Market ADR for this exact date from future-pacing */
     pacingAdr?: number;
+    /**
+     * Max event uplift % across all events overlapping this date
+     * (sourced from MarketEvent — SERP Google Events / Ticketmaster /
+     * Eventbrite). e.g. 30 means +30%. Market-agnostic — works for any city.
+     */
+    eventUpliftPct?: number;
+    /** Name of the dominant event driving the uplift (for reasoning) */
+    eventName?: string;
+    /**
+     * Listing-level local demand pressure (0..1): the property's OWN forward
+     * occupancy in a window around this date. This is the booking-velocity
+     * signal — "are my own dates filling up?" — distinct from market occupancy.
+     */
+    localDemand?: number;
 }
 
 export interface DayResult {
@@ -94,6 +115,13 @@ export interface DayResult {
     isAvailable: number; // 0 or 1
     closedToArrival: number; // 0 or 1
     closedToDeparture: number; // 0 or 1
+    /**
+     * Length-of-stay discount factors (1.0 = no discount). These map directly
+     * onto Hostaway's weeklyPriceFactor / monthlyPriceFactor calendar fields,
+     * so LOS pricing is now a real, channel-ready output — not just a note.
+     */
+    weeklyPriceFactor: number; // applied to stays >= 7 nights
+    monthlyPriceFactor: number; // applied to stays >= 28 nights
     note: string;
 }
 
@@ -187,6 +215,38 @@ export function computeDay(
             if (delta !== 0) {
                 notes.push(
                     `[MARKET] Pacing blend ${delta > 0 ? "+" : ""}${delta}% toward market ${target.toFixed(0)} → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
+                );
+            }
+        }
+
+        // Event-aware pricing: demand spike from a real event overlapping this
+        // date (SERP Google Events / Ticketmaster / Eventbrite, cached in
+        // MarketEvent). Applies on top of the seasonal/market anchor.
+        if (marketSignal.eventUpliftPct && marketSignal.eventUpliftPct > 0) {
+            const before = basePrice;
+            basePrice = basePrice * (1 + marketSignal.eventUpliftPct / 100);
+            notes.push(
+                `[EVENT] +${marketSignal.eventUpliftPct}% "${marketSignal.eventName ?? "event"}" → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
+            );
+        }
+
+        // Booking velocity: the property's OWN forward occupancy around this
+        // date. If our own calendar is filling fast, push price up (capture
+        // willingness-to-pay); if it's empty and the date is near, ease price
+        // down to stimulate bookings. Bounded and lead-time aware.
+        if (typeof marketSignal.localDemand === "number") {
+            const ld = marketSignal.localDemand;
+            let paceMult = 1.0;
+            if (ld >= 0.7) paceMult = 1.08;
+            else if (ld >= 0.5) paceMult = 1.04;
+            else if (ld <= 0.15 && leadTime <= 30) paceMult = 0.94;
+            else if (ld <= 0.3 && leadTime <= 14) paceMult = 0.97;
+
+            if (paceMult !== 1.0) {
+                const before = basePrice;
+                basePrice = basePrice * paceMult;
+                notes.push(
+                    `[PACE] ${(paceMult * 100 - 100).toFixed(0)}% (own occupancy ${(ld * 100).toFixed(0)}% near this date) → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
                 );
             }
         }
@@ -334,23 +394,36 @@ export function computeDay(
         }
     }
 
-    // LOS discounts
-    const losRules = allRules
-        .filter(
-            (r) =>
-                r.enabled &&
-                r.ruleType === "LOS_DISCOUNT" &&
-                r.minNights !== null
-        )
-        .sort((a, b) => (b.minNights ?? 0) - (a.minNights ?? 0));
+    // ── Length-of-stay pricing ────────────────────────────────────────────────
+    // Convert LOS_DISCOUNT rules into concrete weekly/monthly price factors
+    // (1.0 = no discount). A -10% rule at 7+ nights → 0.90 weekly factor.
+    // These ride along with every day so the channel can price longer stays
+    // correctly — true LOS pricing, not just an informational note.
+    let weeklyPriceFactor = 1;
+    let monthlyPriceFactor = 1;
+    const losRules = allRules.filter(
+        (r) => r.enabled && r.ruleType === "LOS_DISCOUNT" && r.minNights !== null
+    );
 
     if (losRules.length > 0) {
-        // Store LOS discount info in note for reference; actual LOS discount
-        // is applied at booking time, but we note available discounts
-        const losNotes = losRules.map(
-            (r) => `${r.minNights}+ nights: ${r.priceAdjPct}%`
+        for (const r of losRules) {
+            if (r.priceAdjPct === null || r.minNights === null) continue;
+            // priceAdjPct is negative for a discount (e.g. -10) → factor 0.90
+            const factor = 1 + r.priceAdjPct / 100;
+            if (factor <= 0 || factor > 1) continue; // ignore nonsensical values
+            if (r.minNights >= 28) {
+                monthlyPriceFactor = Math.min(monthlyPriceFactor, factor);
+            } else if (r.minNights >= 7) {
+                weeklyPriceFactor = Math.min(weeklyPriceFactor, factor);
+            }
+        }
+        // A configured monthly discount should never be shallower than the
+        // weekly one — longer stays earn at least the weekly break.
+        monthlyPriceFactor = Math.min(monthlyPriceFactor, weeklyPriceFactor);
+
+        notes.push(
+            `[LOS] weekly x${weeklyPriceFactor.toFixed(2)} (${Math.round((weeklyPriceFactor - 1) * 100)}%), monthly x${monthlyPriceFactor.toFixed(2)} (${Math.round((monthlyPriceFactor - 1) * 100)}%)`
         );
-        notes.push(`[LOS_DISCOUNT] Available: ${losNotes.join(", ")}`);
     }
 
     // ── Pass 3 — Inventory (Gap Logic) ────────────────────────────────────────
@@ -393,6 +466,29 @@ export function computeDay(
         }
     }
 
+    // Proactive orphan prevention: a booking is only a few nights ahead and no
+    // booking sits before this day, so it isn't a "gap" between two bookings —
+    // but a short stay starting here would still strand an un-bookable remnant
+    // up against the next booking. Raise minStay to reach the booking so the
+    // night can only be sold as part of a full, contiguous stay.
+    if (
+        config.gapPreventionEnabled &&
+        isAvailable === 1 &&
+        !bookingCtx.isBooked &&
+        bookingCtx.gapLength === null &&
+        typeof bookingCtx.daysUntilNextBooking === "number" &&
+        bookingCtx.daysUntilNextBooking !== null &&
+        bookingCtx.daysUntilNextBooking > 0 &&
+        bookingCtx.daysUntilNextBooking < config.minFragmentThreshold
+    ) {
+        if (minimumStay < bookingCtx.daysUntilNextBooking) {
+            minimumStay = bookingCtx.daysUntilNextBooking;
+            notes.push(
+                `[GAP_PREVENTION] minStay raised to ${minimumStay} — next booking is ${bookingCtx.daysUntilNextBooking} night(s) out; prevents stranding a sub-${config.minFragmentThreshold}-night orphan`
+            );
+        }
+    }
+
     // ── Pass 4 — Integrity ────────────────────────────────────────────────────
 
     // A floor/ceiling of 0 means "not configured" — treat as no constraint.
@@ -429,6 +525,8 @@ export function computeDay(
         isAvailable,
         closedToArrival,
         closedToDeparture,
+        weeklyPriceFactor,
+        monthlyPriceFactor,
         note: notes.join("; "),
     };
 }

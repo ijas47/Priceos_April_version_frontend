@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB, Listing } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 import { runPipeline } from "@/lib/engine/pipeline";
+import { createEventIntelligenceAgent } from "@/lib/agents/event-intelligence-agent";
 import mongoose from "mongoose";
 
 /**
@@ -46,6 +47,20 @@ export async function POST(req: NextRequest) {
         { error: "No listings found for this organization" },
         { status: 404 }
       );
+    }
+
+    // Refresh real events from verified feeds (SERP Google Events /
+    // Ticketmaster / Eventbrite) before pricing so event-aware uplifts are
+    // current. Best-effort and read-only (external reads + MarketEvent cache);
+    // never blocks a pricing run on event-source failures.
+    let eventsCached = 0;
+    try {
+      const evt = await createEventIntelligenceAgent().fetchAndCacheEvents(orgId, {
+        daysAhead: 180,
+      });
+      eventsCached = evt.cached;
+    } catch (err) {
+      console.error("[engine/run-all] event refresh failed:", (err as Error).message);
     }
 
     type RunResult = {
@@ -103,6 +118,7 @@ export async function POST(req: NextRequest) {
         succeeded,
         failed,
         totalDaysChanged,
+        eventsCached,
       },
       results,
     });

@@ -1,4 +1,4 @@
-import { connectDB, Listing, PricingRule, InventoryMaster, EngineRun } from "@/lib/db";
+import { connectDB, Listing, PricingRule, InventoryMaster, EngineRun, MarketEvent } from "@/lib/db";
 import mongoose from "mongoose";
 import {
     computeDay,
@@ -131,6 +131,12 @@ export async function runPipeline(
 
         const gapMap = computeGaps(today, endDate, bookingMap);
 
+        // Proactive orphan prevention: nights until the next booking, per date.
+        const nextBookingMap = computeDaysUntilNextBooking(today, 365, bookingMap);
+
+        // Booking velocity: the listing's OWN forward occupancy around each date.
+        const localDemandMap = computeLocalDemand(today, 365, bookingMap);
+
         // ── Market signals from Airbtics (no-op if key/data missing) ──────────
         const marketSignals = await buildMarketSignals(
             listing.city || "Dubai",
@@ -139,6 +145,10 @@ export async function runPipeline(
             today,
             365
         );
+
+        // ── Event signals from MarketEvent (SERP / Ticketmaster / Eventbrite) ──
+        // Org-scoped so one tenant's events never price another's calendar.
+        const eventSignals = await buildEventSignals(listing.orgId, today, 365);
 
         let daysChanged = 0;
         const bulkOps: any[] = [];
@@ -155,9 +165,24 @@ export async function runPipeline(
                 gapLength: gap?.gapLength ?? null,
                 gapStart: gap?.gapStart ?? null,
                 gapEnd: gap?.gapEnd ?? null,
+                daysUntilNextBooking: nextBookingMap.get(ds) ?? null,
             };
 
-            const signal = marketSignals.get(ds);
+            // Merge market (Airbtics) + event (MarketEvent) + booking-velocity
+            // signals into a single per-date MarketSignal for the waterfall.
+            const mkt = marketSignals.get(ds);
+            const evt = eventSignals.get(ds);
+            const localDemand = localDemandMap.get(ds);
+            let signal: MarketSignal | undefined = mkt ? { ...mkt } : undefined;
+            if (evt || localDemand !== undefined) {
+                signal = { ...(signal ?? {}) };
+                if (evt) {
+                    signal.eventUpliftPct = evt.uplift;
+                    signal.eventName = evt.name;
+                }
+                if (localDemand !== undefined) signal.localDemand = localDemand;
+            }
+
             const result = computeDay(currentDate, today, config, allRules, bookingCtx, signal);
 
             // Compare proposed vs the current live price on this date
@@ -196,6 +221,8 @@ export async function runPipeline(
                             maxStay: result.maximumStay,
                             closedToArrival: result.closedToArrival === 1,
                             closedToDeparture: result.closedToDeparture === 1,
+                            weeklyPriceFactor: result.weeklyPriceFactor,
+                            monthlyPriceFactor: result.monthlyPriceFactor,
                             batchId: startedAt.toISOString(),
                         },
                     },
@@ -284,6 +311,120 @@ async function buildMarketSignals(
         }
     } catch (err) {
         console.error("[buildMarketSignals]", (err as Error).message);
+    }
+    return map;
+}
+
+const EVENT_IMPACT_DEFAULT_UPLIFT: Record<string, number> = {
+    high: 25,
+    medium: 12,
+    low: 5,
+};
+
+/**
+ * Build a date→event uplift map from the MarketEvent collection. Events are
+ * populated from verified feeds (SERP Google Events / Ticketmaster /
+ * Eventbrite) by the Event Intelligence agent. When several events overlap a
+ * date, the strongest uplift wins. Market-agnostic: works for any city.
+ */
+async function buildEventSignals(
+    orgId: mongoose.Types.ObjectId,
+    startDate: Date,
+    days: number
+): Promise<Map<string, { uplift: number; name: string }>> {
+    const map = new Map<string, { uplift: number; name: string }>();
+    try {
+        const windowEnd = dateStr(addDays(startDate, days));
+        const events = await MarketEvent.find({
+            orgId,
+            isActive: true,
+            startDate: { $lte: windowEnd },
+            endDate: { $gte: dateStr(startDate) },
+        }).lean();
+        if (events.length === 0) return map;
+
+        for (let i = 0; i < days; i++) {
+            const ds = dateStr(addDays(startDate, i));
+            let best = 0;
+            let name = "";
+            for (const e of events) {
+                if (ds < e.startDate || ds > e.endDate) continue;
+                const uplift =
+                    e.upliftPct && e.upliftPct > 0
+                        ? e.upliftPct
+                        : EVENT_IMPACT_DEFAULT_UPLIFT[e.impactLevel] ?? 0;
+                if (uplift > best) {
+                    best = uplift;
+                    name = e.name;
+                }
+            }
+            if (best > 0) map.set(ds, { uplift: best, name });
+        }
+    } catch (err) {
+        console.error("[buildEventSignals]", (err as Error).message);
+    }
+    return map;
+}
+
+/**
+ * For each available date, the number of nights until the next booking starts.
+ * Drives proactive orphan-gap prevention in the waterfall.
+ */
+function computeDaysUntilNextBooking(
+    startDate: Date,
+    days: number,
+    bookingMap: Map<string, { isBooked: boolean }>
+): Map<string, number> {
+    const booked: boolean[] = [];
+    const dates: string[] = [];
+    for (let i = 0; i < days; i++) {
+        const ds = dateStr(addDays(startDate, i));
+        dates.push(ds);
+        booked.push(bookingMap.get(ds)?.isBooked ?? false);
+    }
+
+    const map = new Map<string, number>();
+    // Walk backwards tracking the index of the nearest upcoming booked night.
+    let nextBookedIdx = -1;
+    for (let i = days - 1; i >= 0; i--) {
+        if (booked[i]) {
+            nextBookedIdx = i;
+            continue;
+        }
+        if (nextBookedIdx > i) {
+            map.set(dates[i], nextBookedIdx - i);
+        }
+    }
+    return map;
+}
+
+/**
+ * Booking velocity proxy: for each date, the property's OWN occupancy in a
+ * symmetric window around it (±WINDOW nights). High = our calendar is filling
+ * up near this date; low = soft demand. Distinct from market occupancy.
+ */
+function computeLocalDemand(
+    startDate: Date,
+    days: number,
+    bookingMap: Map<string, { isBooked: boolean }>
+): Map<string, number> {
+    const WINDOW = 10;
+    const booked: number[] = [];
+    const dates: string[] = [];
+    for (let i = 0; i < days; i++) {
+        const ds = dateStr(addDays(startDate, i));
+        dates.push(ds);
+        booked.push(bookingMap.get(ds)?.isBooked ? 1 : 0);
+    }
+
+    const map = new Map<string, number>();
+    for (let i = 0; i < days; i++) {
+        const lo = Math.max(0, i - WINDOW);
+        const hi = Math.min(days - 1, i + WINDOW);
+        let sum = 0;
+        for (let j = lo; j <= hi; j++) sum += booked[j];
+        const occ = sum / (hi - lo + 1);
+        map.set(dates[i], occ);
     }
     return map;
 }
