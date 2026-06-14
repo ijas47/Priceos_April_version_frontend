@@ -318,7 +318,7 @@ take vacation. *(Plan prices below are placeholders — replace with real number
 
 ## 10. About
 
-**H1:** Built in Dubai, where pricing a rental wrong costs you a fortune — and a great year is made
+**H1:** Built, where pricing a rental wrong costs you a fortune — and a great year is made
 on twenty event weekends.
 
 **Body:**

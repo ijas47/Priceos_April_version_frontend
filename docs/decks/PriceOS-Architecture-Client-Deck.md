@@ -1,5 +1,5 @@
 # PriceOS — Architecture & Technical Deep Dive
-## AI-Powered Revenue Management for Dubai Short-Term Rentals
+## AI-Powered Revenue Management Short-Term Rentals
 
 > 🗄️ **Historical client deck.** For current architecture see
 > [`../ARCHITECTURE.md`](../ARCHITECTURE.md) and for positioning/Q&A see
@@ -40,7 +40,7 @@
 
 ## 1. Executive Summary
 
-PriceOS is an **AI-powered revenue management platform** designed specifically for Dubai's short-term rental (STR) market. It helps property managers and revenue managers:
+PriceOS is an **AI-powered revenue management platform** designed specifically for the short-term rental (STR) market. It helps property managers and revenue managers:
 
 - **Analyze** their property's occupancy, booking velocity, and revenue performance
 - **Research** competitor rates and market events in real-time via internet search
@@ -124,7 +124,7 @@ PriceOS operates in **two distinct phases**. Understanding this separation is ke
 ### Phase 1: Setup (Triggered by "Run Aria" Button)
 
 **What happens:** Two internet-search agents run in parallel, scanning the web for:
-- Upcoming events in Dubai (Art Dubai, Ramadan, GITEX, etc.)
+- Upcoming events (Art Dubai, Ramadan, GITEX, etc.)
 - Real competitor pricing from Airbnb, Booking.com, and other OTAs
 
 **Duration:** ~15 seconds

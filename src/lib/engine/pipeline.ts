@@ -135,8 +135,8 @@ export async function runPipeline(
 
         // ── Market signals from Airbtics (no-op if key/data missing) ──────────
         const marketSignals = await buildMarketSignals(
-            listing.city || "Dubai",
-            listing.countryCode || "AE",
+            listing.city || "",
+            listing.countryCode || "",
             String(listing.bedroomsNumber || 2),
             today,
             365
@@ -155,7 +155,7 @@ export async function runPipeline(
         // RECORDED as a shadow value; the rulebook price still drives proposals.
         const elasticityParams = await buildElasticityParams(lid, today, listingBasePrice);
         const elasticityEnabled = isElasticityPricingEnabled();
-        const marketTemplate = (listing.city || "dubai").toLowerCase();
+        const marketTemplate = (listing.city || "").toLowerCase();
         const demandByMonth = new Map<number, number>();
         const demandModifierFor = (month: number): number => {
             const cached = demandByMonth.get(month);
@@ -360,7 +360,7 @@ async function buildElasticityParams(
             price,
             booked: day.status !== "available",
             leadTimeDays: 0,
-            isWeekend: dow === 5 || dow === 6, // Fri/Sat (Dubai weekend)
+            isWeekend: dow === 6 || dow === 0, // Sat/Sun (model feature only; not market-specific)
         });
     }
 

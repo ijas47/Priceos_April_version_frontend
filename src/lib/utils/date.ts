@@ -86,19 +86,18 @@ export function getSeasonMultiplier(date: Date): number {
 }
 
 /**
- * Check if date is part of Dubai weekend (Thu-Fri)
+ * Check if date falls on a Thu–Fri weekend (used by some regional markets).
  */
-export function isDubaiWeekend(date: Date): boolean {
+export function isThuFriWeekend(date: Date): boolean {
   const dayOfWeek = getDay(date);
   return dayOfWeek === 4 || dayOfWeek === 5; // Thursday and Friday
 }
 
 /**
- * Get day-of-week multiplier for Dubai market
- * Thu-Fri premium (1.15x), other days standard (1.0x)
+ * Get day-of-week multiplier (weekend premium 1.15x, other days 1.0x).
  */
 export function getDayOfWeekMultiplier(date: Date): number {
-  return isDubaiWeekend(date) ? 1.15 : 1.0;
+  return isThuFriWeekend(date) ? 1.15 : 1.0;
 }
 
 /**

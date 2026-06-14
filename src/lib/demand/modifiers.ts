@@ -141,6 +141,19 @@ export function computeDemandModifier(
 ): DemandModifierResult {
   const markets = getSourceMarkets(marketTemplate);
 
+  // Geography-agnostic default: if we have no source-market profile for this
+  // destination, return a NEUTRAL modifier (no demand bias) rather than
+  // borrowing another market's profile.
+  if (markets.length === 0) {
+    return {
+      compositeDemandIndex: 100,
+      priceModifierPct: 0,
+      activeSignals: [],
+      dominantMarket: "",
+      breakdown: [],
+    };
+  }
+
   // Build a lookup of signals by market id
   const signalMap = new Map<string, DemandSignal>();
   for (const s of signals) {

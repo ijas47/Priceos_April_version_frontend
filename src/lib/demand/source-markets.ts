@@ -1,12 +1,13 @@
 /**
  * Source Market Definitions
  *
- * Each destination city has a set of tourist source markets that drive demand.
- * These definitions encode baseline weights, seasonal peaks, booking behavior,
- * and price sensitivity for each origin market.
+ * Each destination market has a set of tourist source markets that drive
+ * demand. These definitions encode baseline weights, seasonal peaks, booking
+ * behavior, and price sensitivity for each origin market.
  *
- * Data is informed by Dubai Tourism (DTCM) visitor statistics and
- * short-term rental industry benchmarks.
+ * The system is geography-agnostic: register a profile per destination market
+ * in SOURCE_MARKET_REGISTRY. Unknown markets resolve to a neutral (no-bias)
+ * demand modifier rather than borrowing another market's profile.
  */
 
 export interface SourceMarket {
@@ -272,9 +273,10 @@ export const SOURCE_MARKET_REGISTRY: Record<string, SourceMarket[]> = {
 };
 
 /**
- * Look up the source-market list for a destination.
- * Falls back to Dubai if the template is unknown.
+ * Look up the source-market list for a destination. Returns an empty list for
+ * unknown markets (callers treat that as a neutral, no-bias demand modifier) —
+ * the product is not tied to any single geography.
  */
 export function getSourceMarkets(marketTemplate: string): SourceMarket[] {
-  return SOURCE_MARKET_REGISTRY[marketTemplate.toLowerCase()] ?? DUBAI_SOURCE_MARKETS;
+  return SOURCE_MARKET_REGISTRY[(marketTemplate || "").toLowerCase()] ?? [];
 }

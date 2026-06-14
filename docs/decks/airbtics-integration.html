@@ -208,13 +208,13 @@
   <div class="section">
     <div class="section-label">01 · The Problem We're Solving</div>
     <h2 class="section-title">What PriceOS Is Missing Today</h2>
-    <p class="section-desc">The current pricing engine in <code>pipeline.ts</code> and <code>waterfall.ts</code> is rule-based with internal occupancy data. It completely lacks external market intelligence — meaning it has no idea what competitors are charging, what the market demand is, or what's happening in Dubai that could justify repricing tonight.</p>
+    <p class="section-desc">The current pricing engine in <code>pipeline.ts</code> and <code>waterfall.ts</code> is rule-based with internal occupancy data. It completely lacks external market intelligence — meaning it has no idea what competitors are charging, what the market demand is, or what's happening that could justify repricing tonight.</p>
 
     <div class="card-grid">
       <div class="card">
         <div class="priority-bar"><div class="dot dot-red"></div><span style="font-size:11px;color:var(--red);font-weight:700;">CRITICAL GAP</span></div>
         <h4>No Market Benchmarks</h4>
-        <p>The pricing engine uses the host's own historical average as the base price. It has zero knowledge that comparable 2BR properties in Dubai Marina are averaging AED 850/night this month.</p>
+        <p>The pricing engine uses the host's own historical average as the base price. It has zero knowledge that comparable 2BR properties Marina are averaging AED 850/night this month.</p>
       </div>
       <div class="card">
         <div class="priority-bar"><div class="dot dot-red"></div><span style="font-size:11px;color:var(--red);font-weight:700;">CRITICAL GAP</span></div>
@@ -229,7 +229,7 @@
       <div class="card">
         <div class="priority-bar"><div class="dot dot-amber"></div><span style="font-size:11px;color:var(--amber);font-weight:700;">MAJOR GAP</span></div>
         <h4>Perplexity Gives Text, Not Numbers</h4>
-        <p>The existing <code>InternetResearchAgent</code> uses Perplexity to search "What are current rates in Dubai Marina?" — and gets a paragraph of text back. Airbtics gives actual structured numbers: <strong>p50 ADR = AED 842</strong>.</p>
+        <p>The existing <code>InternetResearchAgent</code> uses Perplexity to search "What are current rates Marina?" — and gets a paragraph of text back. Airbtics gives actual structured numbers: <strong>p50 ADR = AED 842</strong>.</p>
       </div>
     </div>
   </div>
@@ -333,10 +333,10 @@
         </div>
         <div class="step-content">
           <h4 style="color:var(--blue);">Step 1 — Engine Triggered for a Listing</h4>
-          <p>The pipeline runs for a listing (e.g. a 2-bedroom in Dubai Marina). The first thing it does is resolve the <strong>market context</strong> — today this is empty; after integration, it fetches from the cache or calls Airbtics.</p>
+          <p>The pipeline runs for a listing (e.g. a 2-bedroom Marina). The first thing it does is resolve the <strong>market context</strong> — today this is empty; after integration, it fetches from the cache or calls Airbtics.</p>
           <ul>
             <li>Reads listing config (bedrooms, orgId, priceFloor, etc.) from MongoDB</li>
-            <li>Determines the Dubai market ID (static, stored once in MarketTemplate)</li>
+            <li>Determines the your market ID (static, stored once in MarketTemplate)</li>
             <li>Checks the cache for existing market data before any API call</li>
           </ul>
         </div>
@@ -350,7 +350,7 @@
         </div>
         <div class="step-content">
           <h4 style="color:var(--cyan);">Step 2 — Fetch Airbtics Quantitative Data (with cache)</h4>
-          <p>Airbtics is called <strong>only if cache is stale</strong>. Three endpoints are called in parallel for Dubai 2BR:</p>
+          <p>Airbtics is called <strong>only if cache is stale</strong>. Three endpoints are called in parallel 2BR:</p>
           <ul>
             <li><strong>Market Summary</strong> → real LTM ADR, occupancy %, active listing count</li>
             <li><strong>Monthly Metrics</strong> → 12-month history of ADR percentiles (p25/p50/p75)</li>
@@ -451,7 +451,7 @@
     <!-- Step 0: One-time setup -->
     <div class="callout amber" style="margin-bottom:24px;">
       <div class="callout-title">🔧 One-Time Setup (Run Once, Store in DB)</div>
-      <p>Before anything, we need Dubai's <code>market_id</code>. Call <code>GET /markets/search?query=Dubai&amp;country_code=AE</code> once, get the ID (e.g. <code>2286</code>), and store it in the <code>MarketTemplate</code> MongoDB document as <code>airbticsMarketId</code>. Every subsequent call uses this ID — no repeat lookups needed.</p>
+      <p>Before anything, we need the local <code>market_id</code>. Call <code>GET /markets/search?query=Dubai&amp;country_code=AE</code> once, get the ID (e.g. <code>2286</code>), and store it in the <code>MarketTemplate</code> MongoDB document as <code>airbticsMarketId</code>. Every subsequent call uses this ID — no repeat lookups needed.</p>
     </div>
 
     <!-- Endpoint 1 -->
@@ -502,7 +502,7 @@
       </div>
       <div class="endpoint-body">
         <h5>Monthly Metrics — Seasonality Intelligence</h5>
-        <p>Returns a month-by-month array of market performance metrics for the past 12 months. This is how we understand Dubai's seasonal pricing rhythm — when are peak months, shoulder months, and low season?</p>
+        <p>Returns a month-by-month array of market performance metrics for the past 12 months. This is how we understand the local seasonal pricing rhythm — when are peak months, shoulder months, and low season?</p>
         <div class="endpoint-grid">
           <div class="endpoint-section">
             <h6>Response data we use</h6>
@@ -540,7 +540,7 @@
       </div>
       <div class="endpoint-body">
         <h5>Future Pacing — The Most Powerful Endpoint</h5>
-        <p>Returns forward-looking occupancy and ADR for each upcoming check-in date in the market. This is the gold standard for demand forecasting — instead of guessing, you see exactly how booked-up the Dubai market is for any specific future date, right now.</p>
+        <p>Returns forward-looking occupancy and ADR for each upcoming check-in date in the market. This is the gold standard for demand forecasting — instead of guessing, you see exactly how booked-up the your market is for any specific future date, right now.</p>
         <div class="endpoint-grid">
           <div class="endpoint-section">
             <h6>Response data we use</h6>
@@ -682,7 +682,7 @@
   <!-- ═══ SECTION 5: COST BREAKDOWN ════════════════════════════════════════ -->
   <div class="section">
     <div class="section-label">05 · Cost &amp; Credits</div>
-    <h2 class="section-title">API Pricing &amp; Cost Estimation for Dubai</h2>
+    <h2 class="section-title">API Pricing &amp; Cost Estimation</h2>
     <p class="section-desc">Airbtics uses a <strong>pay-as-you-go credit model</strong>. You top up credits and endpoints consume credits per call. The exact credit amount per endpoint is visible in your Airbtics dashboard after registration. The data refreshes weekly (every Thursday). Here's a realistic cost model for PriceOS using Dubai as the primary market.</p>
 
     <div class="callout amber" style="margin-bottom:28px;">
@@ -707,7 +707,7 @@
             <td><span class="cost-badge cost-free">🆓 Near-Free</span></td>
             <td>Forever (static)</td>
             <td>1 call total (one-time setup)</td>
-            <td>Dubai's market_id never changes</td>
+            <td>the local market_id never changes</td>
           </tr>
           <tr>
             <td><code>/markets/summary</code></td>
@@ -757,7 +757,7 @@
 
     <div class="callout green" style="margin-top:20px;">
       <div class="callout-title">💰 Realistic Monthly Cost Estimate</div>
-      <p>With aggressive caching: the steady-state daily volume is <strong>under 60 API calls per day</strong> shared across the entire Dubai market (all listings with the same bedroom type share the same cached response). At standard Airbtics pay-as-you-go rates, this is roughly <strong>$5–$30/month</strong> depending on credit tiers — a negligible cost that unlocks enterprise-grade market intelligence for all users.</p>
+      <p>With aggressive caching: the steady-state daily volume is <strong>under 60 API calls per day</strong> shared across the entire your market (all listings with the same bedroom type share the same cached response). At standard Airbtics pay-as-you-go rates, this is roughly <strong>$5–$30/month</strong> depending on credit tiers — a negligible cost that unlocks enterprise-grade market intelligence for all users.</p>
     </div>
   </div>
 
@@ -766,7 +766,7 @@
   <!-- ═══ SECTION 6: WHAT DATA MATTERS MOST ════════════════════════════════ -->
   <div class="section">
     <div class="section-label">06 · Data Value Ranking</div>
-    <h2 class="section-title">What Actually Matters for Dubai Pricing</h2>
+    <h2 class="section-title">What Actually Matters Pricing</h2>
     <p class="section-desc">Not all data is equally valuable. Here's a ranked breakdown of what each data type does for PriceOS and why Dubai specifically benefits from it.</p>
 
     <div class="card-grid-2">
@@ -776,7 +776,7 @@
           <span style="font-size:11px;color:var(--red);font-weight:700;">HIGHEST VALUE</span>
         </div>
         <h4>Future Pacing Data</h4>
-        <p style="margin-bottom:12px;"><strong>What it is:</strong> Per-date forward occupancy and ADR for the Dubai market.</p>
+        <p style="margin-bottom:12px;"><strong>What it is:</strong> Per-date forward occupancy and ADR for the your market.</p>
         <p style="margin-bottom:12px;"><strong>Why it's #1:</strong> Dubai is an event-driven market — GITEX, Art Dubai, Formula E, New Year's Eve, Eid holidays — demand swings are enormous and predictable from pacing data weeks in advance.</p>
         <p><strong>Impact:</strong> Enables the engine to surge prices 2–6 weeks ahead of peak dates before the host even knows there's an event. This is where the most revenue is captured.</p>
       </div>
@@ -787,7 +787,7 @@
           <span style="font-size:11px;color:var(--amber);font-weight:700;">VERY HIGH VALUE</span>
         </div>
         <h4>Market ADR Percentiles (p50 / p75)</h4>
-        <p style="margin-bottom:12px;"><strong>What it is:</strong> Monthly ADR at the 25th, 50th, 75th, and 90th percentile for Dubai by bedroom count.</p>
+        <p style="margin-bottom:12px;"><strong>What it is:</strong> Monthly ADR at the 25th, 50th, 75th, and 90th percentile by bedroom count.</p>
         <p style="margin-bottom:12px;"><strong>Why it matters:</strong> Many Dubai hosts are chronic underpricers. Knowing that their 2BR in JBR should command AED 900/night (p50) when they're charging AED 620 is an immediate, measurable improvement.</p>
         <p><strong>Impact:</strong> This single data point often justifies a 15–30% rate increase for underpriced hosts — the core value proposition of PriceOS.</p>
       </div>
@@ -798,7 +798,7 @@
           <span style="font-size:11px;color:var(--blue);font-weight:700;">HIGH VALUE</span>
         </div>
         <h4>Dubai Events (Perplexity)</h4>
-        <p style="margin-bottom:12px;"><strong>What it is:</strong> Structured findings from Perplexity about upcoming events in Dubai: conferences, festivals, public holidays.</p>
+        <p style="margin-bottom:12px;"><strong>What it is:</strong> Structured findings from Perplexity about upcoming events: conferences, festivals, public holidays.</p>
         <p style="margin-bottom:12px;"><strong>Why it matters:</strong> Pacing data shows demand is high, but Perplexity explains <em>why</em>. This context makes the proposal reasoning meaningful to hosts.</p>
         <p><strong>Impact:</strong> Host sees: "GITEX Technology Week (Oct 14–18, 87,000 attendees) — +22% rate recommended." This is trusted, actionable, and explainable.</p>
       </div>
@@ -1009,7 +1009,7 @@
 <span class="cm">// CHANGE: searchMarketRates() is now deprecated internally</span>
 <span class="cm">// It now calls Airbtics instead of Perplexity</span>
 <span class="kw">async</span> <span class="fn">searchMarketRates</span>(area: <span class="tp">string</span>, bedrooms: <span class="tp">number</span>): <span class="tp">Promise</span>&lt;<span class="tp">ResearchResult</span>&gt; {
-  <span class="cm">// ❌ BEFORE: called Perplexity for "current Airbnb rates in Dubai Marina"</span>
+  <span class="cm">// ❌ BEFORE: called Perplexity for "current Airbnb rates Marina"</span>
   <span class="cm">// ✅ AFTER: defer to Airbtics client — real structured numbers</span>
   <span class="kw">const</span> marketId = process.env.<span class="prop">AIRBTICS_DUBAI_MARKET_ID</span> ?? <span class="str">'2286'</span>;
   <span class="kw">const</span> data = <span class="kw">await</span> airbtics.<span class="fn">getMarketSummary</span>(marketId, <span class="fn">String</span>(bedrooms));

@@ -15,9 +15,15 @@ agents · Hostaway (read-only by default) · Vercel.
 
 ---
 
+> **Positioning:** PriceOS is a **global, market-agnostic** revenue platform.
+> The UAE is the **launch market** (V1) — the engine, market templates, and PMS
+> integration are parameterized per market, not tied to any single geography.
+> The path to scale is the Hostaway (and other PMS) marketplace, post first
+> live client.
+
 ## The Market
 
-Dubai's short-term rental market moves fast and punishes slow operators.
+The short-term rental market moves fast and punishes slow operators.
 
 **The value chain:**
 
@@ -27,7 +33,7 @@ Owner → Property Manager (solo / agency) → Channels (Airbnb, Booking.com, VR
 
 Property managers (PMs) sit at the center — they control pricing, availability, and revenue for owners who expect results. A typical PM manages **15–50+ units** across multiple OTA channels, each with its own calendar, pricing rules, and booking patterns.
 
-### Why Dubai
+### Why UAE first (launch market)
 
 - **25,000+ active STR listings** — 3x growth from ~9K in 2022
 - **22M+ international visitors/year** — diverse demand from Europe, GCC, South Asia, CIS
@@ -46,7 +52,7 @@ PMs juggle a mix of:
 - **WhatsApp groups** for competitor intel and market chatter
 - **Gut feel** refined over years of local experience
 
-The existing pricing tools are **global-first, not Dubai-native**. They optimize for algorithm breadth across 100+ markets, not depth in one. None of them own execution — they suggest a price, and the PM still has to decide, push, verify, and fix.
+The existing pricing tools are **global-first, not market-native**. They optimize for algorithm breadth across 100+ markets, not depth in one. None of them own execution — they suggest a price, and the PM still has to decide, push, verify, and fix.
 
 ---
 
@@ -104,11 +110,11 @@ Instead of scattering decisions across tools and tabs, PriceOS aggregates all si
 | Ops | View activity, manage reservations |
 | Read-only | Audit and visibility only |
 
-**ICP:** Property managers running 15–50 units, revenue management agencies, in-house revenue managers — all Dubai-based for V1.
+**ICP:** Property managers running 15–50 units, revenue management agencies, in-house revenue managers — UAE-based for the V1 launch market (the product is market-agnostic and expands globally).
 
 ## Initial Market
 
-**Dubai** — short-term holiday rentals, launching during high season (Nov–Apr).
+**UAE (launch market)** — short-term holiday rentals, launching during high season (Nov–Apr).
 
 High season provides maximum signal density: events stack up, demand swings are sharp, and the cost of stale pricing is highest. If PriceOS proves value here, quieter months and other markets follow naturally.
 
@@ -130,7 +136,7 @@ High season provides maximum signal density: events stack up, demand swings are 
 - Portfolio-level optimization across owners
 - Owner-facing analytics or reporting
 - Listing content optimization
-- Multi-city / multi-country support
+- Aggressive multi-market rollout (the architecture supports it; UAE is the V1 operational focus)
 
 ---
 
@@ -160,7 +166,7 @@ Single authority for orchestration, user interaction, approvals, execution trigg
 | # | Agent | Role | Key Constraint |
 |---|-------|------|----------------|
 | 1 | Data Aggregator | Pulls calendars, prices, bookings, LOS from PMS | Source of truth; flags stale data |
-| 2 | Event Intelligence | Monitors Dubai event sources, outputs event signals | Conservative confidence scoring; no pricing decisions |
+| 2 | Event Intelligence | Monitors local event sources, outputs event signals | Conservative confidence scoring; no pricing decisions |
 | 3 | Competitor Scanner | Observes competitor availability and pricing | Detects compression/release; outputs signals only |
 | 4 | Pricing Optimizer | Classifies dates, proposes price changes with reasoning | Within owner limits; assigns risk level per change |
 | 5 | Gap & LOS Optimizer | Detects orphan nights, short gaps, LOS mismatches | LOS-first fixes; discounts only as last resort |
@@ -173,7 +179,7 @@ Single authority for orchestration, user interaction, approvals, execution trigg
 
 ```
 1. Data Aggregator    → refreshes PMS data (calendars, prices, bookings)
-2. Event Intelligence → updates event signals (Dubai-specific)
+2. Event Intelligence → updates event signals (market-specific)
 3. Competitor Scanner → updates market signals (compression, releases)
 4. Pricing Optimizer  → proposes price actions with risk levels
 5. Gap & LOS Optimizer → proposes gap fixes and LOS adjustments

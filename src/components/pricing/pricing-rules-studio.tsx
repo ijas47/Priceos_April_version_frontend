@@ -390,7 +390,7 @@ function GuardrailsTab({
       <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 space-y-4">
         <div>
           <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Weekend Minimum Price</h3>
-          <p className="text-[11px] text-text-tertiary mt-0.5">KB Tier 2 #8 — Floor price applied only on selected weekend nights (e.g. Thu/Fri in Dubai)</p>
+          <p className="text-[11px] text-text-tertiary mt-0.5">KB Tier 2 #8 — Floor price applied only on selected weekend nights (e.g. Thu/Fri)</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>

@@ -11,7 +11,7 @@
 
 ## 1. What PriceOS is
 
-An AI revenue-management platform for Dubai short-term-rental operators. It
+An AI revenue-management platform for short-term-rental operators. It
 aggregates market/booking/event signals, runs a pricing engine that produces
 per-night **price proposals**, lets a human approve them, and (when explicitly
 enabled) syncs approved prices to the PMS. It also provides a guest-messaging

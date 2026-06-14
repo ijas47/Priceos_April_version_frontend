@@ -64,7 +64,7 @@ It analyses your calendar, checks how quickly bookings are filling up, and compa
 A list of **Proposals** — suggested price changes, shown to you in the *Pricing → Proposals* tab.
 
 **Example of what it might say:**
-> *"It's 5 days before December 20th in Dubai and only 3 nights are still open. Comparable properties are 40% more expensive. I suggest raising the price by +18% for those nights."*
+> *"It's 5 days before December 20th and only 3 nights are still open. Comparable properties are 40% more expensive. I suggest raising the price by +18% for those nights."*
 
 **Who approves it?**
 You do. The agent shows you the suggestion and explains the reason. You can approve, reject, or modify the price before it goes live on Airbnb/Booking.com.
@@ -123,7 +123,7 @@ You. When you approve an Insight, it tells the Pricing Agent to generate Proposa
 This agent doesn't generate ideas — it **checks** every price change before it goes live and asks one question: *"Is this safe?"*
 
 Every market has rules embedded in it:
-- Maximum price change per day: e.g., 15% for Dubai
+- Maximum price change per day: e.g., 15%
 - Auto-approve only if change is less than 5%
 - Never go below the absolute floor price set by the owner
 

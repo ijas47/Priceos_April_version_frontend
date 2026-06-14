@@ -39,7 +39,7 @@ function getSeasonMultiplier(date: Date): number {
 
 function getDayOfWeekMultiplier(date: Date): number {
   const dayOfWeek = getDay(date);
-  // Thu (4) and Fri (5) are weekend in Dubai - premium rates
+  // Thu (4) and Fri (5) are weekend - premium rates
   return dayOfWeek === 4 || dayOfWeek === 5 ? 1.15 : 1.0;
 }
 

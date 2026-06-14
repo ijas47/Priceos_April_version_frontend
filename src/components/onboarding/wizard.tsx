@@ -183,7 +183,7 @@ function StepConnect({ onNext }: { onNext: (listings: Listing[]) => void }) {
           </div>
           <div>
             <p className="text-sm font-bold text-white">Try Demo Mode</p>
-            <p className="text-xs text-zinc-500">8 sample Dubai properties — no API key needed</p>
+            <p className="text-xs text-zinc-500">8 sample properties — no API key needed</p>
           </div>
         </div>
         <button

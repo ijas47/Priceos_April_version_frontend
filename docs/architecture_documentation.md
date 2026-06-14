@@ -76,7 +76,7 @@ When a property and date range are selected, the UI silently fires a `fetch('/ap
 LLMs cannot simultaneously query the internet and return chat responses quickly. PriceOS solves this using an asynchronous *Setup* gate.
 
 1. **Trigger**: When the user clicks the "Setup" button, `app/api/market-setup/route.ts` fires.
-2. **Agent 6 (Marketing Agent)**: The backend invokes the standalone Marketing Agent (which uses Perplexity Sonar for live internet access). It is prompted to find all major events, holidays, and live competitor prices for the selected dates in Dubai.
+2. **Agent 6 (Marketing Agent)**: The backend invokes the standalone Marketing Agent (which uses Perplexity Sonar for live internet access). It is prompted to find all major events, holidays, and live competitor prices for the selected dates.
 3. **Database Caching**: The API receives the agent's JSON, **wipes any previous temporary market data** for those dates, and writes the new intel directly into the `activity_timeline` Postgres table (tagged as `type = 'market_event'`).
 4. **UI Activation**: Once the database is populated, the Chat interface visually unlocks (flips to "ON"), permitting the user to type messages.
 

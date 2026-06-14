@@ -13,7 +13,7 @@ export async function GET() {
       }, { status: 500 });
     }
 
-    const testQuestion = "What should I price a 1-bedroom apartment in Dubai Marina for next weekend? It has sea view, pool, and gym.";
+    const testQuestion = "What should I price a 1-bedroom apartment Marina for next weekend? It has sea view, pool, and gym.";
 
     console.log('🧪 Testing CRO Agent...');
     console.log('Question:', testQuestion);

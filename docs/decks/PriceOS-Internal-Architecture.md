@@ -15,7 +15,7 @@
 
 ## 1. Executive Overview
 
-PriceOS is an **AI-powered dynamic pricing copilot** purpose-built for Dubai short-term rental (STR) property managers. It replaces manual pricing spreadsheets with an autonomous multi-agent system that scans the internet for market intelligence, benchmarks competitors in real-time, and generates daily pricing recommendations — all through a conversational interface called **Aria**.
+PriceOS is an **AI-powered dynamic pricing copilot** purpose-built for short-term rental (STR) property managers. It replaces manual pricing spreadsheets with an autonomous multi-agent system that scans the internet for market intelligence, benchmarks competitors in real-time, and generates daily pricing recommendations — all through a conversational interface called **Aria**.
 
 ### What Makes PriceOS Unique
 | Capability | Traditional Tools | PriceOS |

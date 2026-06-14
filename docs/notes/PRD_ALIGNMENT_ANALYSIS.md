@@ -7,7 +7,7 @@
 
 ## What the PRD Says (Executive Summary)
 
-The PRD is a **strategic repositioning document** — it moves PriceOS from a Dubai-first, Dubai-hardcoded product to a **global STR platform** where Dubai remains the best-proven market template, not the only market.
+The PRD is a **strategic repositioning document** — it moves PriceOS from a UAE-first, Dubai-hardcoded product to a **global STR platform** where Dubai remains the best-proven market template, not the only market.
 
 ### What Must Stay the Same (per PRD)
 - 9-agent Manager–Worker architecture (CRO + Workers)
@@ -27,7 +27,7 @@ The PRD is a **strategic repositioning document** — it moves PriceOS from a Du
 | CRO Agent prompts | Dubai-specific language, AED, DTCM refs | Market-neutral + localisation layer from system_state |
 | Guardrail defaults | ±15% fixed (Dubai calibrated) | Market-calibrated: UAE ±15%, Europe ±10%, US Leisure ±20% |
 | Onboarding | Dubai zone names pre-filled | Market selection step → template loading |
-| Copy/Positioning | "Built for Dubai" everywhere | "Autonomous Pricing for Short-Term Rentals" globally |
+| Copy/Positioning | "Built" everywhere | "Autonomous Pricing for Short-Term Rentals" globally |
 | PMS list | 5 UAE-focused PMS | Global: + Ownerrez, Track, VRBO/Escapia, Smoobu, BookingSync |
 | Compliance flags | DTCM only | 6 market flags: Barcelona, Amsterdam, Paris, NYC, London, Dubai |
 
@@ -182,7 +182,7 @@ organizations table: Add market_code foreign key
 ---
 
 ### Mismatch 6: CRO Agent Prompts Dubai-Specific ❌ HIGH
-**PRD says:** CRO (Manager Agent) must use market-neutral language. All Dubai/AED/DTCM references go into the Dubai market template only. CRO must pull market context from `system_state`.
+**PRD says:** CRO (Manager Agent) must use market-neutral language. All Dubai/AED/DTCM references go into the your market template only. CRO must pull market context from `system_state`.
 
 **Reality:**
 - V1: All agent prompts hardcoded with Dubai zones, AED, DTCM
@@ -331,7 +331,7 @@ This unblocks everything else.
 
 30. Build multi-step onboarding wizard (Stage 0 → 1 → 2)
 31. Replace all Dubai/AED-specific UI copy with market-neutral equivalents
-32. Add "Proven in Dubai. Built for everywhere." messaging
+32. Add "Proven. Built for everywhere." messaging
 33. Property Selector: show market alongside property name
 34. Demo Banner: show market template status
 

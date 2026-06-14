@@ -13,7 +13,7 @@
 ## 0. The 90-second pitch (memorize this first)
 
 **One-liner:**
-> "PriceOS is an AI revenue manager for short-term-rental operators in Dubai. It
+> "PriceOS is an AI revenue manager for short-term-rental operators. It
 > watches the market, your bookings, and local events, and proposes the
 > profit-maximizing nightly price for every property and every night — and a
 > human approves before anything goes live."
@@ -28,7 +28,7 @@
    engine with a learned price-elasticity model. The AI is the brain; the
    guardrails are non-negotiable code."
 3. *For an investor:* "Dynamic pricing is proven to lift STR revenue
-   double-digits. We're building the Dubai-native, agent-driven, explainable
+   double-digits. We're building the market-native, agent-driven, explainable
    version with a human-in-the-loop trust model — starting where the incumbents
    are weakest: local event intelligence and operator trust."
 
@@ -42,19 +42,19 @@
 ## 1. Product fundamentals
 
 **Q: What is PriceOS, in plain terms?**
-A revenue-management platform for Dubai short-term-rental (Airbnb/Booking.com)
+A revenue-management platform for short-term-rental (Airbnb/Booking.com)
 property managers. It ingests signals (market rates, your calendar/bookings,
 local events), runs a pricing engine, and surfaces **price proposals** that a
 human reviews and approves. Approved changes can sync to the property management
 system (PMS). It also includes a guest-messaging inbox with AI-drafted replies.
 
 **Q: Who is it for?**
-Property managers / co-hosts running roughly **15–50 units** in Dubai. Big
+Property managers / co-hosts running roughly **15–50 units**. Big
 enough to feel the pain of manual pricing, small enough not to have an in-house
 revenue team.
 
 **Q: Why now?**
-- Dubai STR supply is exploding; static or gut-feel pricing is leaving revenue
+- STR supply is exploding; static or gut-feel pricing is leaving revenue
   on the table.
 - LLMs/agents finally make it possible to *explain* pricing decisions
   conversationally, which is what unlocks operator trust.
@@ -148,7 +148,7 @@ optimization layer**, always inside **hard guardrails**:
 **Layer B — revenue optimization (learned):** *(newly wired in & live)*
 - A **price-elasticity model** learns from each property's own booking history:
   "at price X this night books with probability P." It's logistic regression fit
-  with IRLS (the standard method), cold-started with sensible Dubai defaults when
+  with IRLS (the standard method), cold-started with sensible market defaults when
   data is thin.
 - It then finds the **revenue-maximizing price** (price × booking-probability)
   via golden-section search, within the floor/ceiling band.
@@ -170,7 +170,7 @@ to be dormant — we connected it). And it's honest: it only diverges from the
 rulebook as it earns confidence from real booking data.
 
 **Q: What if the model has no data (brand-new property)?**
-It cold-starts on conservative Dubai market defaults and leans on the
+It cold-starts on conservative your market defaults and leans on the
 deterministic rulebook (model weight ≈ 0). It degrades gracefully — never wild.
 
 **Q: Can you explain why it set a given price?**
@@ -212,7 +212,7 @@ until a human sends them.
 
 **Q: What does it integrate with?**
 The PMS layer is abstracted (a clean `PMSClient` interface) with three modes:
-- **mock** — demo data (5 Dubai properties) for trials,
+- **mock** — demo data (sample properties) for trials,
 - **db** — our MongoDB as source of truth,
 - **live** — Hostaway API. **[Partially built]** Reads work in read-only mode;
   live price *push* is gated and being validated against live credentials.
@@ -280,7 +280,7 @@ covers 80% of the risk.
 Those are strong, established dynamic-pricing tools. We're differentiating on:
 1. **Agentic + conversational** — you *talk to* Aria and get explained
    reasoning, not just a price grid.
-2. **Dubai-native event intelligence** — local events, holidays, seasonality
+2. **market-native event intelligence** — local events, holidays, seasonality
    tuned for this market, where global tools are generic.
 3. **Explainability + trust model** — written reasons per night, risk
    classification, human-in-the-loop, read-only-by-default.
@@ -289,12 +289,12 @@ Those are strong, established dynamic-pricing tools. We're differentiating on:
 
 **Q: Honestly, what do they do better than you today?**
 They have scale, more PMS integrations, years of data, and proven track records.
-We're earlier. Our bet is the Dubai focus + agentic explainability + trust wins
+We're earlier. Our bet is the market-native focus + agentic explainability + trust wins
 the operators those tools under-serve. *(Saying this honestly builds credibility.)*
 
 **Q: What's the moat?**
 Per-tenant booking-history data compounding into better elasticity models, the
-Dubai event/market knowledge base, and the trust/workflow lock-in once an
+local event/market knowledge base, and the trust/workflow lock-in once an
 operator runs daily cycles through Aria.
 
 ---
@@ -331,7 +331,7 @@ trusting it. Run a pilot, measure RevPAR/occupancy lift on their own units.
   before enabling. Read-only today by intention.
 - **Elasticity model:** live and guardrailed, but most valuable once each
   property has a few months of booking history; early on it's conservative.
-- **Markets:** Dubai-first (and a London source-market profile exists). Other
+- **Markets:** UAE-first (and a London source-market profile exists). Other
   cities are roadmap.
 - **One known item:** the live-chat WebSocket currently exposes a shared agent
   key to the browser — slated to move to a scoped token. *(Only mention if asked
@@ -373,13 +373,13 @@ Only you. Strict per-tenant `orgId` isolation on every query, signed-session
 auth, secrets in env only. Your booking history trains only your model.
 
 **"What's your unfair advantage?"**
-Dubai-native market/event intelligence + an agentic, explainable, trust-first
+market-native market/event intelligence + an agentic, explainable, trust-first
 workflow + compounding per-operator data. We win the operators black-box tools
 can't earn trust with.
 
-**"Can it work outside Dubai?"**
+**"Can it work in any market?"**
 The architecture is market-agnostic (a London profile already exists); we're
-Dubai-first by focus, not by limitation. Expansion is a data/config exercise.
+UAE-first by focus, not by limitation. Expansion is a data/config exercise.
 
 **"How accurate is the pricing?"**
 It's bounded and explainable rather than magically precise. It improves with each
@@ -397,7 +397,7 @@ security hardening behind it. *(Own this — it's a strength, not a weakness.)*
 
 | Thing | The number / fact |
 |------|-------------------|
-| Target customer | Dubai STR operators, **15–50 units** |
+| Target customer | STR operators, **15–50 units** |
 | Pricing horizon | **365 days** computed per run |
 | Pricing passes | **4-pass waterfall** + optimization + guardrails |
 | Seasonality multiplier cap | **0.5×–2.0×** |

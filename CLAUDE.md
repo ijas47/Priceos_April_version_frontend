@@ -21,10 +21,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**PriceOS** is an AI-powered revenue management system for Dubai short-term rental property managers. It aggregates signals (events, competitor data, bookings), proposes pricing actions with risk classification, and executes approved changes through property management systems (PMS).
+**PriceOS** is an AI-powered revenue management system for short-term rental property managers. It aggregates signals (events, competitor data, bookings), proposes pricing actions with risk classification, and executes approved changes through property management systems (PMS).
 
 **Founder:** Ijas Abdulla
-**Target:** Property managers running 15-50 units in Dubai
+**Target:** Property managers running multiple units
 **V1 Scope:** Daily pricing execution, gap optimization, event-aware pricing, PMS verification
 
 ## Architecture

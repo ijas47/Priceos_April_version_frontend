@@ -138,8 +138,8 @@ export async function runAutoSetup(input: AutoSetupInput): Promise<AutoSetupResu
     bedroomGroups.set(br, group);
   }
 
-  const city = listings[0]?.city || "Dubai";
-  const countryCode = listings[0]?.countryCode || "AE";
+  const city = listings[0]?.city || "";
+  const countryCode = listings[0]?.countryCode || "";
   const marketId = await resolveMarketId(city, countryCode);
 
   const marketContexts = new Map<number, Awaited<ReturnType<typeof getMarketContext>>>();
@@ -479,9 +479,9 @@ function resolveWeekendDays(weekendDef: string): number[] {
   // 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
   switch (weekendDef) {
     case "thu_fri":
-      return [3, 4]; // Dubai
+      return [3, 4]; // some Middle East markets
     case "fri_sat":
-      return [4, 5]; // Most Western markets
+      return [4, 5]; // common Western pattern
     case "sat_sun":
       return [5, 6];
     default:

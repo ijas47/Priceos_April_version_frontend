@@ -7,7 +7,7 @@ const features = [
     icon: Brain,
     title: 'AI Pricing Engine',
     description:
-      'Neural networks trained on Dubai market data. Real-time competitor analysis. Dynamic demand forecasting.',
+      'Neural networks trained on your market data. Real-time competitor analysis. Dynamic demand forecasting.',
     gradient: 'from-violet-500 to-purple-600',
     bgGradient: 'from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20',
     size: 'large',

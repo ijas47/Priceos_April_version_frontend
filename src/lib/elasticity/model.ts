@@ -8,7 +8,7 @@
  * equivalent to Newton-Raphson on the log-likelihood of logistic regression.
  *
  * Cold start: when fewer than 30 observations are available the fitted
- * coefficients are blended with sensible Dubai STR market defaults so the
+ * coefficients are blended with sensible short-term-rental market defaults so the
  * model degrades gracefully rather than producing wild estimates.
  */
 
@@ -33,7 +33,7 @@ const MAX_ITER = 100;
 const CONVERGENCE_EPS = 1e-8;
 
 /**
- * Default cold-start parameters calibrated for Dubai STR market.
+ * Default cold-start parameters calibrated for a generic short-term-rental market.
  *
  * At price = ADR the probability is:
  *   sigmoid(2.5 + (-3.8) * 1) = sigmoid(-1.3) ~ 0.21

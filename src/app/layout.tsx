@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "PriceOS - AI Revenue Management",
-  description: "AI-powered revenue management for Dubai short-term rentals",
+  description: "AI-powered revenue management for short-term rentals",
   icons: {
     icon: "/favicon.png",
     apple: "/apple-icon.png",
