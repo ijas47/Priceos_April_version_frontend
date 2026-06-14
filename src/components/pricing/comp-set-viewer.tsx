@@ -43,14 +43,31 @@ export function CompSetViewer({ listings }: { listings: Listing[] }) {
     if (!selectedId) return;
     setLoading(true);
     setError(null);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
     try {
-      const res = await fetch(`/api/agent-tools/market-overview?listingId=${selectedId}`);
+      const res = await fetch(`/api/agent-tools/market-overview?listingId=${selectedId}`, {
+        signal: ctrl.signal,
+      });
       if (!res.ok) throw new Error("Failed to fetch market data");
       const data = await res.json();
-      setOverview(data);
+      const flat: MarketOverview = {
+        adr: data.adr ?? data.summary?.adr ?? 0,
+        revpar: data.revpar ?? data.summary?.revpar ?? 0,
+        occupancy: data.occupancy ?? data.summary?.occupancy ?? 0,
+        activeListings: data.activeListings ?? data.summary?.activeListings ?? 0,
+        monthlyMetrics: data.monthlyMetrics ?? [],
+        futurePacing: data.futurePacing ?? [],
+        fetchedAt: data.fetchedAt ?? new Date().toISOString(),
+      };
+      setOverview(flat);
     } catch (err) {
-      setError((err as Error).message);
+      const msg = (err as Error).name === "AbortError"
+        ? "Request timed out — check Airbtics API key"
+        : (err as Error).message;
+      setError(msg);
     } finally {
+      clearTimeout(timer);
       setLoading(false);
     }
   }, [selectedId]);

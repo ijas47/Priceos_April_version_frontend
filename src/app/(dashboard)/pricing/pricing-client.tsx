@@ -50,7 +50,7 @@ export interface FlowStage {
   label: string;
   status: "pending" | "active" | "done" | "failed";
 }
-import { readSSEStream } from "@/lib/chat/sse-reader";
+// readSSEStream removed — engine/run-all returns JSON, not SSE
 import { SUPPORT_AGENT_STREAM_EVENT, SupportAgentStreamEventPayload } from "@/lib/chat/inference-events";
 import { useLyzrAgentEvents } from "@/hooks/use-lyzr-agent-events";
 
@@ -281,87 +281,67 @@ export function PricingClient({
     const currentSessionId = `pricing-run-${Date.now()}`;
     setGraphSessionId(currentSessionId);
 
+    const emitEvent = (msg: string, type: string, status: string) => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent<SupportAgentStreamEventPayload>(SUPPORT_AGENT_STREAM_EVENT, {
+          detail: {
+            sessionId: currentSessionId,
+            event: { timestamp: new Date().toISOString(), event_type: type, message: msg, status } as any,
+          }
+        }));
+      }
+    };
+
+    const advanceStage = (stageId: string) => {
+      setGraphStages(prev => prev.map(s => {
+        if (s.id === stageId) return { ...s, status: "active" };
+        const currentIndex = GRAPH_STAGES.findIndex(gs => gs.id === stageId);
+        const stageIndex = GRAPH_STAGES.findIndex(gs => gs.id === s.id);
+        if (stageIndex < currentIndex) return { ...s, status: "done" };
+        return s;
+      }));
+    };
+
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/engine/run-all?orgId=${orgId}`, {
+      advanceStage("routing");
+      emitEvent("Starting pricing engine…", "agent_thinking", "active");
+
+      const response = await fetch(`/api/engine/run-all`, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("priceos-token")}`,
-        }
+        headers: { "Content-Type": "application/json" },
       });
 
-      if (!response.ok) throw new Error("Failed to start engine run");
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to run engine");
+      }
 
-      await readSSEStream(
-        response,
-        (msg, step) => {
-          if (step) {
-            setGraphStages(prev => prev.map(s => {
-              if (s.id === step) return { ...s, status: "active" };
-              const currentIndex = GRAPH_STAGES.findIndex(gs => gs.id === step);
-              const stageIndex = GRAPH_STAGES.findIndex(gs => gs.id === s.id);
-              if (stageIndex < currentIndex) return { ...s, status: "done" };
-              return s;
-            }));
-          }
+      advanceStage("analyzing");
+      emitEvent("Analyzing listings…", "agent_thinking", "active");
 
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent<SupportAgentStreamEventPayload>(SUPPORT_AGENT_STREAM_EVENT, {
-              detail: {
-                sessionId: currentSessionId,
-                event: {
-                  timestamp: new Date().toISOString(),
-                  event_type: "agent_thinking",
-                  message: msg,
-                  thinking: msg,
-                  status: "active"
-                }
-              }
-            }));
-          }
-        },
-        (data) => {
-          setGraphStages(prev => prev.map(s => ({ ...s, status: "done" })));
-          toast.success("Proposal generation complete — refreshing list…");
-          
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent<SupportAgentStreamEventPayload>(SUPPORT_AGENT_STREAM_EVENT, {
-              detail: {
-                sessionId: currentSessionId,
-                event: {
-                  timestamp: new Date().toISOString(),
-                  event_type: "output_generated",
-                  message: "Generation Complete",
-                  status: "done"
-                }
-              }
-            }));
-          }
+      const data = await response.json();
 
-          setTimeout(() => {
-            setIsGraphProcessing(false);
-            setShowLiveGraph(false);
-            router.refresh();
-          }, 1500);
-        },
-        (err) => {
-          setIsGenerating(false);
-          setIsGraphProcessing(false);
-          toast.error(err);
-        },
-        (evt) => {
-          // Bridging for tool calls and thinking logs
-          if (evt.type === "agent_event" && evt.payload && typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent<SupportAgentStreamEventPayload>(SUPPORT_AGENT_STREAM_EVENT, {
-              detail: {
-                sessionId: currentSessionId,
-                event: evt.payload
-              }
-            }));
-          }
-        }
-      );
+      advanceStage("validating");
+      emitEvent(`Processed ${data.summary?.totalListings ?? 0} listings`, "agent_thinking", "active");
+
+      advanceStage("generating");
+
+      setGraphStages(prev => prev.map(s => ({ ...s, status: "done" })));
+      const changed = data.summary?.totalDaysChanged ?? 0;
+      const succeeded = data.summary?.succeeded ?? 0;
+      toast.success("Proposal generation complete", {
+        description: `${succeeded} properties · ${changed} day-level proposals created`,
+      });
+      emitEvent("Generation Complete", "output_generated", "done");
+
+      setTimeout(() => {
+        setIsGraphProcessing(false);
+        setShowLiveGraph(false);
+        router.refresh();
+      }, 1500);
     } catch (error) {
-      toast.error("Network error — please try again.");
+      toast.error((error as Error).message || "Network error — please try again.");
+      setIsGraphProcessing(false);
     } finally {
       setIsGenerating(false);
     }

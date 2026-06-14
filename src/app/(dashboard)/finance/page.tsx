@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth/server";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { FinanceDashboard } from "./finance-dashboard";
 import { format, addDays } from "date-fns";
 import { apiBase } from "@/lib/api/absolute-url";
@@ -16,13 +17,16 @@ export default async function FinancePage() {
   if (!session?.orgId) redirect("/login");
 
   const { orgId } = session;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("priceos-session")?.value;
+  const authHeaders = { Authorization: `Bearer ${token}` };
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const plus30Str = format(addDays(new Date(), 30), "yyyy-MM-dd");
 
   const [listingsRes, portfolioRes, proposalsRes] = await Promise.allSettled([
-    fetch(`${API}/listings/?orgId=${orgId}`, { next: { revalidate: 60 } }),
-    fetch(`${API}/agent-tools/portfolio-overview?orgId=${orgId}&dateFrom=${todayStr}&dateTo=${plus30Str}`, { next: { revalidate: 60 } }),
-    fetch(`${API}/v1/revenue/proposals?orgId=${orgId}&status=approved`, { next: { revalidate: 60 } }),
+    fetch(`${API}/listings/?orgId=${orgId}`, { headers: authHeaders, cache: "no-store" }),
+    fetch(`${API}/agent-tools/portfolio-overview?orgId=${orgId}&dateFrom=${todayStr}&dateTo=${plus30Str}`, { headers: authHeaders, cache: "no-store" }),
+    fetch(`${API}/v1/revenue/proposals?orgId=${orgId}&status=approved`, { headers: authHeaders, cache: "no-store" }),
   ]);
 
   const listings =

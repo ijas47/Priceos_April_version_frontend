@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth/server";
 import { UnifiedChatInterface } from "@/components/chat/unified-chat-interface";
 import { ContextPanel } from "@/components/layout/context-panel";
@@ -21,9 +22,11 @@ export default async function AgentChatPage() {
   let propertiesWithMetrics: PropertyWithMetrics[] = [];
   try {
     const backend = await apiBase();
+    const cookieStore = await cookies();
+    const token = cookieStore.get("priceos-session")?.value;
     const res = await fetch(
       `${backend}/properties?orgId=${encodeURIComponent(orgObjectId)}`,
-      { next: { revalidate: 120 } }
+      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
     );
     const data = await res.json().catch(() => ({} as Record<string, unknown>));
     const properties = Array.isArray(data?.properties) ? data.properties : [];

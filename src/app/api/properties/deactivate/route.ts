@@ -7,7 +7,8 @@ export async function POST(req: NextRequest) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { id } = await req.json();
+    const body = await req.json();
+    const id = body.id || body.listingId;
     if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
     await connectDB();

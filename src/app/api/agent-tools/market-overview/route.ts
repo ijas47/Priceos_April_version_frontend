@@ -41,6 +41,12 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
             marketId,
             bedrooms,
+            // Flat fields the CompSetViewer component expects
+            adr: ctx.p50ADR,
+            occupancy: ctx.occupancy != null ? Math.round(ctx.occupancy * 100) : null,
+            revpar: ctx.p50ADR && ctx.occupancy ? Math.round(ctx.p50ADR * ctx.occupancy) : null,
+            activeListings: ctx.activeListings,
+            // Also keep nested summary for any other consumers
             summary: {
                 adr: ctx.p50ADR,
                 occupancy: ctx.occupancy != null ? Math.round(ctx.occupancy * 100) : null,
@@ -48,6 +54,8 @@ export async function GET(req: NextRequest) {
                 activeListings: ctx.activeListings,
             },
             monthlyMetrics: ctx.monthlyMetrics,
+            futurePacing: ctx.futurePacing ?? [],
+            fetchedAt: new Date().toISOString(),
             selectedMonth: monthlyData,
             source: ctx.errors.length === 0 ? "airbtics" : "partial",
             errors: ctx.errors,
