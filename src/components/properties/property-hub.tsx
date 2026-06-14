@@ -10,6 +10,7 @@ import { CalendarGrid } from "@/components/calendar/calendar-grid";
 import { SeasonalRulesTable } from "@/components/properties/seasonal-rules-table";
 import { AutopilotSettings } from "@/components/engine/autopilot-settings";
 import { RulesTable } from "@/components/engine/rules-table";
+import { CompPicker } from "@/components/pricing/comp-picker";
 import { ExpenseTable } from "@/components/finance/expense-table";
 import { OwnerStatementCard } from "@/components/finance/owner-statement-card";
 import { BookingsDataTable } from "@/components/bookings/bookings-data-table";
@@ -102,6 +103,7 @@ export function PropertyHub({
             Bookings ({reservations.length})
           </TabsTrigger>
           <TabsTrigger value="rules">Rules ({rules.length})</TabsTrigger>
+          <TabsTrigger value="comps">Comps</TabsTrigger>
           <TabsTrigger value="financials">Financials</TabsTrigger>
         </TabsList>
 
@@ -144,6 +146,10 @@ export function PropertyHub({
           <AutopilotSettings listingId={String(property.id)} />
           <Separator />
           <RulesTable listingId={String(property.id)} />
+        </TabsContent>
+
+        <TabsContent value="comps" className="mt-4">
+          <CompPicker listingId={String(property.id)} />
         </TabsContent>
 
         <TabsContent value="financials" className="mt-4 space-y-6">

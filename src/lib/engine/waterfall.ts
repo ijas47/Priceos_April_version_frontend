@@ -106,6 +106,13 @@ export interface MarketSignal {
      * signal — "are my own dates filling up?" — distinct from market occupancy.
      */
     localDemand?: number;
+    /**
+     * Trailing ADR of the host's hand-picked competitor set (median of the
+     * selected comps' last-twelve-month ADR). Anchors the base price toward
+     * what the chosen comparable listings actually earn before any seasonal,
+     * event, or pacing adjustments are layered on.
+     */
+    compAnchorAdr?: number;
 }
 
 export interface DayResult {
@@ -163,6 +170,22 @@ export function computeDay(
 
     let basePrice = config.basePrice;
     if (marketSignal) {
+        // Comp anchor: pull the base toward the host's selected comp set's
+        // trailing ADR before any seasonal/event/pacing layering. Blended
+        // (not replaced) so the host's own base price still carries weight.
+        if (marketSignal.compAnchorAdr && marketSignal.compAnchorAdr > 0) {
+            const target = marketSignal.compAnchorAdr;
+            const blendWeight = 0.3;
+            const before = basePrice;
+            basePrice = basePrice * (1 - blendWeight) + target * blendWeight;
+            const delta = Math.round(((basePrice - before) / before) * 100);
+            if (delta !== 0) {
+                notes.push(
+                    `[COMP] Anchor blend ${delta > 0 ? "+" : ""}${delta}% toward comp-set ADR ${target.toFixed(0)} → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
+                );
+            }
+        }
+
         // Seasonality: month anchor vs annual anchor (e.g. Dec p50=1100 vs annual p50=700 → 1.57x)
         if (
             marketSignal.monthAnchorAdr &&

@@ -153,6 +153,8 @@ export async function runPipeline(
         let daysChanged = 0;
         const bulkOps: any[] = [];
         const listingBasePrice = toNum(listing.price);
+        // Host-selected comp-set anchor (median trailing ADR). 0 / unset → no-op.
+        const compAnchorAdr = toNum(listing.compAnchorAdr);
 
         for (let i = 0; i < 365; i++) {
             const currentDate = addDays(today, i);
@@ -168,19 +170,20 @@ export async function runPipeline(
                 daysUntilNextBooking: nextBookingMap.get(ds) ?? null,
             };
 
-            // Merge market (Airbtics) + event (MarketEvent) + booking-velocity
-            // signals into a single per-date MarketSignal for the waterfall.
+            // Merge market (Airbtics) + comp-set anchor + event (MarketEvent) +
+            // booking-velocity signals into one per-date MarketSignal.
             const mkt = marketSignals.get(ds);
             const evt = eventSignals.get(ds);
             const localDemand = localDemandMap.get(ds);
             let signal: MarketSignal | undefined = mkt ? { ...mkt } : undefined;
-            if (evt || localDemand !== undefined) {
+            if (evt || localDemand !== undefined || compAnchorAdr) {
                 signal = { ...(signal ?? {}) };
                 if (evt) {
                     signal.eventUpliftPct = evt.uplift;
                     signal.eventName = evt.name;
                 }
                 if (localDemand !== undefined) signal.localDemand = localDemand;
+                if (compAnchorAdr) signal.compAnchorAdr = compAnchorAdr;
             }
 
             const result = computeDay(currentDate, today, config, allRules, bookingCtx, signal);

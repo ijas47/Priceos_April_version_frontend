@@ -15,6 +15,14 @@ export interface IListing extends Document {
   personCapacity?: number;
   amenities?: string[];
   address?: string;
+  // Geo (used to fetch the comp set via Airbtics bounds search)
+  latitude?: number;
+  longitude?: number;
+  // Comp set: user-selected competitor listing IDs (Airbtics) + the blended
+  // trailing ADR of that selection, which anchors this listing's base price.
+  compListingIds?: string[];
+  compAnchorAdr?: number;
+  compsFetchedAt?: Date;
   priceFloor: number;
   floorReasoning?: string;
   priceCeiling: number;
@@ -70,6 +78,11 @@ const ListingSchema = new Schema<IListing>(
     personCapacity: { type: Number },
     amenities: [{ type: String }],
     address: { type: String },
+    latitude: { type: Number },
+    longitude: { type: Number },
+    compListingIds: { type: [String], default: [] },
+    compAnchorAdr: { type: Number },
+    compsFetchedAt: { type: Date },
     priceFloor: { type: Number, default: 0 },
     floorReasoning: { type: String },
     priceCeiling: { type: Number, default: 0 },
