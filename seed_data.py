@@ -6,6 +6,7 @@ Requires:
     pip install pymongo bcrypt
 """
 
+import os
 import sys
 from datetime import datetime, timedelta
 from bson import ObjectId
@@ -22,15 +23,15 @@ except ImportError:
     import bcrypt
 
 # ─── Connection ───────────────────────────────────────────────────────────────
+# Credentials are read from the environment — never hardcode secrets in source.
+#   export MONGODB_URI="mongodb://..."
+#   export DATABASE_NAME="priceos"
+#   export DEMO_ADMIN_PASSWORD="..."   (optional; defaults to a random value)
 
-MONGO_URI = (
-    "mongodb://lyzrdbadmin:Io5GYCzlC1L9xWpC@"
-    "jazon-lite-docDB-nlb-08b7318ad71da26e.elb.us-east-1.amazonaws.com:27017"
-    "/priceos?directConnection=true&tls=true"
-    "&tlsAllowInvalidHostnames=true&tlsAllowInvalidCertificates=true"
-    "&retryWrites=false&authSource=admin"
-)
-DB_NAME = "priceos"
+MONGO_URI = os.environ.get("MONGODB_URI")
+if not MONGO_URI:
+    sys.exit("MONGODB_URI environment variable is required (see .env.example)")
+DB_NAME = os.environ.get("DATABASE_NAME", "priceos")
 
 client = pymongo.MongoClient(MONGO_URI)
 db = client[DB_NAME]
@@ -54,7 +55,9 @@ org_doc = {
     "_id": org_id,
     "name": "PriceOS Demo Org",
     "email": "admin@priceos.ae",
-    "passwordHash": hash_password("Admin@123456"),
+    "passwordHash": hash_password(
+        os.environ.get("DEMO_ADMIN_PASSWORD") or ObjectId().binary.hex()
+    ),
     "role": "owner",
     "isApproved": True,
     "fullName": "PriceOS Admin",

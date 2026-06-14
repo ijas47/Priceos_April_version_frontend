@@ -7,10 +7,10 @@
     "dev": "npm run clean && NODE_OPTIONS= WATCHPACK_POLLING=true next dev -H localhost",
     "build": "next build",
     "start": "npm run build && next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.2",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -34,10 +34,11 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "date-fns": "^3.6.0",
+    "jose": "^5.9.6",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.563.0",
     "mongoose": "^9.7.0",
-    "next": "15.3.8",
+    "next": "15.5.19",
     "next-themes": "^0.4.6",
     "playwright": "^1.58.2",
     "react": "19.2.3",
@@ -59,9 +60,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.2.4",
-    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
-    "eslint-config-next": "15.3.8",
+    "eslint-config-next": "15.5.19",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"

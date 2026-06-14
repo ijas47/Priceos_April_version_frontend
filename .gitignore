@@ -39,10 +39,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Environment
+# Environment / secrets
 .env*
 !.env.example
 .env*.local
+keys.txt
+*.key
+secrets.*
 
 # vercel
 .vercel
