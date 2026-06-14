@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "npm run build && next start",
     "lint": "eslint",
+    "scan:secrets": "bash scripts/check-secrets.sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
