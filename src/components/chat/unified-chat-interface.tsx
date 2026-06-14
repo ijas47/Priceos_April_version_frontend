@@ -82,7 +82,6 @@ import { useContextStore } from "@/stores/context-store";
 import type { PropertyWithMetrics } from "@/types";
 import { DateRangePicker } from "./date-range-picker";
 import { addDays, differenceInCalendarDays, format, startOfDay } from "date-fns";
-import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { toast } from "sonner";
@@ -111,6 +110,14 @@ const GRAPH_STAGES: FlowStage[] = [
   { id: "analyzing", label: "Property Analyst", status: "pending" },
   { id: "validating", label: "PriceGuard", status: "pending" },
   { id: "generating", label: "Response", status: "pending" },
+];
+
+/** One-click starters shown in the empty chat state to reduce blank-page friction. */
+const SUGGESTED_PROMPTS = [
+  "How should I price this for better occupancy?",
+  "Find gap nights worth discounting",
+  "What events could move demand this period?",
+  "Give me a full pricing analysis",
 ];
 
 interface Message {
@@ -567,14 +574,15 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const handleSubmit = async (e?: React.FormEvent, overrideText?: string) => {
+    e?.preventDefault();
+    const text = (overrideText ?? input).trim();
+    if (!text || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input,
+      content: text,
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -619,7 +627,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: input,
+          message: text,
           orgId,
           context: {
             type: contextType,
@@ -747,6 +755,9 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
     } finally {
       setIsLoading(false);
       setStatusText("");
+      // Auto-hide the agent pipeline graph once the run completes — it only
+      // appears while Aria is actively working, never sits idle.
+      setShowLiveGraph(false);
     }
   };
 
@@ -932,15 +943,6 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
 
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowLiveGraph((v) => !v)}
-              className="h-9 gap-2 bg-background hover:bg-background/80 border-border/50 font-bold shadow-sm"
-            >
-              <Activity className="h-4 w-4" />
-              <span className="hidden sm:inline">{showLiveGraph ? "Hide Graph" : "Live Graph"}</span>
-            </Button>
-            <Button
               variant={isSidebarOpen ? "secondary" : "ghost"}
               size="sm"
               onClick={toggleSidebar}
@@ -954,18 +956,6 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
 
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-muted/30 p-1.5 rounded-xl border border-border/50 hover:bg-muted/50 transition-colors">
-
-            <div className="flex bg-muted p-1 rounded-xl shrink-0">
-              <Button
-                variant="default"
-                size="sm"
-                className="h-7 px-4 font-bold shadow-sm"
-              >
-                Pricing Agent
-              </Button>
-            </div>
-
-            <div className="hidden sm:block h-6 w-px bg-border/50 mx-1" />
 
             <div id="tour-date-range">
               <DateRangePicker
@@ -1010,20 +1000,6 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
                 )}
               </>
             )}
-
-            <div className="hidden sm:block h-6 w-px bg-border/50 mx-1" />
-
-            <div className="flex items-center gap-3 px-2">
-              <div className="flex flex-col items-end">
-                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">
-                  Agent
-                </span>
-                <span className={`text-[10px] font-black tracking-widest leading-none ${isSettingUp ? 'text-amber-500 animate-pulse' : isChatActive ? 'text-amber-500' : 'text-muted-foreground/70'}`}>
-                  {isSettingUp ? 'PRIMING…' : isChatActive ? 'ONLINE' : 'AUTO'}
-                </span>
-              </div>
-              <Switch checked={isChatActive || isSettingUp} disabled={true} className="data-[state=checked]:bg-amber-500 scale-90" />
-            </div>
 
           </div>
         </div>
@@ -1082,6 +1058,32 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
 
           <div className={`flex-1 overflow-y-auto p-6 space-y-4 transition-all duration-300 ${showLiveGraph ? "pt-[420px] sm:pt-6 sm:pr-[520px]" : ""}`}>
             {isHistoryLoading && <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}
+
+            {!isHistoryLoading && messages.length === 0 && !isLoading && (
+              <div className="flex flex-col items-center justify-center h-full text-center gap-5 px-6 py-12">
+                <div>
+                  <p className="text-base font-bold text-foreground">
+                    Ask Aria about {contextType === "property" && propertyName ? propertyName : "your portfolio"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Aria pulls market events, competitor rates, and your booking pace automatically.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-2 max-w-xl">
+                  {SUGGESTED_PROMPTS.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => handleSubmit(undefined, p)}
+                      className="text-xs font-medium px-3 py-2 rounded-full border border-border/60 bg-background/60 text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {messages.map((message) => (
               <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[85%] rounded-2xl p-4 shadow-xl ${message.role === "user" ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-background/60 backdrop-blur-xl border border-border/50 text-foreground rounded-tl-none"}`}>
