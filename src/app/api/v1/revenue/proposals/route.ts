@@ -44,13 +44,18 @@ export async function GET(request: Request) {
         if (statusParam !== "all") {
             filter.proposalStatus = statusParam;
         } else {
-            // "all" — include any row that has/had a proposal
             filter.proposalStatus = { $in: ["pending", "approved", "rejected", "pushed"] };
         }
 
         if (listingIdParam) {
             filter.listingId = new mongoose.Types.ObjectId(listingIdParam);
         }
+
+        // Only show proposals where the price actually changes, or status
+        // adjustments (min-stay, closed-to-arrival, blocked). Skip booked
+        // days and zero-change noise so the list is actionable.
+        filter.status = { $ne: "booked" };
+        filter.changePct = { $ne: 0 };
 
         // Fetch proposals — most recent dates first, capped at 500
         const rows = await InventoryMaster.find(filter)
