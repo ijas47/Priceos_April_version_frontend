@@ -1,5 +1,11 @@
 # PriceOS Architecture & Data Flow Guide
 
+> ⚠️ **Authoritative architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md).**
+> This guide covers dashboard/agent-chat data flow only. Defer to
+> `ARCHITECTURE.md` for the stack, security/multi-tenancy, and the pricing
+> engine (now including the live elasticity + demand optimization layer). Stack
+> is **MongoDB/Mongoose + custom JWT** — not Postgres/Drizzle.
+
 This document provides a detailed breakdown of how data is retrieved, calculated, and presented across the two main surface areas of the PriceOS application: the **Dashboard** and the **Unified Agent Chat**.
 
 ---

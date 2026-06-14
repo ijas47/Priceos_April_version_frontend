@@ -1,80 +1,41 @@
-# PriceOS Database Schema & Data Flow Architecture
+# PriceOS Database Schema (MongoDB / Mongoose)
 
-This document provides a comprehensive breakdown of the core PostgreSQL database schema powering PriceOS, designed using Drizzle ORM.
+> Current data model. PriceOS uses **MongoDB** with **Mongoose** ODM — not
+> PostgreSQL/Drizzle (an earlier prototype). Model definitions live in
+> `src/lib/db/models/`; the connection singleton is `src/lib/db/client.ts`.
+>
+> **Tenancy:** data-bearing collections carry an `orgId` (ObjectId, indexed)
+> and every API query is scoped by it. Field names mirror the Hostaway API for
+> clean integration (`bedroomsNumber`, `listingMapId`, etc.).
 
-## 1. `listings` Table
-**Purpose:** Acts as the primary source of truth for all properties managed by PriceOS.
-**When it is updated:** 
-- Initially populated via seed scripts or when adding a new property block.
-- Updated when underlying property attributes (like floor/ceiling bounds) are modified in the Settings UI.
+## Collections
 
-**Key Columns:**
-*   `id` (serial primary key): Internal unique identifier.
-*   `hostawayId` (text, unique): External mapping to the Hostaway PMS listing ID.
-*   `name`, `city`, `area`: Descriptive location strings.
-*   `price` (numeric): The default/base price of the property.
-*   `amenities` (jsonb): Array of strings.
-*   `latitude`, `longitude` (numeric): Geolocation for map features.
-*   `priceFloor` & `priceCeiling` (numeric): **CRITICAL**. These dictate the absolute bounds allowed for AI pricing. The `PriceGuard` agent reads these columns to strictly bound any proposed adjustments.
+| Collection (model) | Purpose | Key fields |
+|--------------------|---------|-----------|
+| **Organization** | Tenant / account (a property-management company). | `name`, `email`, `passwordHash`, `role`, `isApproved`, onboarding state |
+| **User** | A user within an organization. | `orgId`, `email`, `passwordHash`, `role` |
+| **Listing** | A property. Source of truth for property config + guardrails. | `orgId`, `name`, `area`, `city`, `countryCode`, `bedroomsNumber`, `bathroomsNumber`, `price` (base), `priceFloor`, `priceCeiling`, `hostawayId`, strategy config (last-minute/far-out/DOW/gap-fill), `guardrailsSource` |
+| **InventoryMaster** | Per-listing, per-day calendar + pricing/proposal state. The pricing engine writes here. | `orgId`, `listingId`, `date`, `currentPrice`, `basePrice`, `status`, `proposedPrice`, `proposalStatus`, `changePct`, `reasoning`, `minStay`/`maxStay`, `closedToArrival/Departure`, `batchId`, **`elasticityPrice`**, **`elasticityWeight`**, **`pBook`** (revenue-optimization shadow/live values) |
+| **Reservation** | Bookings. | `orgId`, `listingMapId`, `checkIn`, `checkOut`, `nights`, guest, channel, price |
+| **PricingRule** | Operator pricing rules (season/event/admin-block/LOS). | `orgId`, `listingId`, `ruleType`, `priority`, `startDate`/`endDate`, `priceOverride`/`priceAdjPct`, min/max overrides, block/CICO/suspend flags |
+| **EngineRun** | Audit log of each pricing-engine run. | `orgId`, `listingId`, `startedAt`, `status` (SUCCESS/FAILED), `daysChanged`, `durationMs`, `errorMessage` |
+| **MarketEvent** | Local events/holidays influencing demand. | `orgId`, dates, name, impact |
+| **MarketTemplate** | Per-market reference config (global, no `orgId`). | `marketCode`, `displayName`, `country`, `currency`, `timezone`, seasonal patterns |
+| **BenchmarkData** | Competitor/market benchmark snapshots. | `orgId`, market percentiles, ADR positioning |
+| **Insight** | Generated analytics/insights. | `orgId`, type, payload |
+| **ChatMessage** | Aria chat history. | `orgId`, `role`, `content`, `sessionId`, `context`, `metadata` |
+| **GuestSummary** | AI summaries of guest conversations. | `orgId`, conversation ref, summary |
+| **HostawayConversation** | Ingested guest message threads (from the Hostaway webhook). | `orgId`, `listingId`, `hostawayConversationId`, `guestName`, `messages[]`, `dateFrom`/`dateTo` |
+| **DraftFeedback** | Feedback on AI-drafted guest replies. | `orgId`, draft ref, rating |
+| **Source** / **SourceRun** / **Detector** | Data-source sync registry + run history + detectors. | sync config, run status |
 
----
+## Notes
 
-## 2. `inventory_master` Table
-**Purpose:** The central pricing and availability matrix. It consolidates both the current calendar state (booked/blocked/available) and the AI's future pricing proposals in a single row per day per listing.
-
-**When it is updated:**
-1.  **Sync Service:** A background cron (or `/api/sync`) pulls availability/prices from Hostaway and updates `status` and `currentPrice`.
-2.  **AI Chat (Save Action):** When a user clicks "Save" on a proposal card, `/api/proposals/bulk-save` populates the `proposedPrice`, `changePct`, `reasoning`, and sets `proposalStatus` to `'pending'`.
-3.  **Approval Flow:** When a user formally approves a pending proposal, a sync agent pushes it to Hostaway, and the DB row moves `proposedPrice` -> `currentPrice` and clears the pending columns.
-
-**Key Columns:**
-*   `listingId` & `date`: Forms a **unique composite index**. There is exactly ONE row per property per day.
-*   `status` (text): Enumerable state (`available`, `booked`, `blocked`).
-*   `currentPrice` (numeric): The live, active price currently pushed to the PMS.
-*   `proposedPrice` (numeric): The unapplied price suggested by the AI.
-*   `changePct` (integer): Display metric showing the delta between current and proposed.
-*   `proposalStatus` (text): Enum (`pending`, `approved`, `rejected`).
-*   `reasoning` (text): Stores the AI's plain-text justification for the price shift, rendered in the UI.
-
----
-
-## 3. `activity_timeline` Table
-**Purpose:** A polymorphic "catch-all" timeline that stores both **Internal Data** (actual bookings, blocked days) and **External Data** (holidays, market events, competitor rates) on a unified calendar.
-
-**When it is updated:**
-1.  **Market Setup (External):** When a user clicks "Setup" in the chat, the Marketing Agent queries Perplexity for web events. The `/api/market-setup` route wipes old events for those dates and `INSERT`s new ones tagged as `type = 'market_event'`.
-2.  **PMS Sync (Internal):** When real-life bookings clear through the PMS, sync routers update this table with `type = 'reservation'`, attaching exact financials and guest data.
-
-**Key Columns (Polymorphic Design):**
-*   `type` (text): Crucial discriminator (`market_event` vs `reservation`).
-*   `startDate` & `endDate` (date): The temporal bounds of the event.
-*   `title` (text): Human-readable event string (e.g., "Dubai Food Festival" or "Booking #1024").
-*   `impactScore` (integer): Usually calculated at inference time by Market Research to quantify event severity. Often `null` upon initial insertion.
-*   `financials` (jsonb): Populated **ONLY** for `type = 'reservation'`. Contains exact booking revenue, cleaning fees, and channel commissions. Will be empty/null for market events.
-*   `guestDetails` (jsonb): Populated **ONLY** for `type = 'reservation'`. Contains guest PII/contact. Will be empty/null for market events.
-*   `marketContext` (jsonb): Populated **ONLY** for `type = 'market_event'`. Contains the pure AI research payload from Perplexity (eventType, location, suggested premiums).
-
----
-
-## 4. `chat_messages` Table
-**Purpose:** Persists all interactions between the user and the CRO Router / AI agents to provide LLM memory continuity and audit logs.
-
-**When it is updated:**
-- Instantly upon sending a prompt (`/api/chat` route inserts `role="user"`).
-- Instantly upon receiving a Lyzr payload (`/api/chat` route inserts `role="assistant"`).
-
-**Key Columns:**
-*   `sessionId` (text): Ties requests together into a continuous conversational thread context.
-*   `listingId` (integer): The specific property the context was bound to (if not portfolio level).
-*   `structured` (jsonb): Saves a snapshot of what the AI was "looking at" when making its decision (the date range bounds, the occupancy metrics fed in the prompt, and the exact JSON proposal array returned by the AI).
-
----
-
-## 5. `user_settings` Table
-**Purpose:** Stores user-level configurations, specifically securing routing keys required to operate the application.
-
-**When it is updated:**
-- Managed via the UI settings pages to securely store API keys.
-
-**Key Columns:**
-*   `lyzrApiKey` & `hostawayApiKey` (text): Third party keys used heavily in API middleware contexts.
+- **Prices** are numeric; the UI uses explicit `toLocaleString("en-US")` to
+  avoid SSR hydration mismatches.
+- **Connection** is cached on `global._mongooseCache` (serverless-safe) with
+  `bufferCommands:false`.
+- **Indexes:** `orgId` indexed on tenant collections; `InventoryMaster` has a
+  unique `{ listingId, date }` index plus `{ orgId, proposalStatus }`.
+- For the full pricing data flow (engine → proposals → execution), see
+  `ARCHITECTURE.md` §5.

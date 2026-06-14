@@ -2,6 +2,17 @@
 
 **Founder:** Ijas Abdulla (ijas47@gmail.com)
 
+**Stack:** Next.js 15 (App Router) · MongoDB/Mongoose · custom JWT auth · Lyzr
+agents · Hostaway (read-only by default) · Vercel.
+
+**Key docs:**
+[Architecture](docs/ARCHITECTURE.md) ·
+[Product & Sales Playbook](docs/PriceOS-Product-Playbook.md) ·
+[Database schema](docs/database_schema_documentation.md) ·
+[Security & secret rotation](SECURITY.md) ·
+[Changelog](CHANGELOG.md) ·
+[Contributor guide](CLAUDE.md)
+
 ---
 
 ## The Market

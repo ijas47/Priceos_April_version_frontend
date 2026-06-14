@@ -1,5 +1,13 @@
 # PriceOS — Internal Architecture & System Design
 
+> 🗄️ **Historical deck.** For the current, code-accurate architecture see
+> [`../ARCHITECTURE.md`](../ARCHITECTURE.md). Notable changes since this deck:
+> stack is MongoDB/Mongoose + custom JWT (not Postgres/Drizzle); JWT signatures
+> are verified at the edge; strict per-`orgId` tenant isolation; a live
+> elasticity + demand revenue-optimization layer (guardrailed); Aria
+> auto-primes on first message (no "Run Aria" step); Hostaway is read-only by
+> default; CI runs secret-scan/lint/typecheck/test/build.
+
 **Version**: 2.0 | **Last Updated**: March 6, 2026  
 **Status**: Production | **Platform**: Web Application (SaaS)
 

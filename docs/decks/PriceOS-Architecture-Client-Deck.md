@@ -1,6 +1,12 @@
 # PriceOS — Architecture & Technical Deep Dive
 ## AI-Powered Revenue Management for Dubai Short-Term Rentals
 
+> 🗄️ **Historical client deck.** For current architecture see
+> [`../ARCHITECTURE.md`](../ARCHITECTURE.md) and for positioning/Q&A see
+> [`../PriceOS-Product-Playbook.md`](../PriceOS-Product-Playbook.md). Stack is
+> MongoDB/Mongoose + custom JWT; pricing now includes a live, guardrailed
+> elasticity + demand optimization layer.
+
 **Version:** 2.0 | **Date:** March 4, 2026 | **Prepared for:** Client Review Meeting
 
 ---
