@@ -787,6 +787,14 @@ export function PricingClient({
         </div>
       ) : (
         <div className="rounded-2xl border border-border/70 overflow-hidden bg-card shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
+          {activeTab === "pending" && (
+            <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border/60 bg-muted/30 dark:bg-white/[0.02] text-[11px] text-muted-foreground">
+              <Sparkles className="h-3 w-3 shrink-0 text-violet-400/90" />
+              <span>
+                The <span className="font-medium text-violet-400/90">violet price</span> is Aria&apos;s revenue-optimized rate (elasticity + demand), now driving proposals — confidence rises as booking history grows.
+              </span>
+            </div>
+          )}
           <div className="overflow-x-auto overflow-y-auto max-h-[70vh] scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
           <Table>
             <TableHeader className="bg-muted/50 dark:bg-white/[0.04] sticky top-0 z-10">

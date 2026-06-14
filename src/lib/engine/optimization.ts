@@ -102,12 +102,14 @@ export function computeOptimizedPrice(args: {
 }
 
 /**
- * Whether the optimization layer DRIVES the proposed price (true) or merely
- * records a shadow value alongside the rulebook price (false, the default).
- * Controlled by the ELASTICITY_PRICING env flag so it can be enabled per
- * environment after validation. Accepts "on"/"true"/"1".
+ * Whether the optimization layer DRIVES the proposed price (true, the default)
+ * or merely records a shadow value alongside the rulebook price (false).
+ * Enabled by default — set ELASTICITY_PRICING=off to revert to shadow mode.
+ * Guardrails still apply: prices are clamped to floor/ceiling and capped to
+ * ±25% of the rulebook price, and with no booking history the optimized price
+ * collapses back to the rulebook price anyway.
  */
 export function isElasticityPricingEnabled(): boolean {
-  const flag = (process.env.ELASTICITY_PRICING ?? "").toLowerCase();
-  return flag === "on" || flag === "true" || flag === "1";
+  const flag = (process.env.ELASTICITY_PRICING ?? "on").toLowerCase();
+  return flag !== "off" && flag !== "false" && flag !== "0";
 }

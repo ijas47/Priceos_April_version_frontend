@@ -1,5 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { computeOptimizedPrice, FULL_TRUST_SAMPLE } from "./optimization";
+import { describe, it, expect, afterEach } from "vitest";
+import {
+  computeOptimizedPrice,
+  isElasticityPricingEnabled,
+  FULL_TRUST_SAMPLE,
+} from "./optimization";
 import type { ElasticityParams } from "@/lib/elasticity/types";
 
 function params(sampleSize: number): ElasticityParams {
@@ -90,5 +94,28 @@ describe("computeOptimizedPrice — guardrail safety", () => {
       demandModifierPct: 999,
     });
     expect(out.demandModifierPct).toBe(15);
+  });
+});
+
+describe("isElasticityPricingEnabled", () => {
+  afterEach(() => {
+    delete process.env.ELASTICITY_PRICING;
+  });
+
+  it("is enabled by default when the flag is unset", () => {
+    delete process.env.ELASTICITY_PRICING;
+    expect(isElasticityPricingEnabled()).toBe(true);
+  });
+
+  it("is disabled (shadow mode) only when explicitly set to off", () => {
+    process.env.ELASTICITY_PRICING = "off";
+    expect(isElasticityPricingEnabled()).toBe(false);
+  });
+
+  it("stays enabled for on/true/1", () => {
+    for (const v of ["on", "true", "1"]) {
+      process.env.ELASTICITY_PRICING = v;
+      expect(isElasticityPricingEnabled()).toBe(true);
+    }
   });
 });
