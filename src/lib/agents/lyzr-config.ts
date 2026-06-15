@@ -5,10 +5,17 @@
  * Maps each agent to its allowed OpenAPI tool operationIds, model,
  * and optional structured output schema.
  *
- * This prevents agents from calling tools they should not have access to
- * and centralizes model/temperature configuration in one place.
+ * Model strings are sourced from lyzr-models.ts (synced to Lyzr Studio via
+ * scripts/sync-lyzr-agent-models.mjs).
  */
 
+import {
+  CLAUDE_SONNET,
+  GEMINI_FLASH,
+  GEMINI_FLASH_LITE,
+  GPT_41,
+  PERPLEXITY_SONAR,
+} from "./lyzr-models";
 import {
   PRICEGUARD_OUTPUT_SCHEMA,
   CRO_ROUTER_OUTPUT_SCHEMA,
@@ -124,8 +131,8 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [MANAGER_AGENT_ID]: {
     agentId: MANAGER_AGENT_ID,
     name: "CRO Router",
-    model: "gpt-4o",
-    temperature: 0.1,
+    model: CLAUDE_SONNET,
+    temperature: 0.2,
     maxTokens: 4000,
     tools: [
       ...PORTFOLIO_TOOLS,
@@ -142,8 +149,8 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [STRATEGY_AGENT_ID]: {
     agentId: STRATEGY_AGENT_ID,
     name: "Property Analyst",
-    model: "gpt-4o",
-    temperature: 0.2,
+    model: GEMINI_FLASH,
+    temperature: 0.1,
     maxTokens: 4000,
     tools: [...PROPERTY_TOOLS],
     outputSchema: PROPERTY_ANALYST_OUTPUT_SCHEMA,
@@ -156,7 +163,7 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [BOOKING_AGENT_ID]: {
     agentId: BOOKING_AGENT_ID,
     name: "Booking Intelligence",
-    model: "gpt-4o-mini",
+    model: GEMINI_FLASH,
     temperature: 0.1,
     maxTokens: 3000,
     tools: [...BOOKING_TOOLS],
@@ -170,8 +177,8 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [EVENT_AGENT_ID]: {
     agentId: EVENT_AGENT_ID,
     name: "Market Research",
-    model: "gpt-4o-mini",
-    temperature: 0.1,
+    model: PERPLEXITY_SONAR,
+    temperature: 0.15,
     maxTokens: 3000,
     tools: [...MARKET_TOOLS],
   },
@@ -184,7 +191,7 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [PRICEGUARD_AGENT_ID]: {
     agentId: PRICEGUARD_AGENT_ID,
     name: "PriceGuard",
-    model: "gpt-4o",
+    model: GPT_41,
     temperature: 0.0,
     maxTokens: 2500,
     tools: [],
@@ -198,8 +205,8 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [BENCHMARK_AGENT_ID]: {
     agentId: BENCHMARK_AGENT_ID,
     name: "Benchmark Agent",
-    model: "gpt-4o-mini",
-    temperature: 0.1,
+    model: PERPLEXITY_SONAR,
+    temperature: 0.2,
     maxTokens: 2000,
     tools: [...BENCHMARK_TOOLS],
   },
@@ -211,7 +218,7 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [GUARDRAILS_AGENT_ID]: {
     agentId: GUARDRAILS_AGENT_ID,
     name: "Guardrails Agent",
-    model: "gpt-4o-mini",
+    model: GPT_41,
     temperature: 0.0,
     maxTokens: 2000,
     tools: [...GUARDRAILS_TOOLS],
@@ -224,7 +231,7 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [CONVERSATION_AGENT_ID]: {
     agentId: CONVERSATION_AGENT_ID,
     name: "Conversation Summary",
-    model: "gpt-4o-mini",
+    model: GEMINI_FLASH_LITE,
     temperature: 0.2,
     maxTokens: 2000,
     tools: [...GUEST_READ_TOOLS],
@@ -238,8 +245,8 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [ARIA_AGENT_ID]: {
     agentId: ARIA_AGENT_ID,
     name: "Aria",
-    model: "gpt-4o",
-    temperature: 0.3,
+    model: CLAUDE_SONNET,
+    temperature: 0.2,
     maxTokens: 4000,
     tools: [
       ...PORTFOLIO_TOOLS,
@@ -254,8 +261,8 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [MARKET_AGENT_ID]: {
     agentId: MARKET_AGENT_ID,
     name: "Market Agent",
-    model: "gpt-4o-mini",
-    temperature: 0.1,
+    model: PERPLEXITY_SONAR,
+    temperature: 0.15,
     maxTokens: 3000,
     tools: [...MARKET_TOOLS],
   },
@@ -286,7 +293,7 @@ export function getAgentTools(agentId: string): string[] {
  * Falls back to "gpt-4o-mini" if the agent ID is not registered.
  */
 export function getAgentModel(agentId: string): string {
-  return AGENT_CONFIGS[agentId]?.model ?? "gpt-4o-mini";
+  return AGENT_CONFIGS[agentId]?.model ?? GEMINI_FLASH;
 }
 
 /**

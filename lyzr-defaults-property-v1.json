@@ -9,7 +9,7 @@
   "default_body_params": {},
   "endpoint_defaults": {},
   "enhance_descriptions": false,
-  "model_override": "gpt-4o",
+  "model_override": "gemini/gemini-3-flash-preview",
   "tool_filter": {
     "context": "property",
     "allowed_operations": [

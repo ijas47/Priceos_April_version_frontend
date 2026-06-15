@@ -11,7 +11,9 @@
     "scan:secrets": "bash scripts/check-secrets.sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "sync:lyzr-models": "node scripts/sync-lyzr-agent-models.mjs",
+    "sync:lyzr-models:dry": "node scripts/sync-lyzr-agent-models.mjs --dry-run"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",

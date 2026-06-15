@@ -366,14 +366,26 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             console.error("Failed to save user message to DB:", err);
         }
 
-        // Build anchored message
+        // Build anchored message with strict temporal grounding
+        const today = new Date().toISOString().split("T")[0];
+        const windowFrom = dateRange?.from ?? today;
+        const windowTo = dateRange?.to ?? windowFrom;
+        const temporalRules = [
+            `[TEMPORAL GROUNDING — MANDATORY]`,
+            `Today's date: ${today}`,
+            `Analysis window: ${windowFrom} → ${windowTo}`,
+            `Only cite events from market_events whose start_date/end_date overlap this window.`,
+            `Never mention seasonal events (e.g. Ramadan, Eid, F1) unless they fall inside the analysis window per the injected data.`,
+            `If no overlapping event exists in market_events, write "No major events in this period" — do not invent events.`,
+        ].join("\n");
+
         let anchoredMessage = message;
         if (!isSystemMsg) {
             if (propertyDataPayload) {
-                anchoredMessage = `[SYSTEM: CURRENT PROPERTY DATA]\nYou must strictly use the following real-time data to answer the user's query:\n${JSON.stringify(propertyDataPayload, null, 2)}\n[/SYSTEM]\n\nUser Message:\n${message}`;
+                anchoredMessage = `${temporalRules}\n\n[SYSTEM: CURRENT PROPERTY DATA]\nYou must strictly use the following real-time data to answer the user's query:\n${JSON.stringify(propertyDataPayload, null, 2)}\n[/SYSTEM]\n\nUser Message:\n${message}`;
             } else {
                 const propName = context.propertyName || "portfolio";
-                anchoredMessage = `[Active Context: ${propName}]\n\n${message}`;
+                anchoredMessage = `${temporalRules}\n\n[Active Context: ${propName}]\n\n${message}`;
             }
         }
 
