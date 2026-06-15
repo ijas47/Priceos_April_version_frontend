@@ -68,6 +68,9 @@ export async function POST(req: NextRequest) {
       const agent = createEventIntelligenceAgent();
       const res = await agent.fetchAndCacheEvents(orgOid);
       logs.push(`[events] cached ${res.cached} verified events from [${res.sourcesUsed.join(", ") || "none"}]`);
+      if (res.sourceBreakdown) {
+        logs.push(`[events] source breakdown: ${JSON.stringify(res.sourceBreakdown)}`);
+      }
       if (res.error) logs.push(`[events] ${res.error}`);
       recordsProcessed += res.cached;
       if (res.cached === 0 && res.error) status = "error";

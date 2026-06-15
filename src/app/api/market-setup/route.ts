@@ -120,8 +120,17 @@ export async function POST(req: NextRequest) {
             dateFrom: dateRange.from,
             dateTo: dateRange.to,
         });
-        console.log(`🔎 Verified intel: ${intel.findings.length} findings from [${intel.sourcesUsed.join(", ") || "none"}]` +
-            (intel.sourceErrors.length ? ` — errors: ${intel.sourceErrors.map(e => e.source).join(", ")}` : ""));
+        console.log(`🔎 Verified intel: ${intel.findings.length} findings from [${intel.sourcesUsed.join(", ") || "none"}]`);
+        console.log(`   Source breakdown:`, JSON.stringify(intel.sourceBreakdown));
+        if (intel.sourceErrors.length) {
+            console.log(`   Source errors:`, intel.sourceErrors.map((e) => `${e.source}: ${e.error}`).join("; "));
+        }
+        if (intel.findings.length === 0) {
+            console.warn(
+                `⚠️ No verified findings — check SERP_API_KEY / NEWS_API_KEY on Vercel. ` +
+                `Agent will rely on Lyzr/Perplexity synthesis (higher hallucination risk).`
+            );
+        }
 
         const verifiedEventsJson = JSON.stringify(
             intel.findings.slice(0, 40).map((f) => ({
@@ -363,6 +372,8 @@ Find 10-15 comparable short-term rental properties. Return JSON with rate_distri
             verifiedEventsCount: intel.findings.length,
             researchSourcesUsed: intel.sourcesUsed,
             researchSourceErrors: intel.sourceErrors,
+            researchSourceBreakdown: intel.sourceBreakdown,
+            aiDetectedEventsCount: allFindings.length - intel.findings.length,
             duration: `${duration}s`,
             guardrailsSetByAi,
             guardrails: generatedGuardrails,

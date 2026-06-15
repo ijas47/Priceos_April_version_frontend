@@ -41,12 +41,20 @@ export interface IntelFinding {
     suggestedPremiumPct: number;
 }
 
+export interface SourceBreakdownEntry {
+    findings: number;
+    status: "ok" | "error" | "skipped";
+    error?: string;
+}
+
 export interface MarketIntelligence {
     location: string;
     dateRange: { from: string; to: string };
     findings: IntelFinding[];
     sourcesUsed: string[];
     sourceErrors: SourceError[];
+    /** Per-feed counts — use in setup logs / debug to verify SERP vs NewsAPI vs ticketed sources */
+    sourceBreakdown: Record<string, SourceBreakdownEntry>;
     gatheredAt: string;
 }
 
@@ -102,6 +110,28 @@ export async function gatherMarketIntelligence(opts: {
 
     const errors: SourceError[] = [serpEv.error, tmEv.error, ebEv.error, serpNews.error, napiNews.error]
         .filter((e): e is SourceError => !!e);
+
+    const sourceBreakdown: Record<string, SourceBreakdownEntry> = {
+        serpapi_google_events: serpEv.error
+            ? { findings: 0, status: "error", error: serpEv.error.error }
+            : { findings: serpEv.events.length, status: "ok" },
+        ticketmaster: tmEv.error
+            ? { findings: 0, status: "error", error: tmEv.error.error }
+            : { findings: tmEv.events.length, status: "ok" },
+        eventbrite: ebEv.error
+            ? { findings: 0, status: "error", error: ebEv.error.error }
+            : { findings: ebEv.events.length, status: "ok" },
+        serpapi_google_news: !includeNews
+            ? { findings: 0, status: "skipped" }
+            : serpNews.error
+              ? { findings: 0, status: "error", error: serpNews.error.error }
+              : { findings: serpNews.news.length, status: "ok" },
+        newsapi: !includeNews
+            ? { findings: 0, status: "skipped" }
+            : napiNews.error
+              ? { findings: 0, status: "error", error: napiNews.error.error }
+              : { findings: napiNews.news.length, status: "ok" },
+    };
 
     const sourcesUsed: string[] = [];
     const findings: IntelFinding[] = [];
@@ -161,6 +191,7 @@ export async function gatherMarketIntelligence(opts: {
         findings,
         sourcesUsed,
         sourceErrors: errors,
+        sourceBreakdown,
         gatheredAt: new Date().toISOString(),
     };
 }

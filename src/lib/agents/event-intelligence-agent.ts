@@ -1,7 +1,7 @@
 import { connectDB, MarketEvent, Listing } from "@/lib/db";
 import { format } from "date-fns";
 import mongoose from "mongoose";
-import { gatherMarketIntelligence } from "@/lib/research/aggregator";
+import { gatherMarketIntelligence, type SourceBreakdownEntry } from "@/lib/research/aggregator";
 
 export interface EventSignal {
   name: string;
@@ -123,7 +123,12 @@ export class EventIntelligenceAgent {
   async fetchAndCacheEvents(
     orgId: mongoose.Types.ObjectId,
     opts: { city?: string; daysAhead?: number } = {}
-  ): Promise<{ cached: number; sourcesUsed: string[]; error?: string }> {
+  ): Promise<{
+    cached: number;
+    sourcesUsed: string[];
+    sourceBreakdown?: Record<string, SourceBreakdownEntry>;
+    error?: string;
+  }> {
     try {
       await connectDB();
 
@@ -152,9 +157,11 @@ export class EventIntelligenceAgent {
       const intel = await gatherMarketIntelligence({ city, dateFrom: from, dateTo: to });
 
       if (intel.findings.length === 0) {
+        console.warn(`[events] No verified findings for ${city}. Breakdown:`, intel.sourceBreakdown);
         return {
           cached: 0,
           sourcesUsed: intel.sourcesUsed,
+          sourceBreakdown: intel.sourceBreakdown,
           error: intel.sourceErrors.length > 0
             ? `No events found. Source errors: ${intel.sourceErrors.map((e) => `${e.source}: ${e.error}`).join("; ")}`
             : "No events found in range.",
@@ -189,7 +196,8 @@ export class EventIntelligenceAgent {
         }
       }
 
-      return { cached: cachedCount, sourcesUsed: intel.sourcesUsed };
+      console.log(`[events] Cached ${cachedCount} events for ${city}. Breakdown:`, intel.sourceBreakdown);
+      return { cached: cachedCount, sourcesUsed: intel.sourcesUsed, sourceBreakdown: intel.sourceBreakdown };
     } catch (error) {
       return { cached: 0, sourcesUsed: [], error: (error as Error).message };
     }

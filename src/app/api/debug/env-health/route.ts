@@ -32,6 +32,8 @@ const EXPECTED_KEYS = [
   "TICKETMASTER_API_KEY",
   "PERPLEXITY_API_KEY",
   "SERP_API_KEY",
+  "NEWS_API_KEY",
+  "AGENT_ID",
 ] as const;
 
 export async function GET() {
@@ -52,11 +54,35 @@ export async function GET() {
   const hasHostawayToken =
     health.HOSTAWAY_API_KEY === "SET" || health.Hostaway_Authorization_token === "SET";
 
+  const researchFeeds = {
+    serp: health.SERP_API_KEY === "SET",
+    newsApi: health.NEWS_API_KEY === "SET",
+    ticketmaster: health.TICKETMASTER_API_KEY === "SET",
+    eventbrite: health.EVENTBRITE_API_KEY === "SET",
+    perplexityFallback: health.PERPLEXITY_API_KEY === "SET",
+  };
+  const hasVerifiedFeed =
+    researchFeeds.serp || researchFeeds.ticketmaster || researchFeeds.eventbrite;
+
+  let researchHint: string;
+  if (!hasVerifiedFeed) {
+    researchHint =
+      "No verified event feeds configured — set SERP_API_KEY (minimum) or TICKETMASTER_API_KEY. Without these, setup falls back to Perplexity/Lyzr memory (unverified).";
+  } else if (!researchFeeds.serp) {
+    researchHint =
+      "Ticketed feeds only — add SERP_API_KEY for Google Events/News coverage.";
+  } else if (!researchFeeds.newsApi) {
+    researchHint =
+      "SERP configured — add NEWS_API_KEY for additional demand-signal news.";
+  } else {
+    researchHint =
+      "Verified research feeds ready — Run Aria / Sync Events will use SERP + NewsAPI before any Perplexity fallback.";
+  }
+
   return NextResponse.json({
     summary: missing.length === 0 ? "All expected keys are set" : `${missing.length} keys missing`,
     missing,
     health,
-    // BASE_URL and READ_ONLY have safe code defaults; only token + live mode are required.
     hostawayMode,
     hostawayReady: hasHostawayToken && hostawayMode === "live",
     hostawayHint: !hasHostawayToken
@@ -64,6 +90,9 @@ export async function GET() {
       : hostawayMode !== "live"
         ? `HOSTAWAY_MODE is "${hostawayMode}" — set it to "live" and redeploy`
         : "Ready — use Sync page → Import from Hostaway",
+    researchFeeds,
+    researchFeedsReady: hasVerifiedFeed,
+    researchHint,
     note: "Values are never exposed by this endpoint. After changing env vars in Vercel, you must Redeploy for them to take effect.",
   });
 }
