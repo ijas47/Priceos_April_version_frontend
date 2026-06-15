@@ -53,7 +53,7 @@ interface BenchmarkWidgetProps {
 const verdictConfig: Record<string, { label: string; color: string; bg: string; border: string }> = {
     UNDERPRICED: { label: "Underpriced", color: "#10b981", bg: "#ecfdf5", border: "#a7f3d0" },
     FAIR: { label: "Fair", color: "#3b82f6", bg: "#eff6ff", border: "#bfdbfe" },
-    SLIGHTLY_ABOVE: { label: "Slightly Above", color: "#f59e0b", bg: "#fffbeb", border: "#fde68a" },
+    SLIGHTLY_ABOVE: { label: "Slightly Above", color: "#2d7ff9", bg: "#fffbeb", border: "#fde68a" },
     OVERPRICED: { label: "Overpriced", color: "#ef4444", bg: "#fef2f2", border: "#fecaca" },
 };
 
@@ -126,7 +126,7 @@ export function BenchmarkWidget({ listingId, dateFrom, dateTo, refreshKey = 0, c
                         <span className={cn(
                             "px-2 py-0.5 rounded-full text-[9px] font-bold border",
                             summary.source === 'cache' ? "bg-blue-500/10 text-blue-500 border-blue-500/30" :
-                            summary.source === 'internet_fallback' ? "bg-amber-500/10 text-amber-600 border-amber-500/30" :
+                            summary.source === 'internet_fallback' ? "bg-primary/10 text-primary border-primary/30" :
                             "bg-slate-500/10 text-slate-500 border-slate-500/30"
                         )}>
                             {summary.source === 'cache' ? 'Airbtics API' : summary.source === 'internet_fallback' ? 'Agent 7 Research' : 'Historical DB'}
@@ -211,7 +211,7 @@ export function BenchmarkWidget({ listingId, dateFrom, dateTo, refreshKey = 0, c
                                 <div className="flex items-center gap-1.5 text-[11px] px-1">
                                     <TrendIcon trend={aedGapNum > 0 ? "rising" : aedGapNum < 0 ? "falling" : null} />
                                     <span className="text-muted-foreground">vs market median:</span>
-                                    <span className={`font-bold ${aedGapNum > 0 ? "text-amber-500" : aedGapNum < 0 ? "text-emerald-500" : "text-foreground"}`}>
+                                    <span className={`font-bold ${aedGapNum > 0 ? "text-primary" : aedGapNum < 0 ? "text-emerald-500" : "text-foreground"}`}>
                                         {aedGapNum > 0 ? "+" : ""}{aedGapNum.toFixed(0)} {currency}
                                     </span>
                                 </div>
@@ -312,13 +312,13 @@ export function BenchmarkWidget({ listingId, dateFrom, dateTo, refreshKey = 0, c
                                                                     "text-[9px] px-1.5 py-0.5 rounded font-semibold border transition-colors",
                                                                     comp.source === "Airbnb" ? "bg-rose-500/10 text-rose-600 border-rose-500/20" :
                                                                         comp.source === "Booking.com" ? "bg-blue-500/10 text-blue-600 border-blue-500/20" :
-                                                                            "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                                                                            "bg-primary/10 text-primary border-primary/20"
                                                                 )}>
                                                                     {comp.source ?? "OTA"}
                                                                 </span>
 
                                                                 {comp.rating && (
-                                                                    <span className="text-[9px] text-amber-500 font-bold">★ {comp.rating}</span>
+                                                                    <span className="text-[9px] text-primary font-bold">★ {comp.rating}</span>
                                                                 )}
                                                                 {comp.reviews != null && (
                                                                     <span className="text-[9px] text-muted-foreground">{comp.reviews} reviews</span>

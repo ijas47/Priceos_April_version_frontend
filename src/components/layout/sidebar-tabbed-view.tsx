@@ -187,7 +187,7 @@ export function SidebarTabbedView() {
                                                 {!calendarMetrics ? (
                                                     <span className="text-3xl font-bold text-muted-foreground/30 animate-pulse">--</span>
                                                 ) : (
-                                                    <span className={`text-3xl font-black tracking-tighter ${calendarMetrics.occupancy >= 70 ? 'text-emerald-500' : calendarMetrics.occupancy >= 40 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                    <span className={`text-3xl font-black tracking-tighter ${calendarMetrics.occupancy >= 70 ? 'text-emerald-500' : calendarMetrics.occupancy >= 40 ? 'text-primary' : 'text-rose-500'}`}>
                                                         {calendarMetrics.occupancy}%
                                                     </span>
                                                 )}

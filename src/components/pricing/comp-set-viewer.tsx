@@ -159,7 +159,7 @@ export function CompSetViewer({ listings }: { listings: Listing[] }) {
                 <div className="text-right shrink-0">
                   <div className={cn(
                     "text-lg font-bold",
-                    position.verdict === "underpriced" ? "text-amber-400" :
+                    position.verdict === "underpriced" ? "text-primary" :
                     position.verdict === "fair" ? "text-emerald-400" :
                     position.verdict === "above" ? "text-blue-400" : "text-red-400"
                   )}>
@@ -190,7 +190,7 @@ export function CompSetViewer({ listings }: { listings: Listing[] }) {
                       <div className="flex-1 h-6 relative">
                         {/* P25-P75 range bar */}
                         <div
-                          className="absolute top-1 h-4 bg-amber-500/15 rounded"
+                          className="absolute top-1 h-4 bg-primary/15 rounded"
                           style={{
                             left: `${maxAdr > 0 ? (p25 / maxAdr) * 100 : 0}%`,
                             width: `${maxAdr > 0 ? ((p75 - p25) / maxAdr) * 100 : 0}%`,
@@ -198,7 +198,7 @@ export function CompSetViewer({ listings }: { listings: Listing[] }) {
                         />
                         {/* P50 marker */}
                         <div
-                          className="absolute top-0.5 w-0.5 h-5 bg-amber-400 rounded-full"
+                          className="absolute top-0.5 w-0.5 h-5 bg-primary rounded-full"
                           style={{ left: `${maxAdr > 0 ? (p50 / maxAdr) * 100 : 0}%` }}
                         />
                       </div>
@@ -215,10 +215,10 @@ export function CompSetViewer({ listings }: { listings: Listing[] }) {
                   <span className="w-8" />
                   <div className="flex-1 flex items-center gap-3">
                     <span className="flex items-center gap-1">
-                      <span className="inline-block w-4 h-2 bg-amber-500/15 rounded" /> P25–P75 range
+                      <span className="inline-block w-4 h-2 bg-primary/15 rounded" /> P25–P75 range
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="inline-block w-1 h-3 bg-amber-400 rounded-full" /> P50 (median)
+                      <span className="inline-block w-1 h-3 bg-primary rounded-full" /> P50 (median)
                     </span>
                   </div>
                   <span className="w-20 text-right">ADR</span>
@@ -267,7 +267,7 @@ function KpiCard({ icon: Icon, label, value, color }: {
   icon: any; label: string; value: string; color: string;
 }) {
   const colorMap: Record<string, string> = {
-    amber: "bg-amber-500/10 text-amber-400",
+    amber: "bg-primary/10 text-primary",
     blue: "bg-blue-500/10 text-blue-400",
     emerald: "bg-emerald-500/10 text-emerald-400",
     purple: "bg-purple-500/10 text-purple-400",
@@ -293,9 +293,9 @@ function PositionBar({ position, currency }: { position: ListingPosition; curren
 
   return (
     <div className="space-y-1.5">
-      <div className="relative h-3 bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-red-500/20 rounded-full">
+      <div className="relative h-3 bg-gradient-to-r from-primary/20 via-emerald-500/20 to-red-500/20 rounded-full">
         <div
-          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full border-2 border-amber-400 shadow-sm"
+          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full border-2 border-primary/400 shadow-sm"
           style={{ left: `${pct}%`, transform: `translate(-50%, -50%)` }}
         />
       </div>
@@ -310,7 +310,7 @@ function PositionBar({ position, currency }: { position: ListingPosition; curren
 
 function DemandIcon({ occ }: { occ: number }) {
   if (occ >= 0.75) return <TrendingUp className="h-5 w-5 text-emerald-400" />;
-  if (occ >= 0.45) return <Minus className="h-5 w-5 text-amber-400" />;
+  if (occ >= 0.45) return <Minus className="h-5 w-5 text-primary" />;
   return <TrendingDown className="h-5 w-5 text-red-400" />;
 }
 

@@ -35,57 +35,57 @@ export default function WaitlistPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0a0a0b] flex items-center justify-center p-6">
+        <div className="min-h-screen bg-background flex items-center justify-center p-6">
             {/* Animated background glows */}
             <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-10%] left-[-5%] w-[45%] h-[45%] bg-amber-500/8 blur-[140px] rounded-full animate-pulse" />
+                <div className="absolute top-[-10%] left-[-5%] w-[45%] h-[45%] bg-primary/8 blur-[140px] rounded-full animate-pulse" />
                 <div className="absolute bottom-[-10%] right-[-5%] w-[50%] h-[50%] bg-emerald-500/8 blur-[160px] rounded-full animate-pulse delay-1000" />
             </div>
 
             <div className="relative z-10 max-w-md w-full text-center space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
                 {/* Logo */}
                 <div className="flex items-center justify-center gap-3">
-                    <div className="rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 p-3 shadow-lg shadow-amber-500/20">
+                    <div className="rounded-xl bg-gradient-to-br from-primary to-primary/85 p-3 shadow-lg shadow-primary/20">
                         <Sparkles className="h-7 w-7 text-white" />
                     </div>
                     <div className="text-left">
-                        <h1 className="text-2xl font-black text-white tracking-tighter">PriceOS</h1>
-                        <p className="text-[10px] text-amber-500/80 font-bold uppercase tracking-[0.2em]">Revenue Intelligence</p>
+                        <h1 className="text-2xl font-bold text-foreground tracking-tight">PriceOS</h1>
+                        <p className="text-[10px] text-primary/80 font-bold uppercase tracking-[0.2em]">Revenue Intelligence</p>
                     </div>
                 </div>
 
                 {/* Status card */}
-                <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-8 space-y-6 backdrop-blur-xl">
+                <div className="bg-card border border-border rounded-2xl p-8 space-y-6 shadow-sm">
                     {/* Animated clock icon */}
                     <div className="flex justify-center">
                         <div className="relative">
-                            <div className="h-20 w-20 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                                <Clock className="h-10 w-10 text-amber-500" />
+                            <div className="h-20 w-20 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                                <Clock className="h-10 w-10 text-primary" />
                             </div>
-                            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-amber-500 animate-ping opacity-75" />
-                            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-amber-500" />
+                            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary animate-ping opacity-75" />
+                            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary" />
                         </div>
                     </div>
 
                     <div className="space-y-3">
-                        <h2 className="text-2xl font-black text-white tracking-tighter">You're on the waitlist</h2>
-                        <p className="text-white/50 text-sm leading-relaxed">
+                        <h2 className="text-2xl font-bold text-foreground tracking-tight">You&apos;re on the waitlist</h2>
+                        <p className="text-muted-foreground text-sm leading-relaxed">
                             Your account has been registered and is pending approval. We'll grant you access shortly.
                         </p>
                     </div>
 
                     {userEmail && (
-                        <div className="flex items-center gap-2 justify-center text-xs text-white/30 font-medium">
+                        <div className="flex items-center gap-2 justify-center text-xs text-muted-foreground font-medium">
                             <Mail className="h-3.5 w-3.5" />
                             <span>{userEmail}</span>
                         </div>
                     )}
 
-                    <div className="pt-2 border-t border-white/5">
-                        <p className="text-[10px] text-white/20 uppercase tracking-widest font-bold mb-4">Access Status</p>
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20">
-                            <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                            <span className="text-xs font-black text-amber-500 uppercase tracking-wider">Pending Approval</span>
+                    <div className="pt-2 border-t border-border">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-4">Access Status</p>
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
+                            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                            <span className="text-xs font-black text-primary uppercase tracking-wider">Pending Approval</span>
                         </div>
                     </div>
                 </div>
@@ -94,7 +94,7 @@ export default function WaitlistPage() {
                 <Button
                     variant="ghost"
                     onClick={handleSignOut}
-                    className="text-white/30 hover:text-white/60 hover:bg-white/5 text-xs gap-2"
+                    className="text-muted-foreground hover:text-foreground hover:bg-muted text-xs gap-2"
                 >
                     <LogOut className="h-3.5 w-3.5" />
                     Sign out and use a different account

@@ -47,8 +47,8 @@ const MARKETS = [
 const ONBOARDING_STEPS: Record<string, { label: string; color: string }> = {
   connect:  { label: "Step 1 — Connect",  color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
   select:   { label: "Step 2 — Select",   color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
-  market:   { label: "Step 3 — Market",   color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
-  strategy: { label: "Step 4 — Strategy", color: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
+  market:   { label: "Step 3 — Market",   color: "bg-primary/10 text-primary border-primary/20" },
+  strategy: { label: "Step 4 — Strategy", color: "bg-destructive/10 text-destructive border-destructive/20" },
   complete: { label: "✅ Complete",        color: "bg-green-500/10 text-green-400 border-green-500/20" },
 };
 
@@ -65,7 +65,7 @@ function OnboardingBadge({ step }: { step: string }) {
 
 function RoleBadge({ role }: { role: string }) {
   const styles: Record<string, string> = {
-    owner: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    owner: "bg-primary/10 text-primary border-primary/20",
     admin: "bg-blue-500/10 text-blue-400 border-blue-500/20",
     viewer: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
   };
@@ -129,8 +129,8 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
         {!created ? (
           <>
             <div className="flex items-center gap-3 mb-6">
-              <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                <UserPlus className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <UserPlus className="h-5 w-5 text-primary dark:text-primary" />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-foreground">Add New User</h2>
@@ -232,7 +232,7 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
               <button
                 onClick={handleCreate}
                 disabled={loading}
-                className="w-full h-11 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black font-bold rounded-xl flex items-center justify-center gap-2 text-sm transition-all"
+                className="w-full h-11 bg-primary hover:bg-primary disabled:opacity-40 text-black font-bold rounded-xl flex items-center justify-center gap-2 text-sm transition-all"
               >
                 {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
                 {loading ? "Creating…" : "Create User"}
@@ -260,12 +260,12 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
                   </button>
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/25">
-                <p className="text-[10px] text-amber-800 dark:text-amber-500 uppercase tracking-wider mb-1">Temporary Password (copy now)</p>
+              <div className="p-3 rounded-xl bg-primary/10 dark:bg-primary/5 border border-primary/25">
+                <p className="text-[10px] text-primary/800 dark:text-primary uppercase tracking-wider mb-1">Temporary Password (copy now)</p>
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-mono text-amber-900 dark:text-amber-300 break-all">{created.temporaryPassword}</p>
+                  <p className="text-sm font-mono text-primary dark:text-primary/80 break-all">{created.temporaryPassword}</p>
                   <button type="button" onClick={() => { navigator.clipboard.writeText(created.temporaryPassword); toast.success("Password copied!"); }}>
-                    <Copy className="h-3.5 w-3.5 shrink-0 text-amber-700 hover:text-amber-900 dark:text-amber-500 dark:hover:text-amber-400" />
+                    <Copy className="h-3.5 w-3.5 shrink-0 text-primary hover:text-primary dark:text-primary dark:hover:text-primary" />
                   </button>
                 </div>
               </div>
@@ -320,14 +320,14 @@ function UserRow({ user, onRefresh }: { user: User; onRefresh: () => void }) {
       "rounded-xl border transition-all",
       user.isApproved
         ? "border-border bg-card"
-        : "border-amber-500/20 bg-amber-500/[0.02]"
+        : "border-primary/20 bg-primary/[0.02]"
     )}>
       {/* Main Row */}
       <div className="flex items-center gap-4 px-5 py-4">
         {/* Avatar */}
         <div className={cn(
           "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm",
-          user.isApproved ? "bg-muted text-muted-foreground" : "bg-amber-500/10 text-amber-400"
+          user.isApproved ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
         )}>
           {user.name?.charAt(0)?.toUpperCase() ?? "?"}
         </div>
@@ -339,7 +339,7 @@ function UserRow({ user, onRefresh }: { user: User; onRefresh: () => void }) {
             <RoleBadge role={user.role} />
             <OnboardingBadge step={user.onboardingStep} />
             {!user.isApproved && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wide bg-amber-500/10 text-amber-400 border-amber-500/20">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wide bg-primary/10 text-primary border-primary/20">
                 Pending
               </span>
             )}
@@ -427,7 +427,7 @@ function UserRow({ user, onRefresh }: { user: User; onRefresh: () => void }) {
                   size="sm"
                   onClick={() => patch({ onboardingStep: "complete", isApproved: true })}
                   disabled={loading}
-                  className="flex-1 h-9 text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20"
+                  className="flex-1 h-9 text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
                 >
                   <Zap className="h-3 w-3 mr-1" /> Skip All
                 </Button>
@@ -489,7 +489,7 @@ export default function UsersPage() {
         </div>
         <Button
           onClick={() => setShowInvite(true)}
-          className="bg-amber-500 hover:bg-amber-400 text-black font-bold gap-2 h-10"
+          className="bg-primary hover:bg-primary text-black font-bold gap-2 h-10"
         >
           <UserPlus className="h-4 w-4" />
           Add User
@@ -506,9 +506,9 @@ export default function UsersPage() {
 
       {/* Onboarding Alert */}
       {incomplete.length > 0 && (
-        <div className="flex items-center gap-3 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5">
-          <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
-          <p className="text-sm text-amber-300">
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-primary/20 bg-primary/5">
+          <AlertTriangle className="h-4 w-4 text-primary shrink-0" />
+          <p className="text-sm text-primary/80">
             <strong>{incomplete.length} user{incomplete.length !== 1 ? "s have" : " has"}</strong> not completed onboarding. Use the controls below to push them forward or skip the wizard.
           </p>
         </div>
@@ -526,9 +526,9 @@ export default function UsersPage() {
           {pending.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-amber-400" />
+                <Clock className="h-4 w-4 text-primary" />
                 <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Pending Approval</h2>
-                <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px]">{pending.length}</Badge>
+                <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px]">{pending.length}</Badge>
               </div>
               {pending.map(u => <UserRow key={u.id} user={u} onRefresh={fetchUsers} />)}
             </div>

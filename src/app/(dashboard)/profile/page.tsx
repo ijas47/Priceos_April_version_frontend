@@ -122,7 +122,7 @@ export default function ProfilePage() {
             <div className="grid gap-8">
                 {/* Profile Card */}
                 <Card className="bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl border-border/50 shadow-2xl overflow-hidden">
-                    <div className="h-32 bg-gradient-to-r from-amber-500/20 via-primary/10 to-emerald-500/20 border-b border-border/10" />
+                    <div className="h-32 bg-gradient-to-r from-primary/20 via-primary/10 to-emerald-500/20 border-b border-border/10" />
                     <CardHeader className="relative flex flex-row items-end gap-6 pb-8 -mt-16">
                         <Avatar className="h-32 w-32 border-4 border-background shadow-2xl ring-4 ring-primary/5">
                             <AvatarFallback className="text-4xl bg-primary text-primary-foreground font-black uppercase">
@@ -132,7 +132,7 @@ export default function ProfilePage() {
                         <div className="space-y-1 pb-2">
                             <CardTitle className="text-3xl font-black tracking-tighter">{fullName || user.name || 'User Account'}</CardTitle>
                             <CardDescription className="text-base flex items-center gap-2 font-medium">
-                                <Shield className="h-4 w-4 text-amber-500 fill-amber-500/20" />
+                                <Shield className="h-4 w-4 text-primary fill-primary/20" />
                                 Property Manager
                             </CardDescription>
                         </div>

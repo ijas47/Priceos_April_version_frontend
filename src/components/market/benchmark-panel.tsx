@@ -50,7 +50,7 @@ interface Props {
 const VERDICT_STYLES: Record<string, string> = {
   UNDERPRICED: "bg-red-500/10 text-red-400 border-red-500/20",
   FAIR: "bg-green-500/10 text-green-400 border-green-500/20",
-  SLIGHTLY_ABOVE: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  SLIGHTLY_ABOVE: "bg-primary/10 text-primary border-primary/20",
   OVERPRICED: "bg-red-500/10 text-red-400 border-red-500/20",
 };
 
@@ -68,7 +68,7 @@ function percentileBar(pct: number | undefined) {
       <div
         className={cn(
           "absolute left-0 top-0 h-full rounded-full",
-          pct < 30 ? "bg-red-400" : pct < 60 ? "bg-amber-400" : "bg-green-400"
+          pct < 30 ? "bg-red-400" : pct < 60 ? "bg-primary" : "bg-green-400"
         )}
         style={{ width: `${pct}%` }}
       />
@@ -201,7 +201,7 @@ export function BenchmarkPanel({ orgId, listingId, listingName, currency = "AED"
             <p className="text-[10px] text-text-tertiary mb-0.5">{s.label}</p>
             <p className={cn(
               "text-sm font-bold tabular-nums",
-              s.highlight ? "text-amber-400" : "text-text-primary"
+              s.highlight ? "text-primary" : "text-text-primary"
             )}>
               {s.value ? `${currency} ${s.value.toLocaleString("en-US")}` : "—"}
             </p>

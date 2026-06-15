@@ -30,7 +30,7 @@ export function DashboardStats({
         value={`${avgBasePrice} AED`}
         subtitle="Per night"
         icon={DollarSign}
-        gradient="from-amber-500 to-orange-600"
+        gradient="from-primary to-primary/85"
       />
       <StatCard
         title="Occupancy Rate"

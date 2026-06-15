@@ -171,7 +171,7 @@ export function GlobalTour() {
           <div className="flex flex-col gap-3">
             <button
               onClick={startTour}
-              className="w-full bg-amber text-black font-bold py-3 rounded-xl hover:bg-amber-dim transition-all flex items-center justify-center gap-2 group"
+              className="w-full bg-amber text-black font-bold py-3 rounded-xl hover:bg-primary/dim transition-all flex items-center justify-center gap-2 group"
             >
               Start Exploratory Tour
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -280,7 +280,7 @@ export function GlobalTour() {
             )}
             <button 
               onClick={nextStep}
-              className="px-4 py-1.5 rounded-lg bg-amber text-black text-[10px] font-bold hover:bg-amber-dim transition-all flex items-center gap-1.5"
+              className="px-4 py-1.5 rounded-lg bg-amber text-black text-[10px] font-bold hover:bg-primary/dim transition-all flex items-center gap-1.5"
             >
               {currentStep === TOUR_STEPS.length - 1 ? "Finish" : "Next Step"}
               <ArrowRight className="w-3 h-3" />

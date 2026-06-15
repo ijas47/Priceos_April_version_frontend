@@ -30,7 +30,7 @@ interface ExpenseTableProps {
 
 const CATEGORY_COLORS: Record<Expense["category"], string> = {
   cleaning: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
-  maintenance: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+  maintenance: "bg-primary/100 text-primary/800 dark:bg-primary/900/40 dark:text-primary/80",
   supplies: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
   utilities: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300",
   commission: "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300",

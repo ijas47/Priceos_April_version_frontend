@@ -194,7 +194,7 @@ function MonthStats({ days, currency }: { days: CalendarDay[]; currency: string 
         color={avgChange > 0 ? "text-green-400" : avgChange < 0 ? "text-red-400" : "text-foreground"}
       />
       <StatCard label="Occupancy" value={`${occupancy}%`} />
-      <StatCard label="Pending" value={String(pending.length)} color="text-amber-400" />
+      <StatCard label="Pending" value={String(pending.length)} color="text-primary" />
     </div>
   );
 }
@@ -548,7 +548,7 @@ export function PricingCalendarHeatmap({ listings }: Props) {
           <button
             onClick={runEngine}
             disabled={runningEngine}
-            className="h-9 px-4 rounded-md bg-amber text-amber-foreground text-xs font-bold flex items-center gap-2 hover:bg-amber/90 disabled:opacity-50 transition-colors"
+            className="h-9 px-4 rounded-md bg-amber text-primary/foreground text-xs font-bold flex items-center gap-2 hover:bg-amber/90 disabled:opacity-50 transition-colors"
           >
             {runningEngine ? (
               <>

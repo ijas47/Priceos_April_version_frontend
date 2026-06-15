@@ -56,8 +56,8 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-tertiary);
   --color-text-disabled: var(--text-disabled);
-  --color-amber: var(--amber);
-  --color-amber-dim: var(--amber-dim);
+  --color-brand: var(--brand);
+  --color-brand-dim: var(--brand-dim);
 
   /* PriceOS Font Sizes */
   --font-size-2xs: 10px;
@@ -67,74 +67,74 @@
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 
-  /* PriceOS Core Tokens - PREMIUM LIGHT */
+  /* PriceOS Core Tokens — Airtable-inspired light */
   --surface-0: #ffffff;
-  --surface-1: #f9fafb;
-  --surface-2: #f3f4f6;
-  --surface-3: #e5e7eb;
-  --border-subtle: rgba(0, 0, 0, 0.05);
-  --border-default: rgba(0, 0, 0, 0.08);
-  --border-strong: rgba(0, 0, 0, 0.15);
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-tertiary: #94a3b8;
-  --text-disabled: #cbd5e1;
-  --amber: #d97706; /* Slightly darker for light mode contrast */
-  --amber-dim: rgba(217, 119, 6, 0.08);
+  --surface-1: #f7f8fa;
+  --surface-2: #eff1f5;
+  --surface-3: #e2e5eb;
+  --border-subtle: rgba(29, 31, 37, 0.06);
+  --border-default: rgba(29, 31, 37, 0.1);
+  --border-strong: rgba(29, 31, 37, 0.18);
+  --text-primary: #1d1f25;
+  --text-secondary: #5a5f6b;
+  --text-tertiary: #8b919a;
+  --text-disabled: #c4c8d0;
+  --brand: #2d7ff9;
+  --brand-dim: rgba(45, 127, 249, 0.08);
 
   /* Shadcn Variable Mapping (Light Mode) */
   --background: var(--surface-0);
   --foreground: var(--text-primary);
-  --card: var(--surface-1);
+  --card: var(--surface-0);
   --card-foreground: var(--text-primary);
   --popover: var(--surface-0);
   --popover-foreground: var(--text-primary);
-  --primary: var(--amber);
+  --primary: var(--brand);
   --primary-foreground: #ffffff;
   --secondary: var(--surface-2);
   --secondary-foreground: var(--text-primary);
-  --muted: var(--surface-2);
+  --muted: var(--surface-1);
   --muted-foreground: var(--text-secondary);
-  --accent: var(--amber-dim);
-  --accent-foreground: var(--amber);
+  --accent: var(--brand-dim);
+  --accent-foreground: var(--brand);
   --destructive: oklch(0.577 0.245 27.325);
   --border: var(--border-default);
   --input: var(--surface-2);
-  --ring: var(--amber);
+  --ring: var(--brand);
 
-  --chart-1: var(--amber);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --chart-1: var(--brand);
+  --chart-2: #18bfff;
+  --chart-3: #20c933;
+  --chart-4: #fcb400;
+  --chart-5: #8b919a;
 
   --sidebar: var(--surface-1);
   --sidebar-foreground: var(--text-secondary);
-  --sidebar-primary: var(--amber);
+  --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: var(--surface-2);
   --sidebar-accent-foreground: var(--text-primary);
   --sidebar-border: var(--border-subtle);
-  --sidebar-ring: var(--amber);
+  --sidebar-ring: var(--brand);
 }
 
 .dark {
-  /* PriceOS Core Tokens - PREMIUM DARK */
-  --surface-0: #08080a;
-  --surface-1: #111114;
-  --surface-2: #1a1a1f;
-  --surface-3: #242429;
+  /* PriceOS Core Tokens — calm dark with blue accent */
+  --surface-0: #121316;
+  --surface-1: #1a1b1f;
+  --surface-2: #24252b;
+  --surface-3: #2e3038;
   --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.10);
+  --border-default: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.18);
   --text-primary: rgba(255, 255, 255, 0.95);
   --text-secondary: rgba(255, 255, 255, 0.65);
-  --text-tertiary: rgba(255, 255, 255, 0.40);
+  --text-tertiary: rgba(255, 255, 255, 0.4);
   --text-disabled: rgba(255, 255, 255, 0.25);
-  --amber: #f59e0b;
-  --amber-dim: rgba(245, 158, 11, 0.15);
+  --brand: #4d9aff;
+  --brand-dim: rgba(77, 154, 255, 0.15);
 
   /* Shadcn Variable Mapping (Dark Mode) */
   --background: var(--surface-0);
@@ -143,27 +143,27 @@
   --card-foreground: var(--text-primary);
   --popover: var(--surface-1);
   --popover-foreground: var(--text-primary);
-  --primary: var(--amber);
-  --primary-foreground: #000;
+  --primary: var(--brand);
+  --primary-foreground: #ffffff;
   --secondary: var(--surface-2);
   --secondary-foreground: var(--text-primary);
   --muted: var(--surface-2);
   --muted-foreground: var(--text-secondary);
-  --accent: var(--amber-dim);
-  --accent-foreground: var(--amber);
+  --accent: var(--brand-dim);
+  --accent-foreground: var(--brand);
   --destructive: oklch(0.704 0.191 22.216);
   --border: var(--border-default);
   --input: var(--surface-2);
-  --ring: var(--amber);
+  --ring: var(--brand);
 
   --sidebar: var(--surface-1);
   --sidebar-foreground: var(--text-primary);
-  --sidebar-primary: var(--amber);
-  --sidebar-primary-foreground: #000;
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: var(--surface-2);
   --sidebar-accent-foreground: var(--text-primary);
   --sidebar-border: var(--border-default);
-  --sidebar-ring: var(--amber);
+  --sidebar-ring: var(--brand);
 }
 
 @layer base {
@@ -171,9 +171,9 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
-    transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
-                border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+    @apply bg-background text-foreground antialiased;
+    transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                 color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   main {
@@ -207,7 +207,7 @@
   }
 
   .animate-shimmer {
-    background: linear-gradient(90deg, transparent 25%, rgba(161, 133, 93, 0.05) 50%, transparent 75%);
+    background: linear-gradient(90deg, transparent 25%, rgba(45, 127, 249, 0.05) 50%, transparent 75%);
     background-size: 200% 100%;
     animation: shimmer 2.5s infinite;
   }

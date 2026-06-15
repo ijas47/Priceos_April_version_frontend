@@ -78,8 +78,8 @@ export function MarketEventsTable() {
             <Card className="flex flex-col h-full min-h-[300px] border-dashed border-border/50 shadow-none bg-muted/5 animate-pulse">
                 <div className="flex-1 flex flex-col items-center justify-center gap-4">
                     <div className="relative">
-                        <Loader2 className="h-10 w-10 animate-spin text-amber-500" />
-                        <Sparkles className="h-4 w-4 text-amber-500 absolute -top-1 -right-1 animate-bounce" />
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                        <Sparkles className="h-4 w-4 text-primary absolute -top-1 -right-1 animate-bounce" />
                     </div>
                     <div className="text-center">
                         <p className="text-sm font-black uppercase tracking-widest text-foreground">
@@ -141,8 +141,8 @@ export function MarketEventsTable() {
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-5 p-12 text-center">
                     <div className="h-16 w-16 rounded-full bg-background border border-border/50 shadow-sm flex items-center justify-center relative">
                         <CalendarIcon className="h-7 w-7 opacity-20" />
-                        <div className="absolute -bottom-1 -right-1 bg-amber-500/10 rounded-full p-1 border border-amber-500/30">
-                            <Sparkles className="h-3 w-3 text-amber-500" />
+                        <div className="absolute -bottom-1 -right-1 bg-primary/10 rounded-full p-1 border border-primary/30">
+                            <Sparkles className="h-3 w-3 text-primary" />
                         </div>
                     </div>
                     <div className="space-y-3">
@@ -152,7 +152,7 @@ export function MarketEventsTable() {
                         </p>
                         <button
                             onClick={handleRunAgent}
-                            className="mt-2 inline-flex items-center gap-2 px-5 py-2 rounded-full bg-amber-500 text-white text-[11px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all shadow-sm shadow-amber-500/20"
+                            className="mt-2 inline-flex items-center gap-2 px-5 py-2 rounded-full bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-sm shadow-primary/20"
                         >
                             <Sparkles className="h-3.5 w-3.5" />
                             Run Market Agent
@@ -168,7 +168,7 @@ export function MarketEventsTable() {
         if (!impact) return <Badge variant="outline" className="text-[10px]">Unknown</Badge>;
         const lower = impact.toLowerCase();
         if (lower.includes("high")) return <Badge className="bg-red-500/10 text-red-500 hover:bg-red-500/20 text-[10px] font-bold tracking-wider uppercase border-none">High</Badge>;
-        if (lower.includes("med")) return <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 text-[10px] font-bold tracking-wider uppercase border-none">Medium</Badge>;
+        if (lower.includes("med")) return <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-[10px] font-bold tracking-wider uppercase border-none">Medium</Badge>;
         return <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-[10px] font-bold tracking-wider uppercase border-none">Low</Badge>;
     };
 
@@ -180,7 +180,7 @@ export function MarketEventsTable() {
             >
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-amber-500" />
+                        <Sparkles className="h-4 w-4 text-primary" />
                         <CardTitle className="text-sm font-bold">Latest Market Signals</CardTitle>
                     </div>
                     <div className="flex items-center gap-3">
@@ -193,7 +193,7 @@ export function MarketEventsTable() {
                                 handleRunAgent();
                             }}
                             disabled={loading || isMarketAnalysisRunning}
-                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition-colors border border-amber-500/20 disabled:opacity-50"
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20 disabled:opacity-50"
                             title="Force sync live market signals via AI"
                         >
                             <Sparkles className={cn("h-3 w-3", loading ? "animate-spin" : "")} />
@@ -286,7 +286,7 @@ export function MarketEventsTable() {
                                                         <Badge variant="outline" className="text-[9px] bg-blue-500/10 text-blue-500 border-blue-500/30">From Database</Badge>
                                                     )}
                                                     {ev.source === 'perplexity' && (
-                                                        <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-600 border-amber-500/30 flex items-center gap-1">
+                                                        <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary border-primary/30 flex items-center gap-1">
                                                             <Sparkles className="h-2 w-2" />
                                                             Agent AI Search
                                                         </Badge>

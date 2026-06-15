@@ -58,12 +58,12 @@ const CHART_TOOLTIP_STYLE = {
 const ANALYTICS_COLORS = {
   blue: "#3b82f6",
   emerald: "#10b981",
-  amber: "#f59e0b",
+  amber: "#2d7ff9",
   violet: "#8b5cf6",
   rose: "#f43f5e",
   cyan: "#06b6d4",
 };
-const CHANNEL_COLORS = ["#10b981", "#ef4444", "#3b82f6", "#8b5cf6", "#f59e0b", "#14b8a6"];
+const CHANNEL_COLORS = ["#10b981", "#ef4444", "#3b82f6", "#8b5cf6", "#2d7ff9", "#14b8a6"];
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -1149,7 +1149,7 @@ function ChartCard({
 }) {
   return (
     <Card className="shadow-xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl overflow-hidden">
-      <div className="h-px w-full bg-gradient-to-r from-blue-500/0 via-violet-500/50 to-amber-500/0" />
+      <div className="h-px w-full bg-gradient-to-r from-blue-500/0 via-violet-500/50 to-primary/0" />
       <CardHeader className="pb-2">
         <CardTitle className="text-sm text-foreground dark:text-white">{title}</CardTitle>
         <p className="text-[11px] text-muted-foreground">{subtitle}</p>
@@ -1172,13 +1172,13 @@ function KpiCard({
     blue: "from-blue-500/20 to-cyan-500/5 border-blue-500/20",
     violet: "from-violet-500/20 to-fuchsia-500/5 border-violet-500/20",
     emerald: "from-emerald-500/20 to-teal-500/5 border-emerald-500/20",
-    amber: "from-amber-500/20 to-orange-500/5 border-amber-500/20",
+    amber: "from-primary/20 to-primary/85/5 border-primary/20",
   };
   const textMap = {
     blue: "text-blue-400",
     violet: "text-violet-400",
     emerald: "text-emerald-400",
-    amber: "text-amber-400",
+    amber: "text-primary",
   };
   return (
     <Card className={cn("bg-gradient-to-br backdrop-blur-xl shadow-xl border dark:border-white/5", accentMap[accent])}>

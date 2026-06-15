@@ -1839,7 +1839,7 @@ export function PricingRulesStudio({ listings }: Props) {
                       className={cn(
                         "gap-1.5 text-xs font-semibold transition-all rounded-md px-3 py-1.5 border relative",
                         activeTab === value
-                          ? "bg-amber-500 text-black border-amber-500 shadow-lg ring-2 ring-amber-500/40 scale-[1.02] before:absolute before:inset-x-2 before:-bottom-1 before:h-0.5 before:rounded-full before:bg-amber-400"
+                          ? "bg-primary text-black border-primary shadow-lg ring-2 ring-primary/40 scale-[1.02] before:absolute before:inset-x-2 before:-bottom-1 before:h-0.5 before:rounded-full before:bg-primary"
                           : "bg-transparent text-muted-foreground border-transparent hover:bg-background hover:text-foreground dark:hover:bg-white/[0.05]"
                       )}
                     >

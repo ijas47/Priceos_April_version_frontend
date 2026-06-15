@@ -532,7 +532,7 @@ function AddRuleForm({
                   className={cn(
                     "rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors",
                     active
-                      ? "border-amber-500 bg-amber-500 text-black"
+                      ? "border-primary bg-primary text-black"
                       : "border-border-default bg-background text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -907,7 +907,7 @@ export default function GroupDetailPage() {
                     className={cn(
                       "gap-1.5 text-xs font-semibold transition-all rounded-lg px-3 py-1.5 border relative",
                       activeRuleCategory === value
-                        ? "bg-amber-500 text-black border-amber-500 shadow ring-2 ring-amber-500/30 scale-[1.02]"
+                        ? "bg-primary text-black border-primary shadow ring-2 ring-primary/30 scale-[1.02]"
                         : "bg-transparent text-muted-foreground border-transparent hover:bg-background hover:text-foreground"
                     )}
                   >

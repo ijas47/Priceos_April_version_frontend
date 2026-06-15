@@ -82,7 +82,7 @@ export function EngineRunHistory() {
           { label: "Today's Runs", value: todayRuns.length, color: "text-text-primary" },
           { label: "Succeeded", value: successToday, color: "text-green-400" },
           { label: "Failed", value: failToday, color: failToday > 0 ? "text-red-400" : "text-text-primary" },
-          { label: "Days Repriced", value: totalDays.toLocaleString("en-US"), color: "text-amber-400" },
+          { label: "Days Repriced", value: totalDays.toLocaleString("en-US"), color: "text-primary" },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
             <p className="text-[11px] text-text-tertiary mb-1">{s.label}</p>
@@ -121,7 +121,7 @@ export function EngineRunHistory() {
                 ) : run.status === "FAILED" ? (
                   <XCircle className="h-3.5 w-3.5 text-red-400" />
                 ) : (
-                  <RefreshCw className="h-3.5 w-3.5 text-amber-400 animate-spin" />
+                  <RefreshCw className="h-3.5 w-3.5 text-primary animate-spin" />
                 )}
 
                 {/* Listing */}
@@ -137,7 +137,7 @@ export function EngineRunHistory() {
                 {/* Days changed */}
                 <span className={cn(
                   "text-xs font-medium tabular-nums text-right",
-                  (run.daysChanged ?? 0) > 0 ? "text-amber-400" : "text-text-disabled"
+                  (run.daysChanged ?? 0) > 0 ? "text-primary" : "text-text-disabled"
                 )}>
                   {run.daysChanged ?? 0}
                 </span>

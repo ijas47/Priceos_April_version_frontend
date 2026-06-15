@@ -106,7 +106,7 @@ export function CalendarGrid({ days, onRefresh }: CalendarGridProps) {
                 isBooked &&
                   "cursor-default border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950",
                 isBlocked &&
-                  "cursor-pointer border-amber-200 bg-amber-50 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950 dark:hover:bg-amber-900"
+                  "cursor-pointer border-primary/20 bg-primary/50 hover:bg-primary/100 dark:border-primary/900 dark:bg-primary/950 dark:hover:bg-primary/900"
               )}
             >
               <span className="font-medium">{date.getDate()}</span>
@@ -124,7 +124,7 @@ export function CalendarGrid({ days, onRefresh }: CalendarGridProps) {
                 </span>
               )}
               {isBlocked && (
-                <span className="mt-0.5 text-amber-600 dark:text-amber-400 text-[10px]">
+                <span className="mt-0.5 text-primary dark:text-primary text-[10px]">
                   {day.blockReason ? blockReasonLabels[day.blockReason] : "Blocked"}
                 </span>
               )}

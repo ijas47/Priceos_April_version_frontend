@@ -59,14 +59,14 @@ const IMPACT_STYLES: Record<string, string> = {
   high:
     "bg-red-100 text-red-800 border-red-300 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30",
   medium:
-    "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30",
+    "bg-primary/100 text-primary border-primary/80 dark:bg-primary/10 dark:text-primary dark:border-primary/30",
   low:
     "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/30",
 };
 
 const FILTER_SELECT_CLASS =
   "text-xs min-h-9 rounded-md border border-border bg-background px-3 py-1.5 text-foreground shadow-sm " +
-  "focus:outline-none focus:ring-2 focus:ring-amber-500/35 focus:ring-offset-2 focus:ring-offset-background " +
+  "focus:outline-none focus:ring-2 focus:ring-primary/35 focus:ring-offset-2 focus:ring-offset-background " +
   "dark:border-white/15 dark:bg-white/[0.06] dark:text-foreground";
 
 function formatDate(dateStr: string) {
@@ -175,7 +175,7 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
               value: `${occupancyPct}%`,
               sub: "Next 30 days",
               icon: BarChart2,
-              color: occupancyPct > 70 ? "text-green-400" : occupancyPct > 40 ? "text-amber-400" : "text-red-400",
+              color: occupancyPct > 70 ? "text-green-400" : occupancyPct > 40 ? "text-primary" : "text-red-400",
               tooltip: "Real-time occupancy synced from Hostaway/PMS.",
             },
             {
@@ -199,7 +199,7 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
               value: events.length,
               sub: "Next 90 days",
               icon: Calendar,
-              color: "text-amber-400",
+              color: "text-primary",
               tooltip: "Total detected events near your properties.",
             },
           ].map((kpi) => (
@@ -255,7 +255,7 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
                   className={cn(
                     "text-xs font-medium px-3 py-1.5 rounded-md border transition-colors",
                     filterImpact === id
-                      ? "border-amber-500 bg-amber-100 text-amber-950 shadow-sm dark:border-amber/40 dark:bg-amber/15 dark:text-amber"
+                      ? "border-primary bg-primary/100 text-primary/950 shadow-sm dark:border-amber/40 dark:bg-amber/15 dark:text-amber"
                       : "border-border bg-background text-foreground/90 hover:bg-muted hover:text-foreground dark:border-white/15 dark:bg-transparent dark:text-zinc-300 dark:hover:bg-white/5 dark:hover:text-white"
                   )}
                 >
@@ -282,7 +282,7 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
               <button
                 type="button"
                 onClick={() => { setFilterImpact("all"); setFilterArea("all"); }}
-                className="text-xs font-medium text-amber-700 hover:text-amber-900 underline-offset-2 hover:underline ml-auto dark:text-amber dark:hover:text-amber/90"
+                className="text-xs font-medium text-primary hover:text-primary underline-offset-2 hover:underline ml-auto dark:text-amber dark:hover:text-amber/90"
               >
                 Clear filters
               </button>
@@ -304,7 +304,7 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
                 <button
                   type="button"
                   onClick={() => { setFilterImpact("all"); setFilterArea("all"); }}
-                  className="text-xs font-medium text-amber-700 hover:underline dark:text-amber"
+                  className="text-xs font-medium text-primary hover:underline dark:text-amber"
                 >
                   Clear filters
                 </button>

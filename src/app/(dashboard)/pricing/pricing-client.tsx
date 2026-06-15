@@ -172,7 +172,7 @@ function RiskBadge({ pct }: { pct: number | null }) {
   const level = riskLevel(pct);
   const styles = {
     high: "bg-red-500/10 text-red-400 border-red-500/20",
-    medium: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    medium: "bg-primary/10 text-primary border-primary/20",
     low: "bg-green-500/10 text-green-400 border-green-500/20",
   };
   return (
@@ -214,7 +214,7 @@ function ReasoningCell({ reasoning }: { reasoning: any }) {
             e.stopPropagation();
             setOpen((v) => !v);
           }}
-          className="ml-1.5 text-amber-600 hover:text-amber-500 dark:text-amber/80 dark:hover:text-amber inline-flex items-center gap-0.5"
+          className="ml-1.5 text-primary hover:text-primary dark:text-amber/80 dark:hover:text-amber inline-flex items-center gap-0.5"
         >
           {open ? (
             <>
@@ -594,7 +594,7 @@ export function PricingClient({
   };
 
   const STATUS_TABS: { id: StatusTab; label: string; color: string }[] = [
-    { id: "pending", label: "Pending", color: "text-amber-400" },
+    { id: "pending", label: "Pending", color: "text-primary" },
     { id: "approved", label: "Approved", color: "text-green-400" },
     { id: "rejected", label: "Rejected", color: "text-red-400" },
     { id: "pushed", label: "Pushed", color: "text-blue-400" },
@@ -605,7 +605,7 @@ export function PricingClient({
       {/* KPI Strip — pending only */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Pending", value: counts.pending, color: "text-amber-400" },
+          { label: "Pending", value: counts.pending, color: "text-primary" },
           { label: "Increases", value: increases, color: "text-green-400" },
           { label: "Decreases", value: decreases, color: "text-red-400" },
           {
@@ -1030,7 +1030,7 @@ export function PricingClient({
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 shrink-0 bg-muted/30">
             <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${isGraphConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+              <span className={`h-2 w-2 rounded-full ${isGraphConnected ? 'bg-emerald-500 animate-pulse' : 'bg-primary'}`} />
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Engine Execution Graph
               </span>

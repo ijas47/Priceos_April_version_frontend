@@ -68,46 +68,46 @@ function ResetPasswordContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0a0b] p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6">
       {/* Animated Background */}
       <div className="fixed inset-0 z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-500/10 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-500/10 blur-[150px] rounded-full animate-pulse delay-1000" />
       </div>
 
       <div className="relative z-10 w-full max-w-[440px] space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 p-2.5 shadow-lg shadow-amber-500/20">
-            <Sparkles className="h-6 w-6 text-white" />
+          <div className="rounded-xl bg-gradient-to-br from-primary to-primary/85 p-2.5 shadow-lg shadow-primary/20">
+            <Sparkles className="h-6 w-6 text-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-white tracking-tighter">PriceOS</h1>
-            <p className="text-[10px] text-amber-500/80 font-bold uppercase tracking-[0.2em]">Revenue Intelligence</p>
+            <h1 className="text-xl font-black text-foreground tracking-tighter">PriceOS</h1>
+            <p className="text-[10px] text-primary/80 font-bold uppercase tracking-[0.2em]">Revenue Intelligence</p>
           </div>
         </div>
 
         {/* Header */}
         <div className="space-y-2">
-          <h3 className="text-3xl font-black tracking-tighter text-white">Set New Password</h3>
-          <p className="text-sm text-white/40">
+          <h3 className="text-3xl font-black tracking-tighter text-foreground">Set New Password</h3>
+          <p className="text-sm text-muted-foreground">
             Enter your new password below to regain access to your account.
           </p>
         </div>
 
         {/* Success State */}
         {saveSuccess ? (
-          <Card className="bg-white/[0.03] backdrop-blur-3xl border-emerald-500/20 shadow-2xl p-8 space-y-6">
+          <Card className="bg-card border-emerald-500/20 shadow-2xl p-8 space-y-6">
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="rounded-full bg-emerald-500/10 p-4">
                 <CheckCircle className="h-10 w-10 text-emerald-500" />
               </div>
-              <h4 className="text-xl font-black text-white">Password Updated!</h4>
-              <p className="text-sm text-white/50">
+              <h4 className="text-xl font-black text-foreground">Password Updated!</h4>
+              <p className="text-sm text-muted-foreground">
                 Your password has been successfully reset. You can now sign in with your new password.
               </p>
               <Link href="/login" className="w-full">
-                <Button className="w-full h-12 bg-gradient-to-r from-amber-500 to-orange-600 text-black font-black uppercase tracking-wider hover:opacity-90 transition-opacity">
+                <Button className="w-full h-12 bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity">
                   Go to Sign In
                 </Button>
               </Link>
@@ -115,23 +115,23 @@ function ResetPasswordContent() {
           </Card>
         ) : !token ? (
           /* No Token State */
-          <Card className="bg-white/[0.03] backdrop-blur-3xl border-red-500/20 shadow-2xl p-8 space-y-6">
+          <Card className="bg-card border-red-500/20 shadow-2xl p-8 space-y-6">
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="rounded-full bg-red-500/10 p-4">
                 <AlertCircle className="h-10 w-10 text-red-400" />
               </div>
-              <h4 className="text-xl font-black text-white">Invalid Reset Link</h4>
-              <p className="text-sm text-white/50">
+              <h4 className="text-xl font-black text-foreground">Invalid Reset Link</h4>
+              <p className="text-sm text-muted-foreground">
                 This password reset link is invalid or has expired. Please request a new one.
               </p>
               <div className="w-full space-y-3 pt-2">
                 <Link href="/auth/forgot-password" className="block w-full">
-                  <Button className="w-full h-12 bg-gradient-to-r from-amber-500 to-orange-600 text-black font-black uppercase tracking-wider hover:opacity-90 transition-opacity">
+                  <Button className="w-full h-12 bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity">
                     Request New Reset Link
                   </Button>
                 </Link>
                 <Link href="/login" className="block w-full">
-                  <Button variant="outline" className="w-full h-12 bg-transparent border-white/10 text-white/60 hover:text-white hover:border-white/20">
+                  <Button variant="outline" className="w-full h-12 bg-transparent border-border text-muted-foreground hover:text-foreground hover:border-primary/30">
                     Back to Sign In
                   </Button>
                 </Link>
@@ -140,28 +140,28 @@ function ResetPasswordContent() {
           </Card>
         ) : (
           /* Password Form */
-          <Card className="bg-white/[0.03] backdrop-blur-3xl border-white/5 shadow-2xl relative overflow-hidden p-0">
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+          <Card className="bg-card border-border shadow-2xl relative overflow-hidden p-0">
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
             <div className="p-6 space-y-5">
               {/* New Password */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-white/60 uppercase tracking-widest">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                   New Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     type={showNewPassword ? "text" : "password"}
                     placeholder="Enter new password (min 6 chars)"
                     value={newPassword}
                     onChange={(e) => { setNewPassword(e.target.value); setError(""); }}
-                    className="h-12 pl-10 pr-10 bg-white/[0.03] border-white/5 text-white placeholder:text-white/30 focus:border-amber-500 focus:ring-amber-500/20"
+                    className="h-12 pl-10 pr-10 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground transition-colors"
                   >
                     {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -170,25 +170,25 @@ function ResetPasswordContent() {
 
               {/* Confirm Password */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-white/60 uppercase tracking-widest">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm new password"
                     value={confirmPassword}
                     onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
                     onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
-                    className={`h-12 pl-10 pr-10 bg-white/[0.03] border-white/5 text-white placeholder:text-white/30 focus:border-amber-500 focus:ring-amber-500/20 ${confirmPassword && confirmPassword === newPassword ? "border-emerald-500/40" : ""
+                    className={`h-12 pl-10 pr-10 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 ${confirmPassword && confirmPassword === newPassword ? "border-emerald-500/40" : ""
                       } ${confirmPassword && confirmPassword !== newPassword ? "border-red-500/40" : ""
                       }`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground transition-colors"
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -208,7 +208,7 @@ function ResetPasswordContent() {
                 <Button
                   onClick={handleResetPassword}
                   disabled={isSaving || !newPassword || !confirmPassword || newPassword !== confirmPassword}
-                  className="flex-1 h-12 bg-gradient-to-r from-amber-500 to-orange-600 text-black font-black uppercase tracking-wider shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:hover:translate-y-0"
+                  className="flex-1 h-12 bg-primary text-primary-foreground font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:hover:translate-y-0"
                 >
                   {isSaving ? (
                     <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
@@ -219,7 +219,7 @@ function ResetPasswordContent() {
                 <Link href="/login">
                   <Button
                     variant="outline"
-                    className="h-12 px-6 bg-transparent border-white/10 text-white/60 hover:text-white hover:border-white/20 hover:bg-white/5 font-bold uppercase tracking-wider transition-all"
+                    className="h-12 px-6 bg-transparent border-border text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-muted font-bold uppercase tracking-wider transition-all"
                   >
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back
@@ -244,7 +244,7 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0b]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
       <ResetPasswordContent />
     </Suspense>
   );

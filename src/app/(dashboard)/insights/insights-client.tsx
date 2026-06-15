@@ -56,7 +56,7 @@ interface Insight {
 
 const SEVERITY_STYLES: Record<InsightSeverity, string> = {
   high: "bg-red-500/10 text-red-400 border-red-500/20",
-  medium: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  medium: "bg-primary/10 text-primary border-primary/20",
   low: "bg-blue-500/10 text-blue-400 border-blue-500/20",
 };
 
@@ -99,7 +99,7 @@ function formatCategory(cat: string) {
 
 function confidenceColor(c: number) {
   if (c >= 0.8) return "text-green-400";
-  if (c >= 0.6) return "text-amber-400";
+  if (c >= 0.6) return "text-primary";
   return "text-red-400";
 }
 
@@ -154,7 +154,7 @@ function InsightCard({
         insight.severity === "high"
           ? "border-red-500/20"
           : insight.severity === "medium"
-          ? "border-amber-500/10"
+          ? "border-primary/10"
           : "border-white/5"
       )}
     >
@@ -167,7 +167,7 @@ function InsightCard({
             insight.severity === "high"
               ? "bg-red-500/10"
               : insight.severity === "medium"
-              ? "bg-amber-500/10"
+              ? "bg-primary/10"
               : "bg-blue-500/10"
           )}
         >
@@ -177,7 +177,7 @@ function InsightCard({
               insight.severity === "high"
                 ? "text-red-400"
                 : insight.severity === "medium"
-                ? "text-amber-400"
+                ? "text-primary"
                 : "text-blue-400"
             )}
           />
@@ -344,7 +344,7 @@ function InsightCard({
               size="sm"
               disabled={acting}
               onClick={() => handleAction("snoozed")}
-              className="h-7 px-3 text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20"
+              className="h-7 px-3 text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
             >
               <Clock className="h-3 w-3 mr-1" />
               Snooze 7d

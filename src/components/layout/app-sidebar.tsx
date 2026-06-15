@@ -254,7 +254,7 @@ export function AppSidebar() {
         className={cn(
           "group relative flex items-center gap-3 px-3 py-2 text-body transition-colors duration-200 rounded-md mx-2",
           active
-            ? "text-amber bg-amber-dim"
+            ? "text-amber bg-primary/dim"
             : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
         )}
       >
@@ -397,7 +397,7 @@ export function AppSidebar() {
                                 "text-[10px] border-none h-5",
                                 proposal.type === "high_risk"
                                   ? "bg-red-500/15 text-red-400"
-                                  : "bg-amber-500/15 text-amber-400"
+                                  : "bg-primary/15 text-primary"
                               )}
                             >
                               {proposal.type === "high_risk" ? "high risk" : "expiring"}
@@ -431,7 +431,7 @@ export function AppSidebar() {
                                 event.impactLevel === "high"
                                   ? "bg-red-500/15 text-red-400"
                                   : event.impactLevel === "medium"
-                                    ? "bg-amber-500/15 text-amber-400"
+                                    ? "bg-primary/15 text-primary"
                                     : "bg-blue-500/15 text-blue-400"
                               )}
                             >

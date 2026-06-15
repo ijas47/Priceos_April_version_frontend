@@ -69,7 +69,7 @@ export function DataTypeCard({
           <p
             className={cn(
               "text-xs mt-1",
-              stale ? "text-amber-600 font-medium" : "text-muted-foreground"
+              stale ? "text-primary font-medium" : "text-muted-foreground"
             )}
           >
             {formatRelativeTime(lastSynced)}

@@ -89,7 +89,7 @@ export function DemandPacingWidget({ dateFrom, dateTo, marketId = "2286", curren
                                         {day.demandTier !== "unknown" && (
                                             <span className={`text-[9px] font-black uppercase tracking-wider mt-0.5 ${
                                                 day.demandTier === 'high' ? 'text-red-500' :
-                                                day.demandTier === 'medium' ? 'text-amber-500' : 'text-emerald-500'
+                                                day.demandTier === 'medium' ? 'text-primary' : 'text-emerald-500'
                                             }`}>
                                                 {day.demandTier} Demand
                                             </span>

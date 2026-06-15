@@ -259,7 +259,7 @@ export function OverviewClient({
   };
 
   const BAR_COLORS = [
-    '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
+    '#3b82f6', '#10b981', '#2d7ff9', '#8b5cf6', '#ec4899',
     '#f43f5e', '#14b8a6', '#f97316', '#06b6d4', '#84cc16'
   ];
 
@@ -344,7 +344,7 @@ const actionQueue = [...filteredProperties].map(p => {
   const occDistribution = [
     { name: 'Critical', range: '<25%', count: filteredProperties.filter(p => p.occupancy < 25).length, fill: '#ef4444' },
     { name: 'High', range: '25-40%', count: filteredProperties.filter(p => p.occupancy >= 25 && p.occupancy < 40).length, fill: '#f97316' },
-    { name: 'Monitor', range: '40-65%', count: filteredProperties.filter(p => p.occupancy >= 40 && p.occupancy < 65).length, fill: '#f59e0b' },
+    { name: 'Monitor', range: '40-65%', count: filteredProperties.filter(p => p.occupancy >= 40 && p.occupancy < 65).length, fill: '#2d7ff9' },
     { name: 'Good', range: '65-80%', count: filteredProperties.filter(p => p.occupancy >= 65 && p.occupancy < 80).length, fill: '#3b82f6' },
     { name: 'Optimal', range: '80%+', count: filteredProperties.filter(p => p.occupancy >= 80).length, fill: '#10b981' },
   ];
@@ -358,11 +358,11 @@ const actionQueue = [...filteredProperties].map(p => {
       priority: p.priority,
     }));
   const priorityColor: Record<ActionPriority, string> = {
-    critical: '#ef4444', high: '#f97316', opportunity: '#3b82f6', monitor: '#f59e0b', optimal: '#10b981',
+    critical: '#ef4444', high: '#f97316', opportunity: '#3b82f6', monitor: '#2d7ff9', optimal: '#10b981',
   };
   const priSummaryConfig: Record<string, { active: string; inactive: string; countColor: string }> = {
     critical:    { active: 'border-rose-500/50 bg-rose-500/10',    inactive: 'border-border dark:border-white/10 bg-background/60 dark:bg-white/[0.02] hover:border-rose-500/30 hover:bg-rose-500/5',    countColor: 'text-rose-500' },
-    high:        { active: 'border-orange-500/50 bg-orange-500/10',inactive: 'border-border dark:border-white/10 bg-background/60 dark:bg-white/[0.02] hover:border-orange-500/30 hover:bg-orange-500/5', countColor: 'text-orange-500' },
+    high:        { active: 'border-destructive/50 bg-destructive/10',inactive: 'border-border dark:border-white/10 bg-background/60 dark:bg-white/[0.02] hover:border-destructive/30 hover:bg-destructive/5', countColor: 'text-destructive' },
     opportunity: { active: 'border-blue-500/50 bg-blue-500/10',    inactive: 'border-border dark:border-white/10 bg-background/60 dark:bg-white/[0.02] hover:border-blue-500/30 hover:bg-blue-500/5',    countColor: 'text-blue-500' },
     optimal:     { active: 'border-emerald-500/50 bg-emerald-500/10', inactive: 'border-border dark:border-white/10 bg-background/60 dark:bg-white/[0.02] hover:border-emerald-500/30 hover:bg-emerald-500/5', countColor: 'text-emerald-500' },
   };
@@ -388,7 +388,7 @@ const actionQueue = [...filteredProperties].map(p => {
     <TooltipProvider>
       <div className="flex flex-col h-full overflow-y-auto w-full p-8 bg-background text-foreground dark:bg-black relative">
       {/* Ambient background glow for glassmorphism */}
-      <div className="fixed top-[-10%] left-[-10%] w-[40vw] h-[40vh] rounded-full bg-amber-500/20 dark:bg-amber-500/10 blur-[120px] pointer-events-none z-0" />
+      <div className="fixed top-[-10%] left-[-10%] w-[40vw] h-[40vh] rounded-full bg-primary/20 dark:bg-primary/10 blur-[120px] pointer-events-none z-0" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[40vw] h-[40vh] rounded-full bg-emerald-500/20 dark:bg-emerald-500/10 blur-[120px] pointer-events-none z-0" />
       <div className="fixed top-[40%] left-[30%] w-[30vw] h-[30vh] rounded-full bg-violet-500/20 dark:bg-violet-500/10 blur-[120px] pointer-events-none z-0" />
 
@@ -406,7 +406,7 @@ const actionQueue = [...filteredProperties].map(p => {
             disabled={isSyncing}
             id="tour-sync-button"
             variant="outline"
-            className="gap-2 bg-background/50 backdrop-blur-sm border-amber-500/20 hover:border-amber-500/50 hover:bg-amber-500/10 text-amber-600 dark:text-amber-500"
+            className="gap-2 bg-background/50 backdrop-blur-sm border-primary/20 hover:border-primary/50 hover:bg-primary/10 text-primary dark:text-primary"
           >
             <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
             {isSyncing ? "Syncing..." : "Sync Hostaway"}
@@ -418,7 +418,7 @@ const actionQueue = [...filteredProperties].map(p => {
               placeholder="Filter properties or locations..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 bg-background/50 border-muted-foreground/20 focus-visible:ring-amber-500/30"
+              className="pl-9 bg-background/50 border-muted-foreground/20 focus-visible:ring-primary/30"
             />
           </div>
         </div>
@@ -452,7 +452,7 @@ const actionQueue = [...filteredProperties].map(p => {
               className={cn(
                 "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
                 dashTab === tab
-                  ? "border-amber-500 text-amber-500 dark:text-amber-400"
+                  ? "border-primary text-primary dark:text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
               )}
             >
@@ -466,12 +466,12 @@ const actionQueue = [...filteredProperties].map(p => {
       <div className={cn("grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-8", dashTab !== "overview" && "hidden")}>
         <UITooltip>
           <TooltipTrigger asChild>
-            <Card className="bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group hover:border-amber-500/20 transition-all duration-500 cursor-help">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-amber-500/10 transition-colors" />
+            <Card className="bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group hover:border-primary/20 transition-all duration-500 cursor-help">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-primary/10 transition-colors" />
               <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
                 <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Total Properties</CardTitle>
                 <div className="h-8 w-8 rounded-lg bg-muted/50 dark:bg-black/40 border border-border dark:border-white/10 flex items-center justify-center">
-                  <Building2 className="h-4 w-4 text-amber-500" />
+                  <Building2 className="h-4 w-4 text-primary" />
                 </div>
               </CardHeader>
               <CardContent className="z-10 relative">
@@ -537,18 +537,18 @@ const actionQueue = [...filteredProperties].map(p => {
           <TooltipTrigger asChild>
             <Card 
               id="tour-kpi-revenue"
-              className="bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group border-t-amber-500 cursor-help"
+              className="bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group border-t-primary cursor-help"
             >
-              <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl -mr-16 -mt-16" />
+              <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-full blur-3xl -mr-16 -mt-16" />
               <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
-                <CardTitle className="text-sm font-medium text-amber-600 dark:text-amber-500/80 uppercase tracking-widest text-[10px]">Projected Revenue</CardTitle>
-                <div className="h-8 w-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                  <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                <CardTitle className="text-sm font-medium text-primary dark:text-primary/80 uppercase tracking-widest text-[10px]">Projected Revenue</CardTitle>
+                <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <DollarSign className="h-4 w-4 text-primary dark:text-primary" />
                 </div>
               </CardHeader>
               <CardContent className="z-10 relative">
-                <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-amber-700 dark:from-amber-200 dark:to-amber-500">{filteredTotalRevenue.toLocaleString()} <span className="text-lg font-medium text-amber-500/50">{currency}</span></div>
-                <p className="text-xs text-amber-600 dark:text-amber-500/80 mt-1 font-medium flex items-center gap-1">
+                <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80 dark:from-primary/20 dark:to-primary">{filteredTotalRevenue.toLocaleString()} <span className="text-lg font-medium text-primary/50">{currency}</span></div>
+                <p className="text-xs text-primary dark:text-primary/80 mt-1 font-medium flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" /> Estimated 30-day gross
                 </p>
               </CardContent>
@@ -766,7 +766,7 @@ const actionQueue = [...filteredProperties].map(p => {
                     stroke="none"
                   >
                     {channelData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[entry.name] || '#f59e0b'} />
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[entry.name] || '#2d7ff9'} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -781,7 +781,7 @@ const actionQueue = [...filteredProperties].map(p => {
           <div className="flex justify-center gap-4 pb-6 mt-[-10px]">
             {channelData.map(entry => (
               <div key={entry.name} className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[entry.name] || '#f59e0b' }} />
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[entry.name] || '#2d7ff9' }} />
                 <span className="text-xs text-muted-foreground font-medium">{entry.name}</span>
               </div>
             ))}
@@ -880,18 +880,18 @@ const actionQueue = [...filteredProperties].map(p => {
                     "rounded-xl p-4 border bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl hover:bg-muted/30 transition-all duration-200 h-full flex flex-col gap-3",
                     p.priority === 'critical'
                       ? "border-rose-500/25 hover:border-rose-500/50 shadow-[inset_0_1px_0_0_rgba(239,68,68,0.08)]"
-                      : "border-orange-500/25 hover:border-orange-500/50 shadow-[inset_0_1px_0_0_rgba(249,115,22,0.08)]"
+                      : "border-destructive/25 hover:border-destructive/50 shadow-[inset_0_1px_0_0_rgba(249,115,22,0.08)]"
                   )}>
                     <div className="flex items-start justify-between">
                       <div className="min-w-0 pr-2">
-                        <p className="font-semibold text-sm text-foreground dark:text-white group-hover:text-amber-500 transition-colors truncate">{p.name}</p>
+                        <p className="font-semibold text-sm text-foreground dark:text-white group-hover:text-primary transition-colors truncate">{p.name}</p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">{p.area} · {p.unitType}</p>
                       </div>
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wide shrink-0",
                         p.priority === 'critical'
                           ? "text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20"
-                          : "text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20"
+                          : "text-destructive dark:text-destructive bg-destructive/10 border-destructive/20"
                       )}>
                         {p.priority === 'critical' ? 'Critical' : 'High'}
                       </span>
@@ -900,11 +900,11 @@ const actionQueue = [...filteredProperties].map(p => {
                     <div>
                       <div className="flex justify-between text-[10px] mb-1">
                         <span className="text-muted-foreground">Occupancy (30d)</span>
-                        <span className={cn("font-bold", p.occupancy < 25 ? 'text-rose-500' : 'text-orange-500')}>{p.occupancy}%</span>
+                        <span className={cn("font-bold", p.occupancy < 25 ? 'text-rose-500' : 'text-destructive')}>{p.occupancy}%</span>
                       </div>
                       <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
                         <div
-                          className={cn("h-full rounded-full transition-all", p.occupancy < 25 ? 'bg-rose-500' : 'bg-orange-500')}
+                          className={cn("h-full rounded-full transition-all", p.occupancy < 25 ? 'bg-rose-500' : 'bg-destructive')}
                           style={{ width: `${Math.min(p.occupancy, 100)}%` }}
                         />
                       </div>
@@ -917,7 +917,7 @@ const actionQueue = [...filteredProperties].map(p => {
 
                     <div className="flex items-center justify-between pt-2 border-t border-border dark:border-white/5">
                       <span className="text-[10px] font-semibold text-emerald-500">{p.uplift}</span>
-                      <span className="text-[10px] text-amber-500/70 group-hover:text-amber-400 flex items-center gap-0.5 transition-colors">
+                      <span className="text-[10px] text-primary/70 group-hover:text-primary flex items-center gap-0.5 transition-colors">
                         Focus <ChevronRight className="h-3 w-3" />
                       </span>
                     </div>
@@ -1018,7 +1018,7 @@ const actionQueue = [...filteredProperties].map(p => {
                       />
                       <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                         {revenueOpportunityData.map((entry, index) => (
-                          <Cell key={`uplift-${index}`} fill={priorityColor[entry.priority as ActionPriority] || '#f59e0b'} />
+                          <Cell key={`uplift-${index}`} fill={priorityColor[entry.priority as ActionPriority] || '#2d7ff9'} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -1038,7 +1038,7 @@ const actionQueue = [...filteredProperties].map(p => {
         {displaySignals.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="h-4 w-4 text-amber-500" />
+              <Sparkles className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold text-foreground dark:text-white">AI Revenue Signals</h3>
               <span className="text-[10px] text-muted-foreground font-normal">— Actionable intelligence from your live portfolio data</span>
             </div>
@@ -1048,7 +1048,7 @@ const actionQueue = [...filteredProperties].map(p => {
                   star:  { bg: 'bg-emerald-500/5 border-emerald-500/20', label: 'text-emerald-500', icon: <Award className="h-3 w-3" /> },
                   raise: { bg: 'bg-blue-500/5 border-blue-500/20',        label: 'text-blue-500',   icon: <ArrowUpRight className="h-3 w-3" /> },
                   lower: { bg: 'bg-rose-500/5 border-rose-500/20',        label: 'text-rose-500',   icon: <ArrowDownRight className="h-3 w-3" /> },
-                  gap:   { bg: 'bg-amber-500/5 border-amber-500/20',      label: 'text-amber-500',  icon: <Zap className="h-3 w-3" /> },
+                  gap:   { bg: 'bg-primary/5 border-primary/20',      label: 'text-primary',  icon: <Zap className="h-3 w-3" /> },
                 }[sig.type];
                 return (
                   <div key={sig.id} className={`rounded-xl border p-4 ${cfg.bg}`}>
@@ -1072,7 +1072,7 @@ const actionQueue = [...filteredProperties].map(p => {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-amber-500" />
+                <Target className="h-4 w-4 text-primary" />
                 <CardTitle className="text-foreground dark:text-white">Pricing Actions Queue</CardTitle>
               </div>
               <span className="text-[10px] text-muted-foreground">
@@ -1104,9 +1104,9 @@ const actionQueue = [...filteredProperties].map(p => {
                   {filteredIntelQueue.map((row, idx) => {
                     const priCfg = {
                       critical:    { label: 'Critical',    cls: 'text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20' },
-                      high:        { label: 'High',        cls: 'text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20' },
+                      high:        { label: 'High',        cls: 'text-destructive dark:text-destructive bg-destructive/10 border-destructive/20' },
                       opportunity: { label: 'Opportunity', cls: 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20' },
-                      monitor:     { label: 'Monitor',     cls: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20' },
+                      monitor:     { label: 'Monitor',     cls: 'text-primary dark:text-primary bg-primary/10 border-primary/20' },
                       optimal:     { label: 'Optimal',     cls: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
                     }[row.priority];
                     return (
@@ -1114,7 +1114,7 @@ const actionQueue = [...filteredProperties].map(p => {
                         key={row.id}
                         onClick={() => { setSearchTerm(row.name); setDashTab("overview"); }}
                         className={cn(
-                          "border-b border-border dark:border-white/5 cursor-pointer transition-colors hover:bg-amber-500/5",
+                          "border-b border-border dark:border-white/5 cursor-pointer transition-colors hover:bg-primary/5",
                           idx % 2 === 1 ? 'bg-muted/10' : ''
                         )}
                       >
@@ -1129,7 +1129,7 @@ const actionQueue = [...filteredProperties].map(p => {
                           <span className="text-[10px] font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">{row.unitType}</span>
                         </td>
                         <td className="px-3 py-3 text-right">
-                          <span className={cn("text-xs font-bold tabular-nums", row.occupancy >= 70 ? 'text-emerald-500' : row.occupancy >= 40 ? 'text-amber-500' : 'text-rose-500')}>{row.occupancy}%</span>
+                          <span className={cn("text-xs font-bold tabular-nums", row.occupancy >= 70 ? 'text-emerald-500' : row.occupancy >= 40 ? 'text-primary' : 'text-rose-500')}>{row.occupancy}%</span>
                         </td>
                         <td className="px-3 py-3 text-center">
                           <span className={`text-[10px] font-bold px-2 py-1 rounded-md border uppercase tracking-wide ${priCfg.cls}`}>{priCfg.label}</span>
@@ -1191,7 +1191,7 @@ const actionQueue = [...filteredProperties].map(p => {
                               <p className="text-xs text-muted-foreground">RevPAR:</p>
                               <p className="text-xs font-bold text-violet-500 text-right">{Math.round(data.avgPrice * data.occupancy / 100).toLocaleString("en-US")} {currency}</p>
                               <p className="text-xs text-muted-foreground">Revenue:</p>
-                              <p className="text-xs font-bold text-amber-500 text-right">{data.revenue.toLocaleString("en-US")} {currency}</p>
+                              <p className="text-xs font-bold text-primary text-right">{data.revenue.toLocaleString("en-US")} {currency}</p>
                             </div>
                           </div>
                         );
@@ -1202,7 +1202,7 @@ const actionQueue = [...filteredProperties].map(p => {
                   <Scatter name="Properties" data={filteredProperties}>
                     {filteredProperties.map((_, index) => {
                       const p = filteredProperties[index];
-                      const color = p.occupancy >= 70 ? '#10b981' : p.occupancy >= 40 ? '#f59e0b' : '#ef4444';
+                      const color = p.occupancy >= 70 ? '#10b981' : p.occupancy >= 40 ? '#2d7ff9' : '#ef4444';
                       return <Cell key={`cell-${index}`} fill={color} opacity={0.75} />;
                     })}
                   </Scatter>
@@ -1214,8 +1214,8 @@ const actionQueue = [...filteredProperties].map(p => {
                 <p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-widest mb-1">Stars</p>
                 <p className="text-[10px] text-muted-foreground">High Occ / High ADR</p>
               </div>
-              <div className="text-center p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
-                <p className="text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest mb-1">Underpriced</p>
+              <div className="text-center p-3 rounded-xl bg-primary/5 border border-primary/20">
+                <p className="text-xs font-bold text-primary dark:text-primary uppercase tracking-widest mb-1">Underpriced</p>
                 <p className="text-[10px] text-muted-foreground">High Occ / Low ADR</p>
               </div>
               <div className="text-center p-3 rounded-xl bg-rose-500/5 border border-rose-500/20">
@@ -1232,9 +1232,9 @@ const actionQueue = [...filteredProperties].map(p => {
       </div>
 
       <Card className={cn("flex-1 shrink-0 flex flex-col shadow-xl dark:shadow-2xl mt-8 mb-8 border border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl", dashTab !== "calendar" && "hidden")}>
-        <CardHeader className="border-b border-border dark:border-white/10 py-4 bg-gradient-to-r from-amber-500/5 dark:from-amber-500/10 to-transparent flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <CardHeader className="border-b border-border dark:border-white/10 py-4 bg-gradient-to-r from-primary/5 dark:from-primary/10 to-transparent flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <CardTitle className="text-amber-600 dark:text-amber-500 flex items-center gap-2">
+            <CardTitle className="text-primary dark:text-primary flex items-center gap-2">
             </CardTitle>
           </div>
           <div className="flex items-center gap-2">
@@ -1382,10 +1382,10 @@ const actionQueue = [...filteredProperties].map(p => {
         <div className="fixed bottom-20 right-6 z-50 w-[420px] max-h-80 rounded-xl border border-border dark:border-white/10 bg-[#0c0c0e]/95 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 bg-white/[0.03]">
             <div className="flex items-center gap-2">
-              <RefreshCw className={cn("h-3.5 w-3.5 text-amber-500", isSyncing && "animate-spin")} />
+              <RefreshCw className={cn("h-3.5 w-3.5 text-primary", isSyncing && "animate-spin")} />
               <span className="text-xs font-semibold text-white">Sync Log</span>
               {isSyncing && (
-                <span className="text-[10px] text-amber-500/70 animate-pulse">running…</span>
+                <span className="text-[10px] text-primary/70 animate-pulse">running…</span>
               )}
             </div>
             <button

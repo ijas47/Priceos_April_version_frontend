@@ -309,7 +309,7 @@ function OperationsClientInternal({ orgId }: { orgId: string }) {
   const getSeverityColor = (sev: string) => {
     switch (sev) {
       case "critical": return "bg-red-500/10 text-red-500 border-red-500/20";
-      case "high": return "bg-orange-500/10 text-orange-500 border-orange-500/20";
+      case "high": return "bg-destructive/10 text-destructive border-destructive/20";
       case "medium": return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
       default: return "bg-blue-500/10 text-blue-500 border-blue-500/20";
     }
@@ -320,7 +320,7 @@ function OperationsClientInternal({ orgId }: { orgId: string }) {
       case "resolved": return <CheckCircle2 className="w-4 h-4 text-green-500" />;
       case "closed": return <XCircle className="w-4 h-4 text-text-tertiary" />;
       case "in_progress": return <Clock className="w-4 h-4 text-yellow-500 animate-pulse" />;
-      default: return <AlertTriangle className="w-4 h-4 text-orange-500" />;
+      default: return <AlertTriangle className="w-4 h-4 text-destructive" />;
     }
   };
 
@@ -467,11 +467,11 @@ function OperationsClientInternal({ orgId }: { orgId: string }) {
               className={cn(
                 "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2",
                 statusFilter === "open"
-                  ? "bg-orange-500/10 text-orange-500 border border-orange-500/20"
+                  ? "bg-destructive/10 text-destructive border border-destructive/20"
                   : "text-text-tertiary hover:text-text-secondary"
               )}
             >
-              <div className={cn("w-1.5 h-1.5 rounded-full", statusFilter === "open" ? "bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.5)]" : "bg-text-tertiary/40")} />
+              <div className={cn("w-1.5 h-1.5 rounded-full", statusFilter === "open" ? "bg-destructive animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.5)]" : "bg-text-tertiary/40")} />
               {tickets.filter(t => t.status === "open").length} Active
             </button>
             <button
@@ -627,7 +627,7 @@ function OperationsClientInternal({ orgId }: { orgId: string }) {
                           "w-1 rounded-full shrink-0 mt-1",
                           isExpanded ? "self-stretch min-h-[2.5rem]" : "h-10",
                           ticket.severity === "critical" ? "bg-red-500" :
-                          ticket.severity === "high" ? "bg-orange-500" :
+                          ticket.severity === "high" ? "bg-destructive" :
                           ticket.severity === "medium" ? "bg-yellow-500" : "bg-blue-500"
                         )} />
                         <div className="flex flex-col min-w-0 flex-1">
@@ -760,7 +760,7 @@ function OperationsClientInternal({ orgId }: { orgId: string }) {
                 <div className={cn(
                   "absolute top-0 left-0 bottom-0 w-1.5",
                   ticket.severity === "critical" ? "bg-red-500" :
-                  ticket.severity === "high" ? "bg-orange-500" :
+                  ticket.severity === "high" ? "bg-destructive" :
                   ticket.severity === "medium" ? "bg-yellow-500" : "bg-blue-500"
                 )} />
                 <div className="flex justify-between items-start mb-3 pl-1.5">

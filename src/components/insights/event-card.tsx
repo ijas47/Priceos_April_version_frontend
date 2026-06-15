@@ -16,8 +16,8 @@ export function EventCard({ event }: EventCardProps) {
 
   const impactColors = {
     low: "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-400",
-    medium: "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400",
-    high: "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-400",
+    medium: "border-primary/80 bg-primary/50 text-primary dark:border-primary/30 dark:bg-primary/950 dark:text-primary",
+    high: "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-400",
     extreme: "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400",
   };
 

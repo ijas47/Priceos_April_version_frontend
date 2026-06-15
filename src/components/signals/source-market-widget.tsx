@@ -58,7 +58,7 @@ interface ModifierResponse {
 const SIGNAL_COLORS: Record<string, string> = {
   surge: "#10b981",    // emerald-500
   normal: "#3b82f6",   // blue-500
-  weak: "#f59e0b",     // amber-500
+  weak: "#2d7ff9",     // amber-500
   disrupted: "#ef4444", // red-500
 };
 
@@ -69,7 +69,7 @@ function signalColor(signal: string): string {
 function demandIndexColor(index: number): string {
   if (index >= 115) return "#10b981";  // strong
   if (index >= 100) return "#3b82f6";  // normal-good
-  if (index >= 85) return "#f59e0b";   // caution
+  if (index >= 85) return "#2d7ff9";   // caution
   return "#ef4444";                    // weak
 }
 

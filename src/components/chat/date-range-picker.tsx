@@ -38,11 +38,11 @@ export function DateRangePicker({
                         id="date"
                         variant={"outline"}
                         className={cn(
-                            "w-[280px] justify-start text-left font-normal border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/40 transition-all",
+                            "w-[280px] justify-start text-left font-normal border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition-all",
                             !date && "text-muted-foreground"
                         )}
                     >
-                        <CalendarIcon className="mr-2 h-4 w-4 text-amber-500" />
+                        <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
                         {date?.from ? (
                             date.to ? (
                                 <>
@@ -77,7 +77,7 @@ export function DateRangePicker({
                     <div className="px-3 pb-3 pt-2 text-center border-t border-border bg-muted/20">
                         <p className="text-[10px] text-muted-foreground font-semibold">
                             Selectable: Today to{" "}
-                            <span className="text-amber-600 font-bold">
+                            <span className="text-primary font-bold">
                                 {format(maxDate, "LLL dd, y")}
                             </span>{" "}
                             (Next 1 month only)

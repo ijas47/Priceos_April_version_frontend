@@ -16,9 +16,9 @@ const features = [
     icon: Calendar,
     title: 'Event Intelligence',
     description:
-      'F1, Expo, Ramadan, peak seasons—automatically detected and priced.',
-    gradient: 'from-amber-500 to-orange-600',
-    bgGradient: 'from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20',
+      'F1, Expo, Ramadan, peak seasons: automatically detected and priced.',
+    gradient: 'from-primary to-primary/85',
+    bgGradient: 'from-sky-50 to-blue-50 dark:from-primary/10 dark:to-primary/5',
     size: 'medium',
   },
   {
@@ -77,7 +77,7 @@ export function FeaturesSection() {
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight">
             Built for{' '}
-            <span className="bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 dark:from-amber-400 dark:via-orange-400 dark:to-red-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary via-sky-500 to-blue-600 dark:from-primary dark:via-sky-400 dark:to-blue-400 bg-clip-text text-transparent">
               Performance
             </span>
           </h2>
@@ -144,7 +144,7 @@ export function FeaturesSection() {
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
-                  className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 border-2 border-background"
+                  className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/85 border-2 border-background"
                 />
               ))}
             </div>

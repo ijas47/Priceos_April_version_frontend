@@ -123,9 +123,9 @@ export default function TestAgentPage() {
       )}
 
       {response && (
-        <Card className={response.success ? 'border-green-500' : 'border-orange-500'}>
+        <Card className={response.success ? 'border-green-500' : 'border-destructive'}>
           <CardHeader>
-            <CardTitle className={response.success ? 'text-green-500' : 'text-orange-500'}>
+            <CardTitle className={response.success ? 'text-green-500' : 'text-destructive'}>
               {response.success ? '✅ Success' : '⚠️ Response'}
             </CardTitle>
             <CardDescription>

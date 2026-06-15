@@ -174,12 +174,12 @@ function StepConnect({ onNext }: { onNext: (listings: Listing[]) => void }) {
     <div className="space-y-6">
       {/* Demo Mode Banner */}
       <div
-        className="flex items-center justify-between p-4 rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 cursor-pointer hover:bg-amber-500/10 transition-all group"
+        className="flex items-center justify-between p-4 rounded-xl border border-dashed border-primary/30 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-all group"
         onClick={handleDemo}
       >
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-amber-400" />
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-primary" />
           </div>
           <div>
             <p className="text-sm font-bold text-white">Try Demo Mode</p>
@@ -189,7 +189,7 @@ function StepConnect({ onNext }: { onNext: (listings: Listing[]) => void }) {
         <button
           onClick={(e) => { e.stopPropagation(); handleDemo(); }}
           disabled={demoLoading}
-          className="h-8 px-4 text-xs font-bold bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black rounded-lg flex items-center gap-1.5 transition-all shrink-0"
+          className="h-8 px-4 text-xs font-bold bg-primary hover:bg-primary disabled:opacity-50 text-black rounded-lg flex items-center gap-1.5 transition-all shrink-0"
         >
           {demoLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
           {demoLoading ? "Loading…" : "Launch Demo"}
@@ -227,7 +227,7 @@ function StepConnect({ onNext }: { onNext: (listings: Listing[]) => void }) {
               onChange={(e) => setAccountId(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleValidate()}
               placeholder="145065"
-              className="w-full h-12 bg-zinc-900 border border-zinc-700 rounded-xl px-4 pr-12 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 font-mono"
+              className="w-full h-12 bg-zinc-900 border border-zinc-700 rounded-xl px-4 pr-12 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 font-mono"
             />
             {accountId && (
               <button onClick={() => setAccountId("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400">
@@ -252,7 +252,7 @@ function StepConnect({ onNext }: { onNext: (listings: Listing[]) => void }) {
               onChange={(e) => setApiSecret(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleValidate()}
               placeholder="••••••••••••••••••••••••••••••••"
-              className="w-full h-12 bg-zinc-900 border border-zinc-700 rounded-xl px-4 pr-12 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 font-mono"
+              className="w-full h-12 bg-zinc-900 border border-zinc-700 rounded-xl px-4 pr-12 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 font-mono"
             />
             {apiSecret && (
               <button onClick={() => setApiSecret("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400">
@@ -269,15 +269,15 @@ function StepConnect({ onNext }: { onNext: (listings: Listing[]) => void }) {
       <button
         onClick={handleValidate}
         disabled={loading || !accountId.trim() || !apiSecret.trim()}
-        className="w-full h-12 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
+        className="w-full h-12 bg-primary hover:bg-primary disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
       >
         {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
         {loading ? "Connecting…" : "Validate & Fetch Properties"}
       </button>
 
       {fallbackListings && fallbackReason && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
-          <p className="text-xs text-amber-300 font-semibold">Real connection failed</p>
+        <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 space-y-3">
+          <p className="text-xs text-primary/80 font-semibold">Real connection failed</p>
           <p className="text-xs text-zinc-300 leading-relaxed">{fallbackReason}</p>
           <div className="flex items-center gap-2">
             <button
@@ -292,7 +292,7 @@ function StepConnect({ onNext }: { onNext: (listings: Listing[]) => void }) {
                 toast.success("Continuing with demo listings.");
                 onNext(fallbackListings);
               }}
-              className="h-9 px-4 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold"
+              className="h-9 px-4 rounded-lg bg-primary hover:bg-primary text-black text-xs font-bold"
             >
               Continue with Demo Listings
             </button>
@@ -333,7 +333,7 @@ function StepSelect({ listings, onNext }: { listings: Listing[]; onNext: (ids: s
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-zinc-400">Select which properties PriceOS should manage:</p>
-        <button onClick={toggleAll} className="text-xs text-amber-400 hover:text-amber-300 font-semibold">
+        <button onClick={toggleAll} className="text-xs text-primary hover:text-primary/80 font-semibold">
           {selected.size === listings.length ? "Deselect all" : "Select all"}
         </button>
       </div>
@@ -353,13 +353,13 @@ function StepSelect({ listings, onNext }: { listings: Listing[]; onNext: (ids: s
               className={cn(
                 "w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all",
                 isSelected
-                  ? "border-amber-500/40 bg-amber-500/5"
+                  ? "border-primary/40 bg-primary/5"
                   : "border-zinc-800 bg-zinc-900 hover:border-zinc-700"
               )}
             >
               <div className={cn(
                 "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
-                isSelected ? "bg-amber-500 text-black" : "bg-zinc-800 text-zinc-500"
+                isSelected ? "bg-primary text-black" : "bg-zinc-800 text-zinc-500"
               )}>
                 {isSelected ? <Check className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
               </div>
@@ -378,12 +378,12 @@ function StepSelect({ listings, onNext }: { listings: Listing[]; onNext: (ids: s
 
       <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
         <span className="text-sm text-zinc-500">
-          <span className="text-amber-400 font-bold">{selected.size}</span> of {listings.length} selected
+          <span className="text-primary font-bold">{selected.size}</span> of {listings.length} selected
         </span>
         <button
           onClick={() => onNext(Array.from(selected))}
           disabled={selected.size === 0}
-          className="h-10 px-6 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold rounded-xl flex items-center gap-2 text-sm transition-all"
+          className="h-10 px-6 bg-primary hover:bg-primary disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold rounded-xl flex items-center gap-2 text-sm transition-all"
         >
           Next <ArrowRight className="h-4 w-4" />
         </button>
@@ -414,7 +414,7 @@ function StepMarket({ initialMarket, onNext }: { initialMarket: string; onNext: 
             className={cn(
               "flex items-center gap-3 p-3 rounded-xl border text-left transition-all",
               selected === m.code
-                ? "border-amber-500/40 bg-amber-500/5"
+                ? "border-primary/40 bg-primary/5"
                 : "border-zinc-800 bg-zinc-900 hover:border-zinc-700"
             )}
           >
@@ -441,7 +441,7 @@ function StepMarket({ initialMarket, onNext }: { initialMarket: string; onNext: 
               ].map(item => (
                 <div key={item.label}>
                   <p className="text-[10px] text-zinc-600 uppercase tracking-wider mb-1">{item.label}</p>
-                  <p className="text-sm font-bold text-amber-400">{item.value}</p>
+                  <p className="text-sm font-bold text-primary">{item.value}</p>
                 </div>
               ))}
             </div>
@@ -455,7 +455,7 @@ function StepMarket({ initialMarket, onNext }: { initialMarket: string; onNext: 
 
       <button
         onClick={() => onNext(selected)}
-        className="w-full h-12 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
+        className="w-full h-12 bg-primary hover:bg-primary text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
       >
         Apply Market Template <ArrowRight className="h-4 w-4" />
       </button>
@@ -496,9 +496,9 @@ const STRATEGY_OPTIONS: {
     autoApprove: 5,
     maxChangePct: (m) => m,
     floorMultiplier: 0.5,
-    color: "text-amber-400",
-    border: "border-amber-500/30",
-    bg: "bg-amber-500/5",
+    color: "text-primary",
+    border: "border-primary/30",
+    bg: "bg-primary/5",
     badge: "Most popular",
   },
   {
@@ -686,8 +686,8 @@ function StepStrategy({
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-          <Sparkles className="h-5 w-5 text-amber-400" />
+        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <Sparkles className="h-5 w-5 text-primary" />
         </div>
         <div>
           <p className="text-sm font-bold text-white">Choose your pricing strategy</p>
@@ -758,7 +758,7 @@ function StepStrategy({
         {[
           { icon: TrendingUp, label: "Seasonal Engine", desc: "12-month demand patterns loaded", color: "text-green-400", bg: "bg-green-500/5 border-green-500/15" },
           { icon: Shield, label: "Guardrails", desc: `Max ${selected.maxChangePct(market.maxChangePct)}%/day change`, color: selected.color, bg: `${selected.bg} ${selected.border}` },
-          { icon: Zap, label: "Auto-Approve", desc: `Changes <${selected.autoApprove}% push live`, color: "text-amber-400", bg: "bg-amber-500/5 border-amber-500/15" },
+          { icon: Zap, label: "Auto-Approve", desc: `Changes <${selected.autoApprove}% push live`, color: "text-primary", bg: "bg-primary/5 border-primary/15" },
         ].map(item => (
           <div key={item.label} className={cn("p-3 rounded-xl border text-center", item.bg)}>
             <item.icon className={cn("h-4 w-4 mx-auto mb-1.5", item.color)} />
@@ -783,7 +783,7 @@ function StepStrategy({
               className={cn(
                 "rounded-lg border px-3 py-3 text-left",
                 ruleSetupMode === m.id
-                  ? "border-amber-500 bg-amber-500/10"
+                  ? "border-primary bg-primary/10"
                   : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
               )}
             >
@@ -975,15 +975,15 @@ function StepStrategy({
       <button
         onClick={handleActivate}
         disabled={loading}
-        className="w-full h-12 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
+        className="w-full h-12 bg-primary hover:bg-primary disabled:opacity-60 text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
       >
         {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
         {loading ? "Activating Pricing Engine…" : `Go Live — ${selected.label} Strategy`}
       </button>
 
       {loading && (
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-          <p className="text-xs font-semibold text-amber-300">Working in background</p>
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+          <p className="text-xs font-semibold text-primary/80">Working in background</p>
           <p className="text-xs text-zinc-400 mt-1">{loadingMessage}</p>
         </div>
       )}
@@ -1015,9 +1015,9 @@ function StepComplete({ onGoToDashboard }: { onGoToDashboard: () => void }) {
   return (
     <div className="text-center space-y-8 py-4">
       <div className="relative mx-auto w-24 h-24">
-        <div className="absolute inset-0 rounded-full bg-amber-500/20 animate-ping" />
-        <div className="relative h-24 w-24 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center">
-          <CheckCircle2 className="h-10 w-10 text-amber-400" />
+        <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+        <div className="relative h-24 w-24 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center">
+          <CheckCircle2 className="h-10 w-10 text-primary" />
         </div>
       </div>
 
@@ -1034,16 +1034,16 @@ function StepComplete({ onGoToDashboard }: { onGoToDashboard: () => void }) {
             {item.done ? (
               <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
             ) : (
-              <RefreshCw className="h-3.5 w-3.5 text-amber-400 animate-spin shrink-0" />
+              <RefreshCw className="h-3.5 w-3.5 text-primary animate-spin shrink-0" />
             )}
-            <span className={item.done ? "text-zinc-300" : "text-amber-300"}>{item.text}</span>
+            <span className={item.done ? "text-zinc-300" : "text-primary/80"}>{item.text}</span>
           </div>
         ))}
       </div>
 
       <button
         onClick={onGoToDashboard}
-        className="w-full max-w-xs mx-auto h-12 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
+        className="w-full max-w-xs mx-auto h-12 bg-primary hover:bg-primary text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
       >
         Go to Dashboard <ArrowRight className="h-4 w-4" />
       </button>
@@ -1149,7 +1149,7 @@ export function OnboardingWizard({ initialStep = "connect" }: { initialStep?: Wi
         {/* Logo */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 mb-4">
-            <div className="h-8 w-8 rounded-lg bg-amber-500 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <Zap className="h-4 w-4 text-black" />
             </div>
             <span className="text-lg font-bold text-white">PriceOS</span>
@@ -1172,7 +1172,7 @@ export function OnboardingWizard({ initialStep = "connect" }: { initialStep?: Wi
                 <div key={s.id} className="flex items-center flex-1">
                   <div className={cn(
                     "h-1 flex-1 rounded-full transition-all duration-500",
-                    isDone ? "bg-amber-500" : isActive ? "bg-amber-500/40" : "bg-zinc-800"
+                    isDone ? "bg-primary" : isActive ? "bg-primary/40" : "bg-zinc-800"
                   )} />
                 </div>
               );
@@ -1183,7 +1183,7 @@ export function OnboardingWizard({ initialStep = "connect" }: { initialStep?: Wi
         {/* Step Label */}
         {step !== "complete" && (
           <div className="flex items-center gap-2 mb-6">
-            <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+            <span className="text-xs font-bold text-primary uppercase tracking-wider">
               Step {currentIndex + 1} of {STEPS.length - 1}
             </span>
             <span className="text-xs text-zinc-600">·</span>

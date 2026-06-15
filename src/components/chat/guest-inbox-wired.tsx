@@ -1414,7 +1414,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
                           <Wrench className="h-2.5 w-2.5 text-text-tertiary" />
                           <Badge variant="outline" className={cn("text-[8px] h-3.5 px-1 font-bold uppercase tracking-tighter", 
                             t.severity === "critical" ? "text-red-400 border-red-500/20 bg-red-500/5" : 
-                            t.severity === "high" ? "text-orange-400 border-orange-500/20 bg-orange-500/5" : 
+                            t.severity === "high" ? "text-destructive border-destructive/20 bg-destructive/5" : 
                             "text-blue-400 border-blue-500/20 bg-blue-500/5"
                           )}>
                             {t.severity}

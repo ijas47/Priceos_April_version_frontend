@@ -63,10 +63,10 @@ const AGENT_ICONS: Record<string, any> = {
 
 const STATE_COLORS: Record<string, string> = {
   connected: "text-blue-400",
-  observing: "text-amber-400",
+  observing: "text-primary",
   simulating: "text-purple-400",
   active: "text-green-400",
-  paused: "text-amber-400",
+  paused: "text-primary",
   error: "text-red-400",
 };
 
@@ -81,7 +81,7 @@ const STATE_LABELS: Record<string, string> = {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   active: { label: "Active", color: "bg-green-500/15 text-green-400 border-green-500/20", icon: CheckCircle2 },
-  warning: { label: "Warning", color: "bg-amber-500/15 text-amber-400 border-amber-500/20", icon: AlertTriangle },
+  warning: { label: "Warning", color: "bg-primary/15 text-primary border-primary/20", icon: AlertTriangle },
   error: { label: "Error", color: "bg-red-500/15 text-red-400 border-red-500/20", icon: XCircle },
   idle: { label: "Idle", color: "bg-white/5 text-text-tertiary border-white/10", icon: Clock },
 };
@@ -168,7 +168,7 @@ export function AgentStatusPanel() {
             <h3 className="text-sm font-semibold text-text-primary">System State</h3>
             <p className="text-xs text-text-tertiary mt-0.5">
               Last run: {formatTimeAgo(summary.lastRunAt)}
-              {summary.isStale && <span className="ml-2 text-amber-400">⚠ Data may be stale (&gt;4h)</span>}
+              {summary.isStale && <span className="ml-2 text-primary">⚠ Data may be stale (&gt;4h)</span>}
             </p>
           </div>
           <Button
@@ -231,7 +231,7 @@ export function AgentStatusPanel() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Active Agents", value: summary.activeCount, color: "text-green-400" },
-          { label: "Warnings", value: summary.warningCount, color: "text-amber-400" },
+          { label: "Warnings", value: summary.warningCount, color: "text-primary" },
           { label: "Pending Proposals", value: summary.pendingProposals, color: "text-blue-400" },
           { label: "Critical Insights", value: summary.criticalInsights, color: "text-red-400" },
         ].map((stat) => (

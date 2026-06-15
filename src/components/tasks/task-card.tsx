@@ -14,7 +14,7 @@ interface TaskCardProps {
 
 const categoryStyles: Record<OperationalTask["category"], string> = {
   cleaning: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  maintenance: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  maintenance: "bg-primary/100 text-primary/800 dark:bg-primary/900 dark:text-primary/200",
   inspection: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
   other: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
 };
@@ -31,7 +31,7 @@ const priorityConfig: Record<
   { color: string; label: string }
 > = {
   high: { color: "bg-red-500", label: "High" },
-  medium: { color: "bg-amber-500", label: "Medium" },
+  medium: { color: "bg-primary", label: "Medium" },
   low: { color: "bg-gray-400", label: "Low" },
 };
 

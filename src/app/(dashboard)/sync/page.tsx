@@ -82,8 +82,8 @@ const STATUS_COLOR: Record<string, string> = {
   SUCCESS: "text-green-400",
   error: "text-red-400",
   FAILED: "text-red-400",
-  running: "text-amber-400 animate-spin",
-  RUNNING: "text-amber-400 animate-spin",
+  running: "text-primary animate-spin",
+  RUNNING: "text-primary animate-spin",
   idle: "text-text-disabled",
 };
 
@@ -180,7 +180,7 @@ function SourcesTab() {
                   <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {s.scheduleLabel}</span>
                   <span>Last: <strong className="text-text-primary">{formatRelative(s.lastRunAt)}</strong></span>
                   {s.lastRunDurationMs && <span>Duration: <strong className="text-text-primary">{formatDuration(s.lastRunDurationMs)}</strong></span>}
-                  {s.lastRunMetric && <span className="text-amber-400">{s.lastRunMetric}</span>}
+                  {s.lastRunMetric && <span className="text-primary">{s.lastRunMetric}</span>}
                 </div>
               </div>
               <Button
@@ -217,7 +217,7 @@ function DetectorsTab() {
   }, []);
 
   const CATEGORY_COLORS: Record<string, string> = {
-    pricing: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    pricing: "bg-primary/10 text-primary border-primary/20",
     occupancy: "bg-blue-500/10 text-blue-400 border-blue-500/20",
     event: "bg-purple-500/10 text-purple-400 border-purple-500/20",
     competitor: "bg-green-500/10 text-green-400 border-green-500/20",
@@ -256,7 +256,7 @@ function DetectorsTab() {
               <div className="flex items-center gap-4 flex-wrap text-[11px] text-text-secondary">
                 <span>Trigger: <strong className="text-text-primary">{d.triggerSource}</strong></span>
                 <span>Last triggered: <strong className="text-text-primary">{formatRelative(d.lastTriggeredAt)}</strong></span>
-                <span>Signals found: <strong className={d.lastSignalsFound > 0 ? "text-amber-400" : "text-text-primary"}>{d.lastSignalsFound}</strong></span>
+                <span>Signals found: <strong className={d.lastSignalsFound > 0 ? "text-primary" : "text-text-primary"}>{d.lastSignalsFound}</strong></span>
               </div>
             </div>
           </div>
@@ -317,7 +317,7 @@ function EngineRunsTab() {
           { label: "Today's Runs", value: todayRuns.length, color: "text-text-primary" },
           { label: "Succeeded", value: successCount, color: "text-green-400" },
           { label: "Failed", value: failCount, color: failCount > 0 ? "text-red-400" : "text-text-primary" },
-          { label: "Days Repriced", value: totalDaysChanged.toLocaleString("en-US"), color: "text-amber-400" },
+          { label: "Days Repriced", value: totalDaysChanged.toLocaleString("en-US"), color: "text-primary" },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
             <p className="text-[11px] text-text-tertiary mb-1">{s.label}</p>
@@ -364,7 +364,7 @@ function EngineRunsTab() {
                   </div>
                   <div className="text-right text-[11px] text-text-tertiary shrink-0 space-y-0.5">
                     {run.daysChanged != null && (
-                      <p className="text-amber-400 font-medium">{run.daysChanged} days</p>
+                      <p className="text-primary font-medium">{run.daysChanged} days</p>
                     )}
                     <p>{formatDuration(run.durationMs)}</p>
                     <p>{formatRelative(run.startedAt)}</p>

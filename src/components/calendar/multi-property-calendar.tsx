@@ -71,7 +71,7 @@ export function MultiPropertyCalendar({ properties, calendars }: MultiPropertyCa
                                 "h-6 w-full rounded-sm",
                                 isAvailable && "bg-green-200 dark:bg-green-900",
                                 isBooked && "bg-red-300 dark:bg-red-800",
-                                isBlocked && "bg-amber-200 dark:bg-amber-900",
+                                isBlocked && "bg-primary/20 dark:bg-primary/900",
                                 !day && "bg-gray-100 dark:bg-gray-900"
                               )}
                             />

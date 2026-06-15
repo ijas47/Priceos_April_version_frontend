@@ -19,12 +19,12 @@ export function StatCard({
   subtitle,
   icon: Icon,
   trend,
-  gradient = "from-amber-500 to-orange-600"
+  gradient = "from-primary to-primary/85"
 }: StatCardProps) {
   return (
     <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02]">
       {/* Gradient overlay on hover */}
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute inset-0 bg-gradient-to-br from-sky-50/50 to-blue-50/50 dark:from-primary/10 dark:to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
       <CardContent className="relative p-6">
         <div className="flex items-start justify-between">
@@ -32,7 +32,7 @@ export function StatCard({
             <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               {title}
             </p>
-            <p className="text-3xl font-black tracking-tight bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent">
+            <p className="text-3xl font-black tracking-tight bg-gradient-to-br from-primary to-primary/85 dark:from-primary dark:to-sky-400 bg-clip-text text-transparent">
               {value}
             </p>
             {subtitle && (

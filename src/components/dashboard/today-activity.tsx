@@ -26,17 +26,17 @@ export function TodayActivity({
   return (
     <Card className="relative overflow-hidden">
       {/* Decorative gradient background */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-100/20 to-orange-100/20 dark:from-amber-900/10 dark:to-orange-900/10 rounded-full blur-3xl -z-0" />
+      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-sky-100/20 to-blue-100/20 dark:from-primary/10 dark:to-primary/5 rounded-full blur-3xl -z-0" />
 
       <CardHeader className="relative">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <div className="rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 p-2 shadow-md">
+            <div className="rounded-lg bg-gradient-to-br from-primary to-primary/85 p-2 shadow-md">
               <Calendar className="h-4 w-4 text-white" />
             </div>
             Today&apos;s Activity
           </CardTitle>
-          <Badge variant="outline" className="border-amber-500/30 text-amber-700 dark:text-amber-400 font-semibold">
+          <Badge variant="outline" className="border-primary/30 text-primary dark:text-primary font-semibold">
             {checkIns.length + checkOuts.length} {checkIns.length + checkOuts.length === 1 ? 'event' : 'events'}
           </Badge>
         </div>
@@ -78,10 +78,10 @@ export function TodayActivity({
             {checkOuts.map((res) => (
               <div
                 key={`out-${res.id}`}
-                className="group flex items-center justify-between rounded-xl border p-4 transition-all duration-300 hover:shadow-md hover:border-orange-500/30 bg-gradient-to-r from-transparent to-orange-50/50 dark:to-orange-950/20"
+                className="group flex items-center justify-between rounded-xl border p-4 transition-all duration-300 hover:shadow-md hover:border-destructive/30 bg-gradient-to-r from-transparent to-rose-50/50 dark:to-rose-950/20"
               >
                 <div className="flex items-center gap-4">
-                  <div className="rounded-xl bg-gradient-to-br from-orange-500 to-red-600 p-2.5 shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+                  <div className="rounded-xl bg-gradient-to-br from-primary to-sky-600 p-2.5 shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
                     <LogOut className="h-5 w-5 text-white" />
                   </div>
                   <div>
@@ -91,7 +91,7 @@ export function TodayActivity({
                     </p>
                   </div>
                 </div>
-                <Badge className="bg-gradient-to-r from-orange-500 to-red-600 text-white border-0 shadow-md">
+                <Badge className="bg-gradient-to-r from-primary to-sky-600 text-white border-0 shadow-md">
                   Check-out
                 </Badge>
               </div>

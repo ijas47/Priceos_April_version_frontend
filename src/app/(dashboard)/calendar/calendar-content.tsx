@@ -119,7 +119,7 @@ export function CalendarContent({
                 Booked ({booked})
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="h-3 w-3 rounded-sm bg-amber-200 dark:bg-amber-900" />
+                <div className="h-3 w-3 rounded-sm bg-primary/20 dark:bg-primary/900" />
                 Blocked ({blocked})
               </div>
             </div>
@@ -145,7 +145,7 @@ export function CalendarContent({
               Booked
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded-sm bg-amber-200 dark:bg-amber-900" />
+              <div className="h-3 w-3 rounded-sm bg-primary/20 dark:bg-primary/900" />
               Blocked
             </div>
           </div>

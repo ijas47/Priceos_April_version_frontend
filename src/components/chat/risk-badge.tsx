@@ -16,7 +16,7 @@ export function RiskBadge({ level }: RiskBadgeProps) {
       className={cn(
         "text-xs",
         normalized === "low" && "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400",
-        normalized === "medium" && "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+        normalized === "medium" && "border-primary/30 bg-primary/10 text-primary dark:text-primary",
         normalized === "high" && "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400"
       )}
     >

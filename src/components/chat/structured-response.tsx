@@ -51,7 +51,7 @@ export function StructuredResponse({ data }: StructuredResponseProps) {
       {data.event_context && (
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-xs font-medium">
-            <Zap className="h-3 w-3 text-amber-500" />
+            <Zap className="h-3 w-3 text-primary" />
             Event Context
           </div>
           <p className="text-xs text-muted-foreground">{data.event_context}</p>

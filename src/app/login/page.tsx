@@ -2,12 +2,10 @@
 
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, TrendingUp, Building2, ShieldCheck } from "lucide-react";
+import { Sparkles, Calendar, ShieldCheck, Building2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
-
-// ── Sign In Form ──────────────────────────────────────────────────────────────
 
 function SignInForm() {
     const router = useRouter();
@@ -36,17 +34,14 @@ function SignInForm() {
                 setLoading(false);
                 return;
             }
-            // If account is pending approval, redirect to pending page
             if (data.pending) {
                 router.push("/pending-approval");
                 return;
             }
-            // If onboarding not yet complete, redirect to wizard
             if (data.needsOnboarding) {
                 router.push("/onboarding");
                 return;
             }
-            // Store token for direct backend calls
             if (data.accessToken) {
                 localStorage.setItem("priceos-token", data.accessToken);
                 localStorage.setItem("priceos-orgId", data.user?.orgId || "");
@@ -86,20 +81,22 @@ function SignInForm() {
                     className="form-input"
                 />
                 <div className="mt-1 text-right">
-                    <Link href="/forgot-password" className="text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>
+                    <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-primary transition-colors">
                         Forgot password?
                     </Link>
                 </div>
             </div>
-            {error && <p className="text-sm text-red-400">{typeof error === "object" ? (error as any).message || JSON.stringify(error) : String(error)}</p>}
+            {error && (
+                <p className="text-sm text-destructive">
+                    {typeof error === "object" ? (error as { message?: string }).message || JSON.stringify(error) : String(error)}
+                </p>
+            )}
             <button type="submit" disabled={loading} className="form-submit-btn">
                 {loading ? "Signing in…" : "Sign In"}
             </button>
         </form>
     );
 }
-
-// ── Market options (matches seed / settings) ─────────────────────────────────
 
 const MARKETS = [
     { code: "UAE_DXB", label: "🇦🇪  Dubai, UAE" },
@@ -113,8 +110,6 @@ const MARKETS = [
     { code: "USA_NSH", label: "🇺🇸  Nashville, USA" },
     { code: "AUS_SYD", label: "🇦🇺  Sydney, Australia" },
 ];
-
-// ── Sign Up Form ──────────────────────────────────────────────────────────────
 
 function SignUpForm() {
     const router = useRouter();
@@ -145,13 +140,11 @@ function SignUpForm() {
                 setLoading(false);
                 return;
             }
-            // Store token for direct backend calls (if returned by register/auto-login)
             if (data.accessToken) {
                 localStorage.setItem("priceos-token", data.accessToken);
                 localStorage.setItem("priceos-orgId", data.user?.orgId || "");
             }
 
-            // New users always go to pending approval
             router.push("/pending-approval");
             router.refresh();
         } catch {
@@ -183,12 +176,12 @@ function SignUpForm() {
                     style={{ appearance: "none", cursor: "pointer" }}
                 >
                     {MARKETS.map((m) => (
-                        <option key={m.code} value={m.code} style={{ background: "#1a1a2e", color: "white" }}>
+                        <option key={m.code} value={m.code}>
                             {m.label}
                         </option>
                     ))}
                 </select>
-                <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", marginTop: "4px" }}>
+                <p className="mt-1 text-[11px] text-muted-foreground">
                     Sets your default currency, weekend definition, and guardrail defaults.
                 </p>
             </div>
@@ -217,7 +210,11 @@ function SignUpForm() {
                     className="form-input"
                 />
             </div>
-            {error && <p className="text-sm text-red-400">{typeof error === "object" ? (error as any).message || JSON.stringify(error) : String(error)}</p>}
+            {error && (
+                <p className="text-sm text-destructive">
+                    {typeof error === "object" ? (error as { message?: string }).message || JSON.stringify(error) : String(error)}
+                </p>
+            )}
             <button type="submit" disabled={loading} className="form-submit-btn">
                 {loading ? "Creating account…" : "Create Account"}
             </button>
@@ -225,109 +222,101 @@ function SignUpForm() {
     );
 }
 
-// ── Main Login Content ────────────────────────────────────────────────────────
-
 function LoginContent() {
     const searchParams = useSearchParams();
-    const defaultTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
-    const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(defaultTab);
+    const defaultTab = searchParams.get("tab") === "signup" ? "signup" : "signin";
+    const [activeTab, setActiveTab] = useState<"signin" | "signup">(defaultTab);
 
     return (
-        <div className="min-h-screen grid lg:grid-cols-2 overflow-hidden bg-[#0a0a0b]">
-            {/* Left side: Dramatic Branding/Stats */}
-            <div className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden border-r border-white/5">
-                {/* Animated Background Mesh */}
-                <div className="absolute inset-0 z-0">
-                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-500/10 blur-[120px] rounded-full animate-pulse" />
-                    <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-500/10 blur-[150px] rounded-full animate-pulse delay-1000" />
+        <div className="min-h-screen grid lg:grid-cols-2 overflow-hidden bg-background">
+            {/* Left: brand panel */}
+            <div className="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden border-r border-border bg-surface-1">
+                <div className="absolute inset-0 z-0 pointer-events-none">
+                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/8 blur-[120px] rounded-full" />
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-sky-400/8 blur-[150px] rounded-full" />
                 </div>
 
                 <div className="relative z-10">
                     <Link href="/" className="flex items-center gap-3 group">
-                        <div className="rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 p-2.5 shadow-lg shadow-amber-500/20 group-hover:scale-110 transition-transform">
-                            <Sparkles className="h-6 w-6 text-white" />
+                        <div className="rounded-xl bg-primary p-2.5 shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
+                            <Sparkles className="h-6 w-6 text-primary-foreground" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-black text-white tracking-tighter">PriceOS</h1>
-                            <p className="text-[10px] text-amber-500/80 font-bold uppercase tracking-[0.2em]">Revenue intelligence</p>
+                            <h1 className="text-xl font-bold text-foreground tracking-tight">PriceOS</h1>
+                            <p className="text-[10px] text-primary font-semibold uppercase tracking-[0.2em]">Revenue intelligence</p>
                         </div>
                     </Link>
                 </div>
 
                 <div className="relative z-10 max-w-lg space-y-8">
-                    <h2 className="text-6xl font-black text-white leading-tight tracking-tighter">
-                        Maximize your <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-500 to-emerald-500">
-                            Portfolio Potential
-                        </span>
+                    <h2 className="text-5xl font-bold text-foreground leading-tight tracking-tight">
+                        Pricing that keeps up with your market
                     </h2>
-                    <p className="text-lg text-white/50 font-light leading-relaxed">
-                        Autonomous revenue management for short-term rental operators — anywhere in the world.
-                        Real-time event tracking, automated pricing, and competitor intelligence.
+                    <p className="text-lg text-muted-foreground font-normal leading-relaxed">
+                        AI-assisted revenue management for short-term rental operators worldwide.
+                        Event tracking, pricing proposals with guardrails, and PMS execution in one place.
                     </p>
 
-                    <div className="grid grid-cols-2 gap-8 pt-6">
-                        <div className="space-y-2 group cursor-default">
-                            <div className="flex items-center gap-2 text-amber-500">
-                                <TrendingUp className="h-5 w-5" />
-                                <span className="text-2xl font-black tracking-tighter text-white group-hover:text-amber-400 transition-colors">+24%</span>
+                    <div className="grid grid-cols-2 gap-6 pt-4">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-primary">
+                                <Calendar className="h-5 w-5" />
+                                <span className="text-sm font-semibold text-foreground">Daily pricing</span>
                             </div>
-                            <p className="text-[10px] uppercase font-black tracking-widest text-white/30">Avg. Revenue Lift</p>
+                            <p className="text-xs text-muted-foreground">Calendar-aware proposals for every listing</p>
                         </div>
-                        <div className="space-y-2 group cursor-default">
-                            <div className="flex items-center gap-2 text-emerald-500">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                                 <ShieldCheck className="h-5 w-5" />
-                                <span className="text-2xl font-black tracking-tighter text-white group-hover:text-emerald-400 transition-colors">99.8%</span>
+                                <span className="text-sm font-semibold text-foreground">Guardrailed execution</span>
                             </div>
-                            <p className="text-[10px] uppercase font-black tracking-widest text-white/30">Sync Accuracy</p>
+                            <p className="text-xs text-muted-foreground">You approve changes before they sync to your PMS</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="relative z-10 flex items-center gap-6 text-xs text-white/30 font-medium tracking-wide">
-                    <div className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> 10+ Global Markets</div>
-                    <div className="w-1 h-1 rounded-full bg-white/10" />
-                    <div>Enterprise Grade</div>
-                    <div className="w-1 h-1 rounded-full bg-white/10" />
-                    <div>24/7 Monitoring</div>
+                <div className="relative z-10 flex items-center gap-6 text-xs text-muted-foreground font-medium">
+                    <div className="flex items-center gap-1.5">
+                        <Building2 className="h-3.5 w-3.5" /> 10+ global markets
+                    </div>
+                    <div className="w-1 h-1 rounded-full bg-border" />
+                    <div>Hostaway-ready</div>
+                    <div className="w-1 h-1 rounded-full bg-border" />
+                    <div>Human-in-the-loop AI</div>
                 </div>
             </div>
 
-            {/* Right side: Login Form */}
-            <div className="relative flex flex-col items-center justify-center p-6 lg:p-12">
-                {/* Mobile Header */}
+            {/* Right: form */}
+            <div className="relative flex flex-col items-center justify-center p-6 lg:p-12 bg-background">
                 <div className="lg:hidden absolute top-8 left-8">
                     <Link href="/" className="flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-amber-500" />
-                        <span className="text-sm font-bold text-white uppercase tracking-tighter">PriceOS</span>
+                        <Sparkles className="h-5 w-5 text-primary" />
+                        <span className="text-sm font-bold text-foreground uppercase tracking-tight">PriceOS</span>
                     </Link>
                 </div>
 
-                <div className="w-full max-w-[440px] space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                <div className="w-full max-w-[440px] space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <div className="space-y-2 text-center lg:text-left">
-                        <h3 className="text-3xl font-black tracking-tighter text-white">Access Your Dashboard</h3>
-                        <p className="text-sm text-white/40">Secure administrative access for property operators.</p>
+                        <h3 className="text-3xl font-bold tracking-tight text-foreground">Sign in to PriceOS</h3>
+                        <p className="text-sm text-muted-foreground">Manage pricing, calendar, and portfolio performance.</p>
                     </div>
 
-                    <Card className="bg-white/[0.03] backdrop-blur-3xl border-white/5 shadow-2xl relative overflow-hidden group p-0">
-                        {/* Top accent line */}
-                        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-
+                    <Card className="bg-card border border-border shadow-sm p-0">
                         <Tabs
                             value={activeTab}
-                            onValueChange={(value) => setActiveTab(value as 'signin' | 'signup')}
+                            onValueChange={(value) => setActiveTab(value as "signin" | "signup")}
                             className="w-full"
                         >
-                            <TabsList className="grid w-full grid-cols-2 bg-transparent border-b border-white/10 rounded-none h-14">
+                            <TabsList className="grid w-full grid-cols-2 bg-muted/50 border-b border-border rounded-none h-14">
                                 <TabsTrigger
                                     value="signin"
-                                    className="rounded-none data-[state=active]:bg-white/5 data-[state=active]:text-amber-500 border-b-2 border-transparent data-[state=active]:border-amber-500 text-white/50"
+                                    className="rounded-none data-[state=active]:bg-background data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary text-muted-foreground"
                                 >
                                     Sign In
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="signup"
-                                    className="rounded-none data-[state=active]:bg-white/5 data-[state=active]:text-amber-500 border-b-2 border-transparent data-[state=active]:border-amber-500 text-white/50"
+                                    className="rounded-none data-[state=active]:bg-background data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary text-muted-foreground"
                                 >
                                     Sign Up
                                 </TabsTrigger>
@@ -344,11 +333,11 @@ function LoginContent() {
                         </Tabs>
                     </Card>
 
-                    <p className="text-center text-[10px] text-white/20 px-8 uppercase tracking-widest leading-relaxed">
-                        By accessing this system you agree to our
-                        <Link href="#" className="text-amber-500/50 hover:text-amber-500 transition-colors mx-1 font-bold">Terms of Service</Link>
-                        and
-                        <Link href="#" className="text-amber-500/50 hover:text-amber-500 transition-colors mx-1 font-bold">Privacy Policy</Link>.
+                    <p className="text-center text-[11px] text-muted-foreground px-8 leading-relaxed">
+                        By accessing PriceOS you agree to our{" "}
+                        <Link href="#" className="text-primary hover:underline font-medium">Terms of Service</Link>
+                        {" "}and{" "}
+                        <Link href="#" className="text-primary hover:underline font-medium">Privacy Policy</Link>.
                     </p>
                 </div>
             </div>
@@ -356,7 +345,7 @@ function LoginContent() {
             <style jsx global>{`
         form label.form-label {
           display: block;
-          color: rgba(255, 255, 255, 0.75) !important;
+          color: var(--text-primary) !important;
           font-weight: 600 !important;
           font-size: 0.8rem !important;
           margin-bottom: 0.25rem;
@@ -364,9 +353,9 @@ function LoginContent() {
 
         input.form-input {
           width: 100%;
-          background-color: rgba(255, 255, 255, 0.03) !important;
-          border: 1px solid rgba(255, 255, 255, 0.05) !important;
-          color: white !important;
+          background-color: var(--surface-0) !important;
+          border: 1px solid var(--border-default) !important;
+          color: var(--text-primary) !important;
           border-radius: 8px !important;
           height: 48px !important;
           padding: 0 12px;
@@ -375,40 +364,42 @@ function LoginContent() {
           outline: none;
         }
 
-        input.form-input:focus {
-          border-color: #f59e0b !important;
-          background-color: rgba(255, 255, 255, 0.05) !important;
-          box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.1) !important;
+        input.form-input:focus,
+        select.form-input:focus {
+          border-color: var(--brand) !important;
+          box-shadow: 0 0 0 2px var(--brand-dim) !important;
         }
 
         input.form-input::placeholder {
-          color: rgba(255, 255, 255, 0.3) !important;
+          color: var(--text-tertiary) !important;
         }
 
         button.form-submit-btn {
           width: 100%;
-          background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%) !important;
-          font-weight: 800 !important;
-          text-transform: uppercase !important;
-          letter-spacing: 0.1em !important;
+          background: var(--brand) !important;
+          font-weight: 600 !important;
           height: 48px !important;
           border-radius: 8px !important;
-          box-shadow: 0 10px 20px -10px rgba(245, 158, 11, 0.5) !important;
-          transition: all 0.3s ease !important;
-          color: #000 !important;
+          box-shadow: 0 4px 14px -4px rgba(45, 127, 249, 0.45) !important;
+          transition: all 0.2s ease !important;
+          color: #ffffff !important;
           border: none;
           cursor: pointer;
           font-size: 0.875rem;
         }
 
         button.form-submit-btn:hover:not(:disabled) {
-          transform: translateY(-2px) !important;
-          box-shadow: 0 15px 30px -10px rgba(245, 158, 11, 0.6) !important;
+          filter: brightness(1.05) !important;
+          transform: translateY(-1px) !important;
         }
 
         button.form-submit-btn:disabled {
           opacity: 0.6;
           cursor: not-allowed;
+        }
+
+        .dark input.form-input {
+          background-color: var(--surface-2) !important;
         }
       `}</style>
         </div>
@@ -417,7 +408,7 @@ function LoginContent() {
 
 export default function LoginPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-[#0a0a0b]" />}>
+        <Suspense fallback={<div className="min-h-screen bg-background" />}>
             <LoginContent />
         </Suspense>
     );

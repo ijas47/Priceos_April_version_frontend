@@ -884,7 +884,7 @@ export function GuestChatInterface({
                                 }}
                                 className={`w-full text-left p-3 rounded-xl transition-all border ${
                                     highlightConversationId === conv.id
-                                        ? 'bg-amber-500/10 border-amber-500/50 ring-1 ring-amber-500/30'
+                                        ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/30'
                                         : activeConversationId === conv.id
                                             ? 'bg-primary/5 border-primary/30'
                                             : 'bg-background hover:bg-muted/50 border-border/50 hover:border-border'
@@ -898,7 +898,7 @@ export function GuestChatInterface({
                                         <div className="flex items-center justify-between gap-2">
                                             <span className="text-sm font-bold truncate">{conv.guestName}</span>
                                             {conv.status === 'needs_reply' && (
-                                                <span className="shrink-0 inline-flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full bg-amber-500 text-[9px] font-black text-white leading-none">
+                                                <span className="shrink-0 inline-flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full bg-primary text-[9px] font-black text-white leading-none">
                                                     {(conv.unreadCount ?? 0) > 9 ? "9+" : (conv.unreadCount ?? 1)}
                                                 </span>
                                             )}
@@ -953,7 +953,7 @@ export function GuestChatInterface({
                                 </div>
                             </div>
                             <div className={`flex-1 min-w-0 overflow-y-auto p-4 md:p-6 space-y-4 transition-colors ${
-                                highlightConversationId === activeConversationId ? 'bg-amber-500/5' : ''
+                                highlightConversationId === activeConversationId ? 'bg-primary/5' : ''
                             }`}>
                                 {activeConversation.messages.map((msg) => (
                                     <div key={msg.id} className={`flex flex-col max-w-[92%] md:max-w-[85%] ${msg.sender === 'admin' ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
@@ -991,7 +991,7 @@ export function GuestChatInterface({
                                             size="icon"
                                             onClick={handleAiSuggest}
                                             disabled={isSuggesting}
-                                            className={`absolute right-1.5 h-7 w-7 rounded-full transition-all ${isSuggesting ? 'text-amber-500' : 'text-muted-foreground hover:text-amber-500 hover:bg-amber-50'}`}
+                                            className={`absolute right-1.5 h-7 w-7 rounded-full transition-all ${isSuggesting ? 'text-primary' : 'text-muted-foreground hover:text-primary hover:bg-primary/50'}`}
                                         >
                                             {isSuggesting ? (
                                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

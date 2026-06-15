@@ -21,7 +21,7 @@ export function ThemeToggleFloating() {
         onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
         className={cn(
           "flex h-12 w-12 items-center justify-center rounded-full shadow-2xl transition-all duration-300 transform group-hover:scale-110",
-          "bg-gradient-to-br from-amber-500 to-orange-600 dark:from-amber-400 dark:to-orange-500",
+          "bg-gradient-to-br from-primary to-primary/85 dark:from-primary dark:to-primary/85",
           "border-2 border-white dark:border-surface-2"
         )}
       >

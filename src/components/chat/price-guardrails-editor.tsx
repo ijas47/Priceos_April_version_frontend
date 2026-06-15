@@ -112,7 +112,7 @@ export function PriceGuardrailsEditor({
                     className={cn(
                         "group flex items-center gap-2 rounded-lg px-3 py-1.5 transition-all border",
                         needsAttention
-                            ? "border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600"
+                            ? "border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary"
                             : "border-border/50 bg-muted/30 hover:bg-muted/60 text-muted-foreground hover:text-foreground",
                     )}
                     title="Click to edit price guardrails"

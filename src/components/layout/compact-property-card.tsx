@@ -55,7 +55,7 @@ export function CompactPropertyCard({
                   {property.name}
                 </p>
                 {unreadCount > 0 && (
-                  <span className="shrink-0 inline-flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full bg-amber-500 text-[9px] font-black text-white">
+                  <span className="shrink-0 inline-flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full bg-primary text-[9px] font-black text-white">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
@@ -77,11 +77,11 @@ export function CompactPropertyCard({
             <div className="flex items-center gap-1.5">
               <div className={cn(
                 "h-1.5 w-1.5 rounded-full animate-pulse",
-                occupancy >= 70 ? "bg-emerald-500" : occupancy >= 50 ? "bg-amber-500" : "bg-rose-500"
+                occupancy >= 70 ? "bg-emerald-500" : occupancy >= 50 ? "bg-primary" : "bg-rose-500"
               )} />
               <span className={cn(
                 "text-xs font-black tabular-nums",
-                occupancy >= 70 ? "text-emerald-600" : occupancy >= 50 ? "text-amber-600" : "text-rose-600"
+                occupancy >= 70 ? "text-emerald-600" : occupancy >= 50 ? "text-primary" : "text-rose-600"
               )}>
                 {occupancy}%
               </span>

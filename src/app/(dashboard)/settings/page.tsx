@@ -327,7 +327,7 @@ export default function SettingsPage() {
                     {selectedMarket === org?.marketCode && (
                       <Badge
                         variant="outline"
-                        className="text-[10px] bg-amber-dim text-amber border-amber/20 h-5"
+                        className="text-[10px] bg-primary/dim text-amber border-amber/20 h-5"
                       >
                         Current market
                       </Badge>
@@ -497,7 +497,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Plan Card */}
-                <div className="flex flex-col justify-center gap-2 p-6 rounded-xl bg-amber-dim border border-amber/10">
+                <div className="flex flex-col justify-center gap-2 p-6 rounded-xl bg-primary/dim border border-amber/10">
                   <span className="text-body-xs font-bold text-amber uppercase tracking-widest">
                     Active Plan
                   </span>
@@ -522,7 +522,7 @@ export default function SettingsPage() {
                         "text-[10px] border-none",
                         org?.systemState === "active"
                           ? "bg-green-500/10 text-green-400"
-                          : "bg-amber-500/10 text-amber-400"
+                          : "bg-primary/10 text-primary"
                       )}
                     >
                       System: {org?.systemState || "connected"}

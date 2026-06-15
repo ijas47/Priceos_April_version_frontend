@@ -68,7 +68,7 @@ export function HeaderNav() {
           }}
           className="flex items-center gap-3 shrink-0 group"
         >
-          <div className="rounded-lg bg-amber-500 p-2 shadow-sm group-hover:shadow-md transition-shadow">
+          <div className="rounded-lg bg-primary p-2 shadow-sm group-hover:shadow-md transition-shadow">
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>

@@ -89,14 +89,14 @@ export function FinanceDashboard({ listings, portfolio, proposals }: Props) {
           avgNightly > 0 ? `${currency} ${avgNightly.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—",
           "Portfolio average",
           DollarSign,
-          "text-amber-500"
+          "text-primary"
         )}
         {kpiCard(
           "Portfolio Occupancy",
           `${occupancyPct}%`,
           "Next 30 days",
           BarChart2,
-          occupancyPct > 70 ? "text-emerald-500" : occupancyPct > 40 ? "text-amber-500" : "text-red-400"
+          occupancyPct > 70 ? "text-emerald-500" : occupancyPct > 40 ? "text-primary" : "text-red-400"
         )}
         {kpiCard(
           "Properties",
@@ -121,7 +121,7 @@ export function FinanceDashboard({ listings, portfolio, proposals }: Props) {
             <h2 className="text-sm font-semibold">Property Rate Positioning</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Current base rate vs. guardrail floor and ceiling</p>
           </div>
-          <TrendingUp className="h-4 w-4 text-amber-500" />
+          <TrendingUp className="h-4 w-4 text-primary" />
         </div>
 
         {listingRows.length === 0 ? (
@@ -164,7 +164,7 @@ export function FinanceDashboard({ listings, portfolio, proposals }: Props) {
                       {headroomPct !== null ? (
                         <span className={cn(
                           "inline-flex items-center gap-1 text-xs font-semibold",
-                          Number(headroomPct) > 20 ? "text-emerald-500" : Number(headroomPct) > 5 ? "text-amber-500" : "text-red-400"
+                          Number(headroomPct) > 20 ? "text-emerald-500" : Number(headroomPct) > 5 ? "text-primary" : "text-red-400"
                         )}>
                           {Number(headroomPct) >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                           {headroomPct}%

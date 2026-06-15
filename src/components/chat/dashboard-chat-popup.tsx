@@ -226,7 +226,7 @@ export function DashboardChatPopup({ isOpen, onOpenChange }: DashboardChatPopupP
         <div className="shrink-0 border-b border-border-subtle/50 bg-muted/10" style={{ height: 220 }}>
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-border-subtle/30">
             <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground">
-              <span className={cn("h-1.5 w-1.5 rounded-full", isGraphConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500")} />
+              <span className={cn("h-1.5 w-1.5 rounded-full", isGraphConnected ? "bg-emerald-500 animate-pulse" : "bg-primary")} />
               Execution Graph
             </span>
             <button type="button" onClick={() => setShowGraph(false)} className="text-text-tertiary hover:text-foreground p-0.5">

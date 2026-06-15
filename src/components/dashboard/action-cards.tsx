@@ -25,8 +25,8 @@ const actions = [
     label: "tasks overdue",
     icon: AlertTriangle,
     href: "/tasks",
-    gradient: "from-amber-500 to-orange-600",
-    bg: "from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20",
+    gradient: "from-primary to-primary/85",
+    bg: "from-sky-50 to-blue-50 dark:from-primary/10 dark:to-primary/5",
   },
   {
     key: "messages",

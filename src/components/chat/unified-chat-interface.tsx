@@ -1013,7 +1013,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
             <div className="absolute top-0 right-0 left-0 sm:left-auto h-[400px] w-full sm:w-[500px] z-40 bg-background/95 backdrop-blur-xl border-l border-b border-border shadow-2xl sm:rounded-bl-3xl overflow-hidden flex flex-col transition-all duration-300">
               <div className="px-4 py-2 bg-muted/30 border-b border-border/50 flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full ${isLoading ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500'}`} />
+                  <span className={`h-2 w-2 rounded-full ${isLoading ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-primary'}`} />
                   Execution Graph
                 </span>
                 <div className="flex items-center gap-1">
@@ -1121,7 +1121,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
                     return (
                     <div className="mt-5 rounded-2xl overflow-hidden border border-border/40 shadow-lg">
                       {/* ── Panel header ─────────────────────────────────── */}
-                      <div className="px-4 py-3 bg-gradient-to-r from-primary/8 to-amber-500/5 border-b border-border/40 flex items-center justify-between">
+                      <div className="px-4 py-3 bg-gradient-to-r from-primary/8 to-primary/5 border-b border-border/40 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-black uppercase tracking-[0.18em] text-primary">Aria Pricing Proposals</span>
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{message.proposals.length}</span>
@@ -1150,8 +1150,8 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
                           const canApprove = prop.guard_verdict !== "REJECTED";
                           const confidence = computeConfidence(prop);
                           const confLabel = confidence >= 75 ? "High" : confidence >= 50 ? "Medium" : "Low";
-                          const confBarCls = confidence >= 75 ? "bg-emerald-500" : confidence >= 50 ? "bg-amber-500" : "bg-red-400";
-                          const confTextCls = confidence >= 75 ? "text-emerald-500" : confidence >= 50 ? "text-amber-500" : "text-red-400";
+                          const confBarCls = confidence >= 75 ? "bg-emerald-500" : confidence >= 50 ? "bg-primary" : "bg-red-400";
+                          const confTextCls = confidence >= 75 ? "text-emerald-500" : confidence >= 50 ? "text-primary" : "text-red-400";
                           const isDown = prop.change_pct < 0;
 
                           const reasoningEntries = (() => {
@@ -1166,7 +1166,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
                             <div key={idx} className={`rounded-xl border overflow-hidden transition-all ${
                               isApproved ? "border-emerald-500/30 bg-emerald-500/5" :
                               isRejected ? "border-red-400/20 bg-red-500/5 opacity-55" :
-                              isFlagged  ? "border-amber-500/30 bg-amber-500/5" :
+                              isFlagged  ? "border-primary/30 bg-primary/5" :
                               "border-border/30 bg-background/60"
                             }`}>
 
@@ -1192,7 +1192,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
                                   {!isDecided && (
                                     <span className={`text-[9px] font-black px-2 py-0.5 rounded-md border ${
                                       prop.guard_verdict === "APPROVED" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
-                                      prop.guard_verdict === "FLAGGED"  ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+                                      prop.guard_verdict === "FLAGGED"  ? "bg-primary/10 text-primary border-primary/20" :
                                       "bg-red-500/10 text-red-400 border-red-400/20"
                                     }`}>
                                       {prop.guard_verdict === "APPROVED" ? "✓ PriceGuard OK" : prop.guard_verdict === "FLAGGED" ? "⚠ Flagged" : "✗ Blocked"}
@@ -1220,12 +1220,12 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
                                 {/* Proposed price */}
                                 <div className="text-center">
                                   <p className="text-[9px] text-muted-foreground uppercase tracking-wide font-semibold mb-0.5">Proposed</p>
-                                  <p className="text-xl font-black tabular-nums text-amber-500">AED {prop.proposed_price}</p>
+                                  <p className="text-xl font-black tabular-nums text-primary">AED {prop.proposed_price}</p>
                                 </div>
                                 {/* Risk badge */}
                                 <span className={`ml-auto text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg border ${
                                   prop.risk_level === "low"    ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
-                                  prop.risk_level === "medium" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+                                  prop.risk_level === "medium" ? "bg-primary/10 text-primary border-primary/20" :
                                   "bg-red-500/10 text-red-400 border-red-400/20"
                                 }`}>
                                   {prop.risk_level} risk
@@ -1305,9 +1305,9 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
 
                               {/* ── PriceGuard flagged warning ───────────── */}
                               {isFlagged && !isDecided && (
-                                <div className="px-4 py-2.5 bg-amber-500/5 border-b border-amber-500/20 flex items-start gap-2">
+                                <div className="px-4 py-2.5 bg-primary/5 border-b border-primary/20 flex items-start gap-2">
                                   <span className="text-sm mt-0.5">⚠</span>
-                                  <p className="text-[11px] text-amber-500/90 leading-snug">PriceGuard flagged this — outside normal range but not hard-blocked. Approve with caution.</p>
+                                  <p className="text-[11px] text-primary/90 leading-snug">PriceGuard flagged this — outside normal range but not hard-blocked. Approve with caution.</p>
                                 </div>
                               )}
 

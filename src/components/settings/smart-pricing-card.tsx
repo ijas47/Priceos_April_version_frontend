@@ -157,7 +157,7 @@ export function SmartPricingCard() {
               className={cn(
                 "text-left rounded-lg border p-4 transition-all disabled:opacity-60",
                 selected
-                  ? "border-amber bg-amber-dim"
+                  ? "border-amber bg-primary/dim"
                   : "border-border-subtle bg-surface-2/40 hover:border-border-default",
               )}
             >

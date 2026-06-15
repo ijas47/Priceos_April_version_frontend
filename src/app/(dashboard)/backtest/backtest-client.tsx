@@ -378,7 +378,7 @@ export function BacktestClient({ orgId }: { orgId: string | null }) {
                           level === "low"
                             ? "bg-emerald-500/15 text-emerald-400"
                             : level === "medium"
-                              ? "bg-amber-500/15 text-amber-400"
+                              ? "bg-primary/15 text-primary"
                               : "bg-red-500/15 text-red-400"
                         )}
                       >
@@ -544,7 +544,7 @@ export function BacktestClient({ orgId }: { orgId: string | null }) {
                               d.riskLevel === "low"
                                 ? "bg-emerald-500/15 text-emerald-400"
                                 : d.riskLevel === "medium"
-                                  ? "bg-amber-500/15 text-amber-400"
+                                  ? "bg-primary/15 text-primary"
                                   : "bg-red-500/15 text-red-400"
                             )}
                           >
@@ -589,14 +589,14 @@ function KpiCard({
   const gradients: Record<string, string> = {
     blue: "from-blue-500/20 to-blue-600/5",
     emerald: "from-emerald-500/20 to-emerald-600/5",
-    amber: "from-amber-500/20 to-amber-600/5",
-    red: "from-red-500/20 to-red-600/5",
+    brand: "from-primary/20 to-primary/5",
+    red: "from-red-500/20 to-sky-600/5",
   };
 
   const textColors: Record<string, string> = {
     blue: "text-blue-400",
     emerald: "text-emerald-400",
-    amber: "text-amber-400",
+    amber: "text-primary",
     red: "text-red-400",
   };
 

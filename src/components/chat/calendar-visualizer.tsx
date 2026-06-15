@@ -109,7 +109,7 @@ export function CalendarVisualizer({ days, reservations = [], dateRange }: Calen
                                     <div
                                         key={gridDay.dayNum}
                                         title={tooltip}
-                                        className={`h-10 rounded border border-border/50 flex flex-col items-center justify-center text-xs transition-opacity hover:opacity-80 ${bgClass} ${gridDay.reservation ? 'ring-1 ring-offset-1 ring-amber-500' : ''}`}
+                                        className={`h-10 rounded border border-border/50 flex flex-col items-center justify-center text-xs transition-opacity hover:opacity-80 ${bgClass} ${gridDay.reservation ? 'ring-1 ring-offset-1 ring-primary' : ''}`}
                                     >
                                         <span>{gridDay.dayNum}</span>
                                     </div>
