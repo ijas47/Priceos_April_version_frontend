@@ -25,6 +25,22 @@ export interface IListing extends Document {
   lastMinuteDaysOut: number;
   lastMinuteDiscountPct: number;
   lastMinuteMinStay?: number;
+  lastMinuteRampEnabled: boolean;
+  lastMinuteRampDays: number;
+  lastMinuteMaxDiscountPct: number;
+  lastMinuteMinDiscountPct: number;
+  // Occupancy-based pricing (PriceLabs matrix)
+  occupancyEnabled: boolean;
+  occupancyLookbackDays: number;
+  occupancyMatrix?: {
+    dayRanges: { startDay: number; endDay: number; label?: string }[];
+    rows: { maxOccupancyPct: number; adjustmentsPct: number[] }[];
+  };
+  occupancyPreset?: string;
+  usePortfolioPricingDefaults: boolean;
+  pricingProfileOverrideId?: string;
+  seasonalCalendarOverrideId?: string;
+  minStayProfileOverrideId?: string;
   // Far Out
   farOutEnabled: boolean;
   farOutDaysOut: number;
@@ -83,6 +99,18 @@ const ListingSchema = new Schema<IListing>(
     lastMinuteDaysOut: { type: Number, default: 7 },
     lastMinuteDiscountPct: { type: Number, default: 15 },
     lastMinuteMinStay: { type: Number },
+    lastMinuteRampEnabled: { type: Boolean, default: false },
+    lastMinuteRampDays: { type: Number, default: 60 },
+    lastMinuteMaxDiscountPct: { type: Number, default: 30 },
+    lastMinuteMinDiscountPct: { type: Number, default: 0 },
+    occupancyEnabled: { type: Boolean, default: false },
+    occupancyLookbackDays: { type: Number, default: 30 },
+    occupancyMatrix: { type: Schema.Types.Mixed },
+    occupancyPreset: { type: String },
+    usePortfolioPricingDefaults: { type: Boolean, default: true },
+    pricingProfileOverrideId: { type: String },
+    seasonalCalendarOverrideId: { type: String },
+    minStayProfileOverrideId: { type: String },
     farOutEnabled: { type: Boolean, default: false },
     farOutDaysOut: { type: Number, default: 90 },
     farOutMarkupPct: { type: Number, default: 10 },

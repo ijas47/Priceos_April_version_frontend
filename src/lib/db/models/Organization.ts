@@ -15,6 +15,11 @@ export interface IOrganization extends Document {
   timezone: string;
   plan: "starter" | "growth" | "scale";
   pricingStrategy?: "conservative" | "balanced" | "aggressive";
+  /** PriceLabs-parity profile pack (portfolio defaults). */
+  pricingPack?: Record<string, unknown>;
+  pricingPackVersion?: string;
+  /** low = cap event uplift; medium/high increase event weight */
+  eventPricingWeight?: "low" | "medium" | "high";
   settings: {
     guardrails: {
       maxSingleDayChangePct: number;
@@ -58,6 +63,13 @@ const OrgSchema = new Schema<IOrganization>(
     pricingStrategy: {
       type: String,
       enum: ["conservative", "balanced", "aggressive"],
+    },
+    pricingPack: { type: Schema.Types.Mixed },
+    pricingPackVersion: { type: String },
+    eventPricingWeight: {
+      type: String,
+      enum: ["low", "medium", "high"],
+      default: "low",
     },
     settings: {
       guardrails: {

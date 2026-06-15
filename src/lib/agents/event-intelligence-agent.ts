@@ -203,7 +203,10 @@ export class EventIntelligenceAgent {
     }
   }
 
-  getPricingRecommendation(events: EventSignal[]): {
+  getPricingRecommendation(
+    events: EventSignal[],
+    weight: "low" | "medium" | "high" = "low"
+  ): {
     suggestedIncrease: number;
     reasoning: string;
   } {
@@ -211,26 +214,35 @@ export class EventIntelligenceAgent {
       return { suggestedIncrease: 0, reasoning: "No events detected, maintain current pricing" };
     }
 
+    const caps = {
+      low: { high: 8, medium: 4, low: 2 },
+      medium: { high: 15, medium: 8, low: 4 },
+      high: { high: 30, medium: 15, low: 5 },
+    }[weight];
+
     const highImpactEvents = events.filter((e) => e.expectedImpact === "high");
     const mediumImpactEvents = events.filter((e) => e.expectedImpact === "medium");
 
     if (highImpactEvents.length > 0) {
       const eventNames = highImpactEvents.map((e) => e.name).join(", ");
       return {
-        suggestedIncrease: 30,
-        reasoning: `High-impact events detected: ${eventNames}. Significant demand increase expected.`,
+        suggestedIncrease: caps.high,
+        reasoning: `High-impact events detected: ${eventNames}. Capped uplift (${weight} weight).`,
       };
     }
 
     if (mediumImpactEvents.length > 0) {
       const eventNames = mediumImpactEvents.map((e) => e.name).join(", ");
       return {
-        suggestedIncrease: 15,
-        reasoning: `Medium-impact events detected: ${eventNames}. Moderate demand increase expected.`,
+        suggestedIncrease: caps.medium,
+        reasoning: `Medium-impact events detected: ${eventNames}. Capped uplift (${weight} weight).`,
       };
     }
 
-    return { suggestedIncrease: 5, reasoning: "Low-impact events detected. Minor demand increase expected." };
+    return {
+      suggestedIncrease: caps.low,
+      reasoning: `Low-impact events detected. Minor capped uplift (${weight} weight).`,
+    };
   }
 }
 

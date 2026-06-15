@@ -9,6 +9,15 @@ interface MultiPropertyCalendarProps {
   calendars: Record<number, CalendarDay[]>;
 }
 
+function isOccupied(status: CalendarDay["status"] | undefined) {
+  return status === "booked" || status === "reserved";
+}
+
+function formatDayPrice(price: number | undefined) {
+  if (!price || price <= 0) return null;
+  return price.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
 export function MultiPropertyCalendar({ properties, calendars }: MultiPropertyCalendarProps) {
   // Show 30 days
   const today = new Date();
@@ -59,8 +68,9 @@ export function MultiPropertyCalendar({ properties, calendars }: MultiPropertyCa
                     const dateStr = formatDate(d);
                     const day = dayMap.get(dateStr);
                     const isAvailable = day?.status === "available";
-                    const isBooked = day?.status === "booked";
+                    const isBooked = isOccupied(day?.status);
                     const isBlocked = day?.status === "blocked";
+                    const formattedPrice = formatDayPrice(day?.price);
 
                     return (
                       <td key={dateStr} className="px-0.5 py-1">
@@ -68,21 +78,31 @@ export function MultiPropertyCalendar({ properties, calendars }: MultiPropertyCa
                           <TooltipTrigger asChild>
                             <div
                               className={cn(
-                                "h-6 w-full rounded-sm",
+                                "flex h-8 w-full flex-col items-center justify-center rounded-sm px-0.5",
                                 isAvailable && "bg-green-200 dark:bg-green-900",
                                 isBooked && "bg-red-300 dark:bg-red-800",
                                 isBlocked && "bg-primary/20 dark:bg-primary/900",
                                 !day && "bg-gray-100 dark:bg-gray-900"
                               )}
-                            />
+                            >
+                              {formattedPrice && (
+                                <span className="text-[9px] font-semibold leading-none tabular-nums text-foreground/90">
+                                  {formattedPrice}
+                                </span>
+                              )}
+                            </div>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="text-xs">
                             <p className="font-medium">{property.name}</p>
                             <p>{dateStr}</p>
                             {day && (
                               <>
-                                <p>Status: {day.status}</p>
-                                {isAvailable && <p>Price: {day.price} AED</p>}
+                                <p>Status: {isBooked ? "booked" : day.status}</p>
+                                {formattedPrice ? (
+                                  <p>Price: {formattedPrice} {property.currencyCode ?? "AED"}</p>
+                                ) : (
+                                  <p>Price: —</p>
+                                )}
                                 {isAvailable && <p>Min stay: {day.minimumStay} nights</p>}
                                 {day.blockReason && <p>Reason: {day.blockReason.replace("_", " ")}</p>}
                               </>

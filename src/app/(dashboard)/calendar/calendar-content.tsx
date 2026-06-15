@@ -67,7 +67,9 @@ export function CalendarContent({
   };
 
   const available = days.filter((d) => d.status === "available").length;
-  const booked = days.filter((d) => d.status === "booked").length;
+  const booked = days.filter(
+    (d) => d.status === "booked" || d.status === "reserved"
+  ).length;
   const blocked = days.filter((d) => d.status === "blocked").length;
 
   return (

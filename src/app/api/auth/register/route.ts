@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
+    const { UAE_PRICELABS_DEFAULTS } = await import("@/lib/pricing/uae-pricelabs-defaults");
+
     const org = await Organization.create({
       name: orgName || name,
       email: email.toLowerCase(),
@@ -55,6 +57,11 @@ export async function POST(req: NextRequest) {
       currency: template?.currency || "AED",
       timezone: template?.timezone || "Asia/Dubai",
       plan: "starter",
+      pricingPack: mktCode === "UAE_DXB"
+        ? (UAE_PRICELABS_DEFAULTS as unknown as Record<string, unknown>)
+        : undefined,
+      pricingPackVersion: mktCode === "UAE_DXB" ? UAE_PRICELABS_DEFAULTS.version : undefined,
+      eventPricingWeight: "low",
       settings: {
         guardrails: {
           maxSingleDayChangePct: template?.guardrailDefaults?.maxSingleDayChangePct ?? 15,

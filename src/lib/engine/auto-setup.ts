@@ -8,6 +8,7 @@
 import { connectDB, Listing, PricingRule, MarketTemplate } from "@/lib/db";
 import { resolveMarketId, getMarketContext } from "@/lib/airbtics/market-context";
 import { runPipeline } from "./pipeline";
+import { applyPricingPackToOrg } from "@/lib/pricing/apply-defaults";
 import mongoose from "mongoose";
 
 export type Strategy = "conservative" | "balanced" | "aggressive";
@@ -118,6 +119,10 @@ export async function runAutoSetup(input: AutoSetupInput): Promise<AutoSetupResu
   await connectDB();
 
   const orgOid = new mongoose.Types.ObjectId(input.orgId);
+
+  if (!input.marketCode || input.marketCode === "UAE_DXB") {
+    await applyPricingPackToOrg(input.orgId);
+  }
   const preset = STRATEGY_PRESETS[input.strategy];
   const defaults = input.pricingDefaults;
 

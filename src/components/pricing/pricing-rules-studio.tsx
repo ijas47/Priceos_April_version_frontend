@@ -29,6 +29,7 @@ import {
   Info,
   CheckCircle2,
   Activity,
+  CalendarRange,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -38,6 +39,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { OccupancyMatrixEditor } from "./occupancy-matrix-editor";
+import { MinStayProfileEditor } from "./minstay-profile-editor";
+import type { OccupancyMatrix, MinStayProfile, PricingProfile, MarketPricingPack } from "@/lib/pricing/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -96,6 +100,11 @@ interface EngineConfig {
   occupancyLowThresholdPct: number;
   occupancyLowAdjPct: number;
   occupancyLookbackDays: number;
+  occupancyMatrix?: {
+    dayRanges: { startDay: number; endDay: number; label?: string }[];
+    rows: { maxOccupancyPct: number; adjustmentsPct: number[] }[];
+  };
+  occupancyPreset?: string;
   occupancyWindowProfiles: {
     startDay: number;
     endDay: number;
@@ -117,6 +126,10 @@ interface EngineConfig {
   basePriceConfidencePct: number;
   basePriceSampleSize: number;
   basePriceLastComputedAt: string | null;
+  usePortfolioPricingDefaults?: boolean;
+  pricingProfileOverrideId?: string | null;
+  seasonalCalendarOverrideId?: string | null;
+  minStayProfileOverrideId?: string | null;
 }
 
 interface PricingRule {
@@ -1433,23 +1446,40 @@ function OccupancyTab({
   onConfigChange: (patch: Partial<EngineConfig>) => void;
 }) {
   const [saving, setSaving] = useState(false);
+  const [portfolioProfiles, setPortfolioProfiles] = useState<PricingProfile[]>([]);
+  const [inheritPortfolio, setInheritPortfolio] = useState(config.usePortfolioPricingDefaults !== false);
+
+  useEffect(() => {
+    fetch("/api/pricing/profiles")
+      .then((r) => r.json())
+      .then((d) => setPortfolioProfiles(d.pack?.pricingProfiles ?? []))
+      .catch(() => {});
+  }, []);
+
+  const applyPresetMatrix = (profileId: string) => {
+    const profile = portfolioProfiles.find((p) => p.id === profileId);
+    if (!profile) return;
+    onConfigChange({
+      occupancyMatrix: profile.occupancyMatrix,
+      occupancyPreset: profile.occupancyPreset,
+      occupancyEnabled: true,
+      usePortfolioPricingDefaults: false,
+    });
+    setInheritPortfolio(false);
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
       await patchConfig(listingId, {
         occupancyEnabled: config.occupancyEnabled,
-        occupancyTargetPct: config.occupancyTargetPct,
-        occupancyHighThresholdPct: config.occupancyHighThresholdPct,
-        occupancyHighAdjPct: config.occupancyHighAdjPct,
-        occupancyLowThresholdPct: config.occupancyLowThresholdPct,
-        occupancyLowAdjPct: config.occupancyLowAdjPct,
         occupancyLookbackDays: config.occupancyLookbackDays,
-        occupancyWindowProfiles: config.occupancyWindowProfiles,
-        useGroupOccupancyProfile: config.useGroupOccupancyProfile,
-        groupOccupancyWeightPct: config.groupOccupancyWeightPct,
+        occupancyMatrix: config.occupancyMatrix,
+        occupancyPreset: config.occupancyPreset,
+        usePortfolioPricingDefaults: inheritPortfolio,
+        pricingProfileOverrideId: inheritPortfolio ? null : config.pricingProfileOverrideId,
       });
-      toast.success("Occupancy rules saved to database.");
+      toast.success("Unit occupancy rules saved.");
     } catch {
       toast.error("Failed to save occupancy rules.");
     } finally {
@@ -1507,194 +1537,71 @@ function OccupancyTab({
 
       {config.occupancyEnabled && (
         <>
-          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Booking-Window Profiles</h3>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  onConfigChange({
-                    occupancyWindowProfiles: [
-                      ...(config.occupancyWindowProfiles || []),
-                      { startDay: 0, endDay: 7, highThresholdPct: 90, highAdjPct: 10, lowThresholdPct: 50, lowAdjPct: -10 },
-                    ],
-                  })
-                }
-                className="h-7 text-[10px]"
-              >
-                Add window
-              </Button>
-            </div>
-            {(config.occupancyWindowProfiles || []).map((p, idx) => (
-              <div key={`occ-window-${idx}`} className="grid grid-cols-6 gap-2">
-                <Input type="number" value={p.startDay} onChange={(e) => {
-                  const next = [...(config.occupancyWindowProfiles || [])];
-                  next[idx] = { ...next[idx], startDay: Number(e.target.value || 0) };
-                  onConfigChange({ occupancyWindowProfiles: next });
-                }} className="h-8 text-xs bg-white/5 border-white/10" placeholder="Start" />
-                <Input type="number" value={p.endDay} onChange={(e) => {
-                  const next = [...(config.occupancyWindowProfiles || [])];
-                  next[idx] = { ...next[idx], endDay: Number(e.target.value || 0) };
-                  onConfigChange({ occupancyWindowProfiles: next });
-                }} className="h-8 text-xs bg-white/5 border-white/10" placeholder="End" />
-                <Input type="number" value={p.lowThresholdPct} onChange={(e) => {
-                  const next = [...(config.occupancyWindowProfiles || [])];
-                  next[idx] = { ...next[idx], lowThresholdPct: Number(e.target.value || 0) };
-                  onConfigChange({ occupancyWindowProfiles: next });
-                }} className="h-8 text-xs bg-white/5 border-white/10" placeholder="Low %" />
-                <Input type="number" value={p.lowAdjPct} onChange={(e) => {
-                  const next = [...(config.occupancyWindowProfiles || [])];
-                  next[idx] = { ...next[idx], lowAdjPct: Number(e.target.value || 0) };
-                  onConfigChange({ occupancyWindowProfiles: next });
-                }} className="h-8 text-xs bg-white/5 border-white/10" placeholder="Low adj%" />
-                <Input type="number" value={p.highThresholdPct} onChange={(e) => {
-                  const next = [...(config.occupancyWindowProfiles || [])];
-                  next[idx] = { ...next[idx], highThresholdPct: Number(e.target.value || 0) };
-                  onConfigChange({ occupancyWindowProfiles: next });
-                }} className="h-8 text-xs bg-white/5 border-white/10" placeholder="High %" />
-                <Input type="number" value={p.highAdjPct} onChange={(e) => {
-                  const next = [...(config.occupancyWindowProfiles || [])];
-                  next[idx] = { ...next[idx], highAdjPct: Number(e.target.value || 0) };
-                  onConfigChange({ occupancyWindowProfiles: next });
-                }} className="h-8 text-xs bg-white/5 border-white/10" placeholder="High adj%" />
-              </div>
-            ))}
-            <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer pt-1">
-              <Switch
-                checked={config.useGroupOccupancyProfile}
-                onCheckedChange={(v) => onConfigChange({ useGroupOccupancyProfile: v })}
-              />
-              Blend with portfolio/group occupancy profile
-            </label>
-            {config.useGroupOccupancyProfile && (
-              <div className="w-72">
-                <Label className="text-xs text-text-tertiary mb-1 block">
-                  Group Occupancy Weight: <span className="font-bold text-text-primary">{config.groupOccupancyWeightPct}%</span>
-                </Label>
-                <Slider
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={[config.groupOccupancyWeightPct]}
-                  onValueChange={([v]) => onConfigChange({ groupOccupancyWeightPct: v })}
-                />
-              </div>
-            )}
-          </div>
-          {/* Target + Lookback */}
-          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 space-y-4">
-            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Target Settings</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs text-text-tertiary mb-1 block">
-                  Target Occupancy: <span className="font-bold text-text-primary">{config.occupancyTargetPct}%</span>
-                </Label>
-                <Slider
-                  min={40} max={95} step={5}
-                  value={[config.occupancyTargetPct]}
-                  onValueChange={([v]) => onConfigChange({ occupancyTargetPct: v })}
-                />
-                <p className="text-[10px] text-muted-foreground/80 mt-1">Ideal occupancy rate to maintain</p>
-              </div>
-              <div>
-                <Label className="text-xs text-text-tertiary mb-1 block">
-                  Lookback Window: <span className="font-bold text-text-primary">{config.occupancyLookbackDays} days</span>
-                </Label>
-                <Slider
-                  min={7} max={90} step={7}
-                  value={[config.occupancyLookbackDays]}
-                  onValueChange={([v]) => onConfigChange({ occupancyLookbackDays: v })}
-                />
-                <p className="text-[10px] text-muted-foreground/80 mt-1">Historical window for occupancy calculation</p>
-              </div>
-            </div>
-          </div>
-
-          {/* High occupancy threshold */}
-          <div className="rounded-lg border border-green-500/10 bg-green-500/[0.03] p-4 space-y-4">
-            <div>
-              <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider">High Occupancy — Price Up</h3>
-              <p className="text-[11px] text-text-tertiary mt-0.5">
-                When occupancy exceeds the threshold, raise prices to capture demand
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs text-text-tertiary mb-1 block">
-                  Threshold: <span className="font-bold text-green-400">{config.occupancyHighThresholdPct}%</span> occupancy
-                </Label>
-                <Slider
-                  min={60} max={95} step={5}
-                  value={[config.occupancyHighThresholdPct]}
-                  onValueChange={([v]) => onConfigChange({ occupancyHighThresholdPct: v })}
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-text-tertiary mb-1 block">
-                  Price Increase: <span className="font-bold text-green-400">+{config.occupancyHighAdjPct}%</span>
-                </Label>
-                <Slider
-                  min={5} max={50} step={5}
-                  value={[config.occupancyHighAdjPct]}
-                  onValueChange={([v]) => onConfigChange({ occupancyHighAdjPct: v })}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Low occupancy threshold */}
-          <div className="rounded-lg border border-red-500/10 bg-red-500/[0.03] p-4 space-y-4">
-            <div>
-              <h3 className="text-xs font-semibold text-red-400 uppercase tracking-wider">Low Occupancy — Price Down</h3>
-              <p className="text-[11px] text-text-tertiary mt-0.5">
-                When occupancy falls below the threshold, discount to stimulate bookings
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs text-text-tertiary mb-1 block">
-                  Threshold: <span className="font-bold text-red-400">{config.occupancyLowThresholdPct}%</span> occupancy
-                </Label>
-                <Slider
-                  min={20} max={70} step={5}
-                  value={[config.occupancyLowThresholdPct]}
-                  onValueChange={([v]) => onConfigChange({ occupancyLowThresholdPct: v })}
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-text-tertiary mb-1 block">
-                  Price Decrease: <span className="font-bold text-red-400">{config.occupancyLowAdjPct}%</span>
-                </Label>
-                <Slider
-                  min={-50} max={-5} step={5}
-                  value={[config.occupancyLowAdjPct]}
-                  onValueChange={([v]) => onConfigChange({ occupancyLowAdjPct: v })}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Visual summary */}
           <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4">
-            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Logic Summary</h3>
-            <div className="space-y-2 text-xs text-text-tertiary font-mono">
-              <div className="flex items-center gap-2">
-                <span className="text-green-400">▲</span>
-                <span>occupancy &gt; <strong className="text-green-400">{config.occupancyHighThresholdPct}%</strong> → raise price by <strong className="text-green-400">+{config.occupancyHighAdjPct}%</strong></span>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Scope</h3>
+                <p className="text-[11px] text-text-tertiary mt-0.5">
+                  {inheritPortfolio
+                    ? "Inherits portfolio seasonal profile matrix (group overrides still apply)."
+                    : "Unit-level matrix overrides portfolio and group."}
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">●</span>
-                <span><strong>{config.occupancyLowThresholdPct}%</strong> ≤ occupancy ≤ <strong>{config.occupancyHighThresholdPct}%</strong> → hold price (target zone)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-red-400">▼</span>
-                <span>occupancy &lt; <strong className="text-red-400">{config.occupancyLowThresholdPct}%</strong> → lower price by <strong className="text-red-400">{config.occupancyLowAdjPct}%</strong></span>
-              </div>
+              <Switch
+                checked={inheritPortfolio}
+                onCheckedChange={(v) => {
+                  setInheritPortfolio(v);
+                  const patch: Partial<EngineConfig> = { usePortfolioPricingDefaults: v };
+                  if (!v && !config.occupancyMatrix && portfolioProfiles[0]) {
+                    patch.occupancyMatrix = portfolioProfiles[0].occupancyMatrix;
+                    patch.occupancyPreset = portfolioProfiles[0].occupancyPreset;
+                  }
+                  onConfigChange(patch);
+                }}
+              />
             </div>
-            <p className="text-[10px] text-muted-foreground/80 mt-3">
-              Calculated over past {config.occupancyLookbackDays} days · Applied at Pass 2 (Strategy) of the waterfall · Bounded by floor/ceiling guardrails
+            <p className="text-[10px] text-muted-foreground mt-2">
+              {inheritPortfolio ? "Using portfolio defaults" : "Custom unit override"}
+            </p>
+          </div>
+
+          {!inheritPortfolio && (
+            <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 space-y-3">
+              <Label className="text-xs">Load preset from portfolio profile</Label>
+              <Select onValueChange={applyPresetMatrix}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Choose preset…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {portfolioProfiles.map((p) => (
+                    <SelectItem key={p.id} value={p.id} className="text-xs">
+                      {p.name} ({p.occupancyPreset})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {config.occupancyMatrix && (
+                <OccupancyMatrixEditor
+                  matrix={config.occupancyMatrix as OccupancyMatrix}
+                  onChange={(occupancyMatrix) => onConfigChange({ occupancyMatrix })}
+                />
+              )}
+            </div>
+          )}
+
+          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4">
+            <Label className="text-xs text-text-tertiary mb-1 block">
+              Lookback: <span className="font-bold text-text-primary">{config.occupancyLookbackDays} days</span>
+            </Label>
+            <Slider
+              min={7}
+              max={90}
+              step={7}
+              value={[config.occupancyLookbackDays]}
+              onValueChange={([v]) => onConfigChange({ occupancyLookbackDays: v })}
+            />
+            <p className="text-[10px] text-muted-foreground/80 mt-2">
+              Rolling occupancy % calculated over this window · Applied in Pass 2 of the waterfall
             </p>
           </div>
         </>
@@ -1713,6 +1620,104 @@ function OccupancyTab({
   );
 }
 
+// ── Minstay Tab (unit override) ───────────────────────────────────────────────
+
+function MinStayTab({
+  listingId,
+  config,
+  onConfigChange,
+}: {
+  listingId: string;
+  config: EngineConfig;
+  onConfigChange: (patch: Partial<EngineConfig>) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [pack, setPack] = useState<MarketPricingPack | null>(null);
+  const inherit = config.usePortfolioPricingDefaults !== false && !config.minStayProfileOverrideId;
+
+  useEffect(() => {
+    fetch("/api/pricing/profiles")
+      .then((r) => r.json())
+      .then((d) => setPack(d.pack ?? null))
+      .catch(() => {});
+  }, []);
+
+  const selected = pack?.minStayProfiles.find(
+    (p) => p.id === config.minStayProfileOverrideId
+  );
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await patchConfig(listingId, {
+        minStayProfileOverrideId: inherit ? null : config.minStayProfileOverrideId,
+        usePortfolioPricingDefaults: inherit ? true : false,
+      });
+      toast.success("Minstay settings saved.");
+    } catch {
+      toast.error("Failed to save minstay settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 flex items-center justify-between">
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider">Inherit portfolio minstay</h3>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Seasonal calendar picks MLOS profile per date (MLOS Final, NY, etc.)
+          </p>
+        </div>
+        <Switch
+          checked={inherit}
+          onCheckedChange={(v) => {
+            if (v) {
+              onConfigChange({ minStayProfileOverrideId: null, usePortfolioPricingDefaults: true });
+            } else {
+              onConfigChange({
+                minStayProfileOverrideId: pack?.minStayProfiles[0]?.id ?? null,
+                usePortfolioPricingDefaults: false,
+              });
+            }
+          }}
+        />
+      </div>
+
+      {!inherit && pack && (
+        <div className="space-y-3">
+          <Label className="text-xs">Unit minstay profile override</Label>
+          <Select
+            value={config.minStayProfileOverrideId ?? undefined}
+            onValueChange={(id) => onConfigChange({ minStayProfileOverrideId: id })}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Select profile" />
+            </SelectTrigger>
+            <SelectContent>
+              {pack.minStayProfiles.map((p) => (
+                <SelectItem key={p.id} value={p.id} className="text-xs">
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selected && <MinStayProfileEditor profile={selected} onChange={() => {}} readOnly />}
+          <p className="text-[10px] text-muted-foreground">
+            To edit tiers, use Pricing → Profiles → Minstay Profiles (portfolio level).
+          </p>
+        </div>
+      )}
+
+      <Button size="sm" onClick={handleSave} disabled={saving} className="bg-amber text-black hover:bg-amber/90 h-9 text-xs gap-2">
+        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+        Save Minstay Settings
+      </Button>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 const STUDIO_TABS = [
@@ -1722,7 +1727,8 @@ const STUDIO_TABS = [
   { value: "gap", label: "Gap Logic", icon: Layers, tooltip: "Inventory rules for orphan nights and short gaps between bookings." },
   { value: "los", label: "LOS Discounts", icon: TrendingDown, tooltip: "Length of Stay discounts (e.g. 7+ nights, 30+ nights)." },
   { value: "overrides", label: "Date Overrides", icon: AlignLeft, tooltip: "High-priority overrides for specific events or manual blocks." },
-  { value: "occupancy", label: "Occupancy", icon: Activity, tooltip: "Automated price adjustments based on rolling property occupancy %." },
+  { value: "occupancy", label: "Occupancy", icon: Activity, tooltip: "Occupancy × lead-time matrix (PriceLabs-style)." },
+  { value: "minstay", label: "Minstay", icon: CalendarRange, tooltip: "Minimum stay profile — inherit portfolio or override per unit." },
 ];
 
 interface Props {
@@ -1901,6 +1907,13 @@ export function PricingRulesStudio({ listings }: Props) {
           </TabsContent>
           <TabsContent value="occupancy">
             <OccupancyTab
+              listingId={selectedListingId}
+              config={config}
+              onConfigChange={handleConfigChange}
+            />
+          </TabsContent>
+          <TabsContent value="minstay">
+            <MinStayTab
               listingId={selectedListingId}
               config={config}
               onConfigChange={handleConfigChange}

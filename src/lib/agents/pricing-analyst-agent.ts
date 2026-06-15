@@ -1,4 +1,4 @@
-import { connectDB, InventoryMaster, Listing } from "@/lib/db";
+import { connectDB, InventoryMaster, Listing, Organization } from "@/lib/db";
 import { format, eachDayOfInterval } from "date-fns";
 import { createEventIntelligenceAgent } from "./event-intelligence-agent";
 import mongoose from "mongoose";
@@ -46,6 +46,11 @@ export class PricingAnalystAgent {
       throw new Error(`Listing ${listingId} not found`);
     }
 
+    const org = await Organization.findById(listing.orgId)
+      .select("eventPricingWeight")
+      .lean();
+    const eventWeight = org?.eventPricingWeight ?? "low";
+
     // Scope events to this listing's org and city — without this, events
     // cached by other tenants (or other cities) leak into pricing.
     const eventAnalysis = await this.eventAgent.analyzeEvents(startDate, endDate, {
@@ -91,7 +96,7 @@ export class PricingAnalystAgent {
       // No event → trust the waterfall result, no override needed.
       if (dayEvents.length === 0) continue;
 
-      const recommendation = this.eventAgent.getPricingRecommendation(dayEvents);
+      const recommendation = this.eventAgent.getPricingRecommendation(dayEvents, eventWeight);
       const increase = (anchorPrice * recommendation.suggestedIncrease) / 100;
       let proposedPrice = anchorPrice + increase;
       let reasoning = `${recommendation.reasoning} (anchored on engine output ${currencyCode} ${Math.round(anchorPrice)})`;

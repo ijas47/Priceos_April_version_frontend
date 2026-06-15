@@ -1,4 +1,15 @@
-import { connectDB, Listing, PricingRule, InventoryMaster, EngineRun } from "@/lib/db";
+import { connectDB, Listing, InventoryMaster, EngineRun, PropertyGroup, MarketTemplate, Organization } from "@/lib/db";
+import {
+    loadPricingContext,
+    mergeRules,
+    applyProfileToConfig,
+} from "@/lib/pricing/resolve";
+import {
+    resolveMinStayProfileForDate,
+    computeMinStayFromProfile,
+    nightsUntilNextBooked,
+    resolveWeekendDays,
+} from "@/lib/pricing/minstay-resolve";
 import mongoose from "mongoose";
 import {
     computeDay,
@@ -65,7 +76,28 @@ export async function runPipeline(
             throw new Error(`Listing ${listingId} not found`);
         }
 
-        const config: ListingConfig = {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const pricingCtx = await loadPricingContext(lid, listing.orgId, today);
+        const allRules: Rule[] = mergeRules(pricingCtx);
+
+        const [groupDoc, orgRow] = await Promise.all([
+            PropertyGroup.findOne({
+                orgId: listing.orgId,
+                listingIds: lid,
+            })
+                .select("seasonalCalendarOverrideId pricingProfileOverrideId minStayProfileOverrideId seasonalCalendarOverrideId")
+                .lean(),
+            Organization.findById(listing.orgId).select("marketCode").lean(),
+        ]);
+
+        const orgTemplate = await MarketTemplate.findOne({
+            marketCode: orgRow?.marketCode ?? "UAE_DXB",
+        }).lean();
+        const weekendDays = resolveWeekendDays(orgTemplate?.weekendDefinition ?? "thu_fri");
+
+        const baseConfig: ListingConfig = {
             basePrice: toNum(listing.price),
             absoluteMinPrice: toNum(listing.priceFloor),
             absoluteMaxPrice: toNum(listing.priceCeiling),
@@ -78,6 +110,13 @@ export async function runPipeline(
             lastMinuteDaysOut: listing.lastMinuteDaysOut,
             lastMinuteDiscountPct: toNum(listing.lastMinuteDiscountPct),
             lastMinuteMinStay: listing.lastMinuteMinStay ?? null,
+            lastMinuteRampEnabled: listing.lastMinuteRampEnabled,
+            lastMinuteRampDays: listing.lastMinuteRampDays,
+            lastMinuteMaxDiscountPct: toNum(listing.lastMinuteMaxDiscountPct),
+            lastMinuteMinDiscountPct: toNum(listing.lastMinuteMinDiscountPct),
+            occupancyEnabled: listing.occupancyEnabled,
+            occupancyMatrix: listing.occupancyMatrix as ListingConfig["occupancyMatrix"],
+            occupancyPct: pricingCtx.occupancyPct,
             farOutEnabled: listing.farOutEnabled,
             farOutDaysOut: listing.farOutDaysOut,
             farOutMarkupPct: toNum(listing.farOutMarkupPct),
@@ -95,35 +134,6 @@ export async function runPipeline(
             gapFillOverrideCico: listing.gapFillOverrideCico,
         };
 
-        const ruleRows = await PricingRule.find({
-            listingId: lid,
-            enabled: true,
-        }).sort({ priority: 1 }).lean();
-
-        const allRules: Rule[] = ruleRows.map((r) => ({
-            id: r._id.toString(),
-            ruleType: r.ruleType as any,
-            name: r.name,
-            enabled: r.enabled,
-            priority: r.priority,
-            startDate: r.startDate ?? null,
-            endDate: r.endDate ?? null,
-            daysOfWeek: r.daysOfWeek ?? null,
-            minNights: r.minNights ?? null,
-            priceOverride: toNumOrNull(r.priceOverride),
-            priceAdjPct: toNumOrNull(r.priceAdjPct),
-            minPriceOverride: toNumOrNull(r.minPriceOverride),
-            maxPriceOverride: toNumOrNull(r.maxPriceOverride),
-            minStayOverride: r.minStayOverride ?? null,
-            isBlocked: r.isBlocked,
-            closedToArrival: r.closedToArrival,
-            closedToDeparture: r.closedToDeparture,
-            suspendLastMinute: r.suspendLastMinute,
-            suspendGapFill: r.suspendGapFill,
-        }));
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
         const endDate = addDays(today, 364);
 
         // Prefer Hostaway calendar rates (per-day) over the static listing base price.
@@ -167,8 +177,8 @@ export async function runPipeline(
             existingInventory,
             listingFallbackPrice
         );
-        const floor = config.absoluteMinPrice;
-        const ceiling = config.absoluteMaxPrice;
+        const floor = baseConfig.absoluteMinPrice;
+        const ceiling = baseConfig.absoluteMaxPrice;
 
         // ── Revenue optimization layer (elasticity + demand) ──────────────────
         // Fit the booking-probability model from this listing's own history,
@@ -212,10 +222,52 @@ export async function runPipeline(
                 calendarPriceByDate,
                 listingFallbackPrice
             );
-            const dayConfig: ListingConfig = {
-                ...config,
-                basePrice: dayCalendarPrice > 0 ? dayCalendarPrice : config.basePrice,
+            let dayConfig: ListingConfig = {
+                ...baseConfig,
+                basePrice: dayCalendarPrice > 0 ? dayCalendarPrice : baseConfig.basePrice,
+                occupancyPct: pricingCtx.occupancyPct,
             };
+            dayConfig = applyProfileToConfig(
+                dayConfig,
+                listing,
+                pricingCtx.pack,
+                currentDate,
+                groupDoc
+                    ? {
+                          seasonalCalendarOverrideId: groupDoc.seasonalCalendarOverrideId,
+                          pricingProfileOverrideId: groupDoc.pricingProfileOverrideId,
+                      }
+                    : undefined
+            );
+
+            const leadTime = Math.round(
+                (currentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+            );
+            const { profile: minStayProfile } = resolveMinStayProfileForDate(
+                pricingCtx.pack,
+                currentDate,
+                {
+                    seasonalCalendarId:
+                        listing.seasonalCalendarOverrideId ??
+                        groupDoc?.seasonalCalendarOverrideId,
+                    minStayProfileOverrideId:
+                        listing.minStayProfileOverrideId ?? groupDoc?.minStayProfileOverrideId,
+                }
+            );
+            if (minStayProfile && listing.usePortfolioPricingDefaults !== false) {
+                const nightsBefore = nightsUntilNextBooked(currentDate, bookingMap);
+                dayConfig = {
+                    ...dayConfig,
+                    defaultMinStay: computeMinStayFromProfile(
+                        minStayProfile,
+                        currentDate,
+                        leadTime,
+                        weekendDays,
+                        nightsBefore
+                    ),
+                };
+            }
+
             const result = computeDay(currentDate, today, dayConfig, allRules, bookingCtx, signal);
 
             // ── Revenue optimization ──────────────────────────────────────────

@@ -113,7 +113,7 @@ export function generateMockCalendar(
     );
 
     if (matchingReservation) {
-      status = "reserved";
+      status = "booked";
       price = matchingReservation.pricePerNight;
     } else if (randBlock > 0.97) {
       // Owner blocks: ~3% of available days

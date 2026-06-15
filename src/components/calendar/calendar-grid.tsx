@@ -30,6 +30,15 @@ const blockReasonLabels: Record<string, string> = {
   other: "Other",
 };
 
+function isOccupied(status: CalendarDay["status"]) {
+  return status === "booked" || status === "reserved";
+}
+
+function formatDayPrice(price: number) {
+  if (!price || price <= 0) return null;
+  return price.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
 export function CalendarGrid({ days, onRefresh }: CalendarGridProps) {
   const { open } = useChatStore();
   const { activeProperty } = usePropertyStore();
@@ -94,13 +103,14 @@ export function CalendarGrid({ days, onRefresh }: CalendarGridProps) {
         {days.map((day) => {
           const date = new Date(day.date + "T00:00:00");
           const isAvailable = day.status === "available";
-          const isBooked = day.status === "booked";
+          const isBooked = isOccupied(day.status);
           const isBlocked = day.status === "blocked";
+          const formattedPrice = formatDayPrice(day.price);
 
           const cellContent = (
             <div
               className={cn(
-                "flex flex-col items-center rounded-lg border p-1.5 text-xs transition-colors",
+                "flex min-h-[4.5rem] flex-col items-center rounded-lg border p-1.5 text-xs transition-colors",
                 isAvailable &&
                   "cursor-pointer border-green-200 bg-green-50 hover:bg-green-100 dark:border-green-900 dark:bg-green-950 dark:hover:bg-green-900",
                 isBooked &&
@@ -113,18 +123,27 @@ export function CalendarGrid({ days, onRefresh }: CalendarGridProps) {
               <span className="text-[10px] text-muted-foreground">
                 {date.toLocaleDateString("en", { month: "short" })}
               </span>
-              {isAvailable && (
-                <span className="mt-0.5 font-medium text-green-700 dark:text-green-400">
-                  {day.price}
+              {formattedPrice ? (
+                <span
+                  className={cn(
+                    "mt-0.5 text-[11px] font-semibold tabular-nums",
+                    isAvailable && "text-green-700 dark:text-green-400",
+                    isBooked && "text-red-700 dark:text-red-300",
+                    isBlocked && "text-foreground/80"
+                  )}
+                >
+                  {formattedPrice}
                 </span>
+              ) : (
+                <span className="mt-0.5 text-[10px] text-muted-foreground">—</span>
               )}
               {isBooked && (
-                <span className="mt-0.5 text-red-600 dark:text-red-400">
+                <span className="mt-0.5 text-[9px] font-medium uppercase tracking-wide text-red-600 dark:text-red-400">
                   Booked
                 </span>
               )}
               {isBlocked && (
-                <span className="mt-0.5 text-primary dark:text-primary text-[10px]">
+                <span className="mt-0.5 text-primary dark:text-primary text-[9px]">
                   {day.blockReason ? blockReasonLabels[day.blockReason] : "Blocked"}
                 </span>
               )}
@@ -144,6 +163,11 @@ export function CalendarGrid({ days, onRefresh }: CalendarGridProps) {
               <PopoverContent className="w-56 p-3" side="top">
                 {isAvailable ? (
                   <div className="space-y-3">
+                    {formattedPrice && (
+                      <p className="text-xs text-muted-foreground">
+                        Listed at <span className="font-medium text-foreground">{formattedPrice}</span>
+                      </p>
+                    )}
                     <p className="text-sm font-medium">Block this date</p>
                     <Select value={blockReason} onValueChange={setBlockReason}>
                       <SelectTrigger className="h-8 text-xs">

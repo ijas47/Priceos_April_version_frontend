@@ -22,6 +22,17 @@ export interface ListingConfig {
     lastMinuteDaysOut: number;
     lastMinuteDiscountPct: number;
     lastMinuteMinStay: number | null;
+    lastMinuteRampEnabled?: boolean;
+    lastMinuteRampDays?: number;
+    lastMinuteMaxDiscountPct?: number;
+    lastMinuteMinDiscountPct?: number;
+
+    occupancyEnabled?: boolean;
+    occupancyMatrix?: {
+        dayRanges: { startDay: number; endDay: number }[];
+        rows: { maxOccupancyPct: number; adjustmentsPct: number[] }[];
+    };
+    occupancyPct?: number;
 
     farOutEnabled: boolean;
     farOutDaysOut: number;
@@ -268,7 +279,7 @@ export function computeDay(
 
     // ── Pass 2 — Strategy ─────────────────────────────────────────────────────
 
-    // Last-minute discount
+    // Last-minute discount (gradual ramp: max at day 0 → min at rampDays)
     if (
         config.lastMinuteEnabled &&
         !suspendLastMinute &&
@@ -276,13 +287,57 @@ export function computeDay(
         leadTime >= 0 &&
         isAvailable === 1
     ) {
-        price = price * (1 - config.lastMinuteDiscountPct / 100);
+        let discountPct = config.lastMinuteDiscountPct;
+        if (config.lastMinuteRampEnabled) {
+            const rampDays = config.lastMinuteRampDays ?? config.lastMinuteDaysOut;
+            const maxD = config.lastMinuteMaxDiscountPct ?? config.lastMinuteDiscountPct;
+            const minD = config.lastMinuteMinDiscountPct ?? 0;
+            const t = rampDays > 0 ? Math.min(1, leadTime / rampDays) : 1;
+            discountPct = maxD + (minD - maxD) * t;
+        }
+        price = price * (1 - discountPct / 100);
         notes.push(
-            `[LAST_MINUTE] ${config.lastMinuteDiscountPct}% discount (${leadTime} days out)`
+            `[LAST_MINUTE] ${discountPct.toFixed(1)}% discount (${leadTime} days out${config.lastMinuteRampEnabled ? ", gradual" : ""})`
         );
         if (config.lastMinuteMinStay !== null) {
             minimumStay = config.lastMinuteMinStay;
             notes.push(`[LAST_MINUTE] min stay override to ${minimumStay}`);
+        }
+    }
+
+    // Occupancy × lead-time matrix (PriceLabs-style)
+    if (
+        config.occupancyEnabled &&
+        config.occupancyMatrix &&
+        typeof config.occupancyPct === "number" &&
+        isAvailable === 1
+    ) {
+        const occ = config.occupancyPct;
+        let colIdx = -1;
+        for (let i = 0; i < config.occupancyMatrix.dayRanges.length; i++) {
+            const r = config.occupancyMatrix.dayRanges[i];
+            if (leadTime >= r.startDay && leadTime <= r.endDay) {
+                colIdx = i;
+                break;
+            }
+        }
+        if (colIdx >= 0) {
+            const sorted = [...config.occupancyMatrix.rows].sort(
+                (a, b) => a.maxOccupancyPct - b.maxOccupancyPct
+            );
+            let adjPct = 0;
+            for (const row of sorted) {
+                if (occ <= row.maxOccupancyPct) {
+                    adjPct = row.adjustmentsPct[colIdx] ?? 0;
+                    break;
+                }
+            }
+            if (adjPct !== 0) {
+                price = price * (1 + adjPct / 100);
+                notes.push(
+                    `[OCCUPANCY] ${adjPct > 0 ? "+" : ""}${adjPct}% (occ ${occ}%, lead ${leadTime}d)`
+                );
+            }
         }
     }
 

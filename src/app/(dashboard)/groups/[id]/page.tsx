@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GroupProfileOverrides } from "@/components/pricing/group-profile-overrides";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,9 @@ interface PropertyGroup {
   description?: string;
   color: string;
   listingIds: string[];
+  pricingProfileOverrideId?: string;
+  seasonalCalendarOverrideId?: string;
+  minStayProfileOverrideId?: string;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -618,14 +622,12 @@ export default function GroupDetailPage() {
     const orgId = getOrgId();
     if (!orgId) { setLoading(false); return; }
     try {
-      const [gs, ls] = await Promise.all([
-        api(`/api/groups?orgId=${orgId}`),
+      const [found, ls] = await Promise.all([
+        api(`/api/groups/${groupId}`),
         api(`/api/properties?orgId=${orgId}`),
       ]);
-      const allGroups: PropertyGroup[] = Array.isArray(gs) ? gs : gs?.groups ?? [];
-      const found = allGroups.find((g) => g._id === groupId);
-      if (!found) { toast.error("Group not found"); router.push("/groups"); return; }
-      setGroup(found);
+      if (!found?._id) { toast.error("Group not found"); router.push("/groups"); return; }
+      setGroup(found as PropertyGroup);
 
       const rawListings = Array.isArray(ls) ? ls : ls?.properties ?? [];
       setListings(
@@ -860,6 +862,11 @@ export default function GroupDetailPage() {
         )}
       </div>
 
+      <GroupProfileOverrides
+        group={group}
+        onUpdated={(patch) => setGroup((prev) => (prev ? { ...prev, ...patch } : prev))}
+      />
+
       {/* Rules section */}
       <div className="rounded-2xl border border-border-default bg-surface-1 p-6">
         <div className="flex items-center justify-between mb-5">
@@ -872,8 +879,8 @@ export default function GroupDetailPage() {
               </span>
             </div>
             <p className="text-xs text-text-tertiary mt-1.5 ml-6">
-              These rules apply to all {memberListings.length} properties in this group.
-              Group rules take precedence over overlapping property-level rules.
+              Date and price rules for all {memberListings.length} properties. Profile overrides above
+              handle MLOS / occupancy; unit settings still win when set.
             </p>
           </div>
           <Button

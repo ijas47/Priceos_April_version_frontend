@@ -7,6 +7,7 @@ import {
   portfolioGuardrailsFromStrategy,
   type Strategy,
 } from "@/lib/engine/auto-setup";
+import { applyPricingPackToOrg } from "@/lib/pricing/apply-defaults";
 
 export const dynamic = "force-dynamic";
 // Auto-setup runs the pricing engine per property; allow generous time.
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Portfolio level: persist org-wide guardrail envelope + remember strategy.
+    // Portfolio level: guardrails + UAE PriceLabs profile pack.
     const portfolio = portfolioGuardrailsFromStrategy(strategy);
     await Organization.findByIdAndUpdate(orgId, {
       $set: {
@@ -98,6 +99,8 @@ export async function POST(req: NextRequest) {
         "settings.guardrails.absoluteCeilingMultiplier": portfolio.absoluteCeilingMultiplier,
       },
     });
+
+    const packResult = await applyPricingPackToOrg(session.orgId);
 
     // Property level: floor/ceiling, seasonal + LOS rules, then run the engine.
     const result = await runAutoSetup({
@@ -111,6 +114,7 @@ export async function POST(req: NextRequest) {
       success: true,
       strategy,
       portfolioGuardrails: portfolio,
+      pricingPackApplied: packResult,
       ...result,
     });
   } catch (error: any) {
