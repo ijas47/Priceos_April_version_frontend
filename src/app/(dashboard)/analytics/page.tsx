@@ -92,9 +92,20 @@ interface Ticket {
   createdAt: string;
 }
 
+interface PropertyBreakdownRow {
+  listingId: string;
+  propertyName: string;
+  totalBookings: number;
+  totalRevenue: number;
+  occupancyPct: number;
+  avgLos: number;
+}
+
 interface PropertyAnalyticsResponse {
   listingId: string;
   propertyName: string;
+  scope?: "property" | "portfolio";
+  propertyCount?: number;
   dateRange: { from: string; to: string };
   summary: {
     totalBookings: number;
@@ -108,7 +119,10 @@ interface PropertyAnalyticsResponse {
   occupancyTrend: { date: string; totalDays: number; bookedDays: number; blockedDays: number; occupancyPct: number }[];
   adrRevparTrend: { date: string; adr: number; revpar: number; bookedRevenue: number }[];
   channelMix: { channel: string; revenue: number; bookings: number; revenuePct: number }[];
+  propertyBreakdown?: PropertyBreakdownRow[];
 }
+
+const PORTFOLIO_ID = "portfolio";
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
@@ -200,11 +214,13 @@ function PropertyAnalyticsPanel({
   loading,
   error,
   data,
+  isPortfolio = false,
 }: {
   property: Property;
   loading: boolean;
   error: string | null;
   data: PropertyAnalyticsResponse | null;
+  isPortfolio?: boolean;
 }) {
   if (loading) {
     return (
@@ -225,7 +241,14 @@ function PropertyAnalyticsPanel({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className={cn("grid gap-3", isPortfolio ? "grid-cols-2 md:grid-cols-5" : "grid-cols-2 md:grid-cols-4")}>
+        {isPortfolio && (
+          <KpiCard
+            label="Properties"
+            value={String(data.propertyCount ?? 0)}
+            accent="violet"
+          />
+        )}
         <KpiCard label="Bookings" value={data.summary.totalBookings.toLocaleString("en-US")} accent="blue" />
         <KpiCard label="Avg LOS" value={`${data.summary.avgLos} nights`} accent="violet" />
         <KpiCard label="Occupancy" value={`${data.summary.occupancyPct}%`} accent="emerald" />
@@ -332,10 +355,99 @@ function PropertyAnalyticsPanel({
   );
 }
 
+// ── Portfolio property breakdown charts ────────────────────────────────────────
+
+function PortfolioBreakdownCharts({
+  breakdown,
+  currency,
+}: {
+  breakdown: PropertyBreakdownRow[];
+  currency: string;
+}) {
+  const chartData = useMemo(() => {
+    return breakdown.map((p, i) => ({
+      name: shortPropName(p.propertyName),
+      fullName: p.propertyName,
+      revenue: p.totalRevenue,
+      occupancy: p.occupancyPct,
+      reservations: p.totalBookings,
+      fill: CHANNEL_COLORS[i % CHANNEL_COLORS.length],
+      revenuePct: 0,
+    }));
+  }, [breakdown]);
+
+  const chartDataWithPct = useMemo(() => {
+    const total = chartData.reduce((s, d) => s + d.revenue, 0);
+    return chartData.map((d) => ({
+      ...d,
+      revenuePct: total > 0 ? Math.round((d.revenue / total) * 100) : 0,
+    }));
+  }, [chartData]);
+
+  if (!breakdown.length) return null;
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <ChartCard title="Revenue Share" subtitle="Each property's contribution to portfolio revenue">
+        <ResponsiveContainer width="100%" height={240}>
+          <PieChart>
+            <RechartTooltip
+              contentStyle={CHART_TOOLTIP_STYLE}
+              formatter={(value: number) => [`${currency} ${value.toLocaleString("en-US")}`, "Revenue"]}
+              labelFormatter={(_: string, payload: { payload?: { fullName?: string } }[]) =>
+                payload?.[0]?.payload?.fullName || ""
+              }
+            />
+            <Pie
+              data={chartDataWithPct}
+              dataKey="revenue"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={55}
+              outerRadius={90}
+              paddingAngle={3}
+              stroke="none"
+              label={({ name, revenuePct }) => `${name} ${revenuePct}%`}
+              labelLine={false}
+            >
+              {chartDataWithPct.map((entry, i) => (
+                <Cell key={i} fill={entry.fill} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      <ChartCard title="Occupancy %" subtitle="Occupancy rate per property in this window">
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={chartDataWithPct} layout="vertical" margin={{ left: 8, right: 16 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} strokeOpacity={0.2} />
+            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: CHART_AXIS_STROKE }} unit="%" />
+            <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 10, fill: CHART_AXIS_STROKE }} />
+            <RechartTooltip
+              contentStyle={CHART_TOOLTIP_STYLE}
+              formatter={(v: number) => [`${v}%`, "Occupancy"]}
+              labelFormatter={(_: string, payload: { payload?: { fullName?: string } }[]) =>
+                payload?.[0]?.payload?.fullName || ""
+              }
+            />
+            <Bar dataKey="occupancy" name="Occupancy %" radius={[0, 4, 4, 0]} maxBarSize={18}>
+              {chartDataWithPct.map((entry, i) => (
+                <Cell key={i} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    </div>
+  );
+}
+
 // ── Properties Analytics Section ───────────────────────────────────────────────
 
 function PropertiesAnalytics({ properties, tickets }: { properties: Property[]; tickets: Ticket[] }) {
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [selectedId, setSelectedId] = useState<string>(PORTFOLIO_ID);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<PropertyAnalyticsResponse | null>(null);
@@ -346,34 +458,56 @@ function PropertiesAnalytics({ properties, tickets }: { properties: Property[]; 
   });
 
   const activeProps = useMemo(() => properties.filter((p) => p.isActivated), [properties]);
-  const selected = activeProps.find((p) => p.id === selectedId) || activeProps[0];
+  const isPortfolio = selectedId === PORTFOLIO_ID;
+  const selected = activeProps.find((p) => p.id === selectedId);
+  const currency = activeProps[0]?.currency || "AED";
+  const viewProperty: Property = isPortfolio
+    ? {
+        id: PORTFOLIO_ID,
+        name: "Portfolio",
+        area: "",
+        city: "",
+        bedrooms: 0,
+        currency,
+        isActivated: true,
+        occupancyPct: 0,
+        totalRevenue: 0,
+        totalReservations: 0,
+        avgPrice: 0,
+        pendingProposals: 0,
+      }
+    : (selected ?? activeProps[0]);
 
-  // Ticket stats for selected property
+  const scopedListingIds = useMemo(() => {
+    if (isPortfolio) return new Set(activeProps.map((p) => p.id));
+    if (selected) return new Set([selected.id]);
+    return new Set<string>();
+  }, [isPortfolio, activeProps, selected]);
+
+  const scopedTickets = useMemo(() => {
+    return tickets.filter((tk) => {
+      if (!tk.listingId || !scopedListingIds.has(tk.listingId)) return false;
+      const d = tk.createdAt.slice(0, 10);
+      return d >= range.from && d <= range.to;
+    });
+  }, [tickets, scopedListingIds, range]);
+
   const propTickets = useMemo(() => {
-    if (!selected) return { total: 0, open: 0, resolved: 0, resolvedRate: 0 };
-    const t = tickets.filter((tk) => tk.listingId === selected.id);
-    const open = t.filter((tk) => tk.status === "open").length;
-    const resolved = t.filter((tk) => tk.status === "resolved" || tk.status === "closed").length;
+    const open = scopedTickets.filter((tk) => tk.status === "open").length;
+    const resolved = scopedTickets.filter((tk) => tk.status === "resolved" || tk.status === "closed").length;
     return {
-      total: t.length,
+      total: scopedTickets.length,
       open,
       resolved,
-      resolvedRate: t.length > 0 ? Math.round((resolved / t.length) * 100) : 0,
+      resolvedRate: scopedTickets.length > 0 ? Math.round((resolved / scopedTickets.length) * 100) : 0,
     };
-  }, [selected, tickets]);
+  }, [scopedTickets]);
 
-  // Severity breakdown for chart
   const severityData = useMemo(() => {
-    if (!selected) return [];
-    const t = tickets.filter((tk) => tk.listingId === selected.id);
     const counts: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
-    t.forEach((tk) => { counts[tk.severity] = (counts[tk.severity] ?? 0) + 1; });
+    scopedTickets.forEach((tk) => { counts[tk.severity] = (counts[tk.severity] ?? 0) + 1; });
     return Object.entries(counts).map(([severity, count]) => ({ severity, count }));
-  }, [selected, tickets]);
-
-  useEffect(() => {
-    if (activeProps.length && !selectedId) setSelectedId(activeProps[0].id);
-  }, [activeProps, selectedId]);
+  }, [scopedTickets]);
 
   useEffect(() => {
     if (rangePreset === "custom") return;
@@ -383,13 +517,14 @@ function PropertiesAnalytics({ properties, tickets }: { properties: Property[]; 
   }, [rangePreset]);
 
   useEffect(() => {
-    if (!selected?.id) return;
+    if (!activeProps.length) return;
     const controller = new AbortController();
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        const params = new URLSearchParams({ listingId: selected.id, from: range.from, to: range.to });
+        const listingParam = isPortfolio ? PORTFOLIO_ID : (selected?.id ?? activeProps[0].id);
+        const params = new URLSearchParams({ listingId: listingParam, from: range.from, to: range.to });
         const res = await fetch(`/api/properties/analytics?${params}`, { signal: controller.signal });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Failed to load analytics");
@@ -402,7 +537,7 @@ function PropertiesAnalytics({ properties, tickets }: { properties: Property[]; 
     };
     load();
     return () => controller.abort();
-  }, [selected?.id, range.from, range.to]);
+  }, [activeProps, isPortfolio, selected?.id, range.from, range.to]);
 
   if (!activeProps.length) {
     return (
@@ -415,52 +550,68 @@ function PropertiesAnalytics({ properties, tickets }: { properties: Property[]; 
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-border-subtle bg-surface-1 p-4 flex items-center gap-3">
-        <span className="text-xs text-text-tertiary uppercase tracking-wider font-semibold">Property</span>
+        <span className="text-xs text-text-tertiary uppercase tracking-wider font-semibold shrink-0">View</span>
         <select
-          value={selected?.id || ""}
+          value={selectedId}
           onChange={(e) => setSelectedId(e.target.value)}
           className="flex-1 h-9 rounded-md border border-border-subtle bg-surface-2 px-3 text-sm text-text-primary"
         >
-          {activeProps.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
+          <option value={PORTFOLIO_ID}>
+            All properties — portfolio ({activeProps.length})
+          </option>
+          <optgroup label="Individual properties">
+            {activeProps.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </optgroup>
         </select>
       </div>
 
       <DateRangeControls rangePreset={rangePreset} range={range} onPresetChange={setRangePreset} onRangeChange={setRange} />
 
-      {/* Escalation Tickets */}
-      {selected && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="grid grid-cols-3 gap-3">
-            <KpiCard label="Total Tickets" value={String(propTickets.total)} accent="violet" />
-            <KpiCard label="Open / Active" value={String(propTickets.open)} accent="blue" />
-            <KpiCard label="Resolved Rate" value={`${propTickets.resolvedRate}%`} accent="emerald" />
-          </div>
-          <ChartCard title="Ticket Severity Breakdown" subtitle="Escalation tickets by severity level">
-            <ResponsiveContainer width="100%" height={120}>
-              <BarChart data={severityData} margin={{ left: 0, right: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} strokeOpacity={0.2} />
-                <XAxis dataKey="severity" tick={{ fontSize: 10, fill: CHART_AXIS_STROKE }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: CHART_AXIS_STROKE }} />
-                <RechartTooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [v, "Tickets"]} />
-                <Bar dataKey="count" name="Tickets" radius={[4, 4, 0, 0]} maxBarSize={36}>
-                  {severityData.map((entry, i) => (
-                    <Cell key={i} fill={
-                      entry.severity === "critical" ? "#ef4444" :
-                      entry.severity === "high" ? "#f97316" :
-                      entry.severity === "medium" ? "#eab308" : "#3b82f6"
-                    } />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-3">
+          <KpiCard label="Total Tickets" value={String(propTickets.total)} accent="violet" />
+          <KpiCard label="Open / Active" value={String(propTickets.open)} accent="blue" />
+          <KpiCard label="Resolved Rate" value={`${propTickets.resolvedRate}%`} accent="emerald" />
         </div>
-      )}
+        <ChartCard
+          title="Ticket Severity Breakdown"
+          subtitle={isPortfolio ? "Escalation tickets across the portfolio" : "Escalation tickets for this property"}
+        >
+          <ResponsiveContainer width="100%" height={120}>
+            <BarChart data={severityData} margin={{ left: 0, right: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} strokeOpacity={0.2} />
+              <XAxis dataKey="severity" tick={{ fontSize: 10, fill: CHART_AXIS_STROKE }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: CHART_AXIS_STROKE }} />
+              <RechartTooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [v, "Tickets"]} />
+              <Bar dataKey="count" name="Tickets" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                {severityData.map((entry, i) => (
+                  <Cell key={i} fill={
+                    entry.severity === "critical" ? "#ef4444" :
+                    entry.severity === "high" ? "#f97316" :
+                    entry.severity === "medium" ? "#eab308" : "#3b82f6"
+                  } />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
 
-      {selected && (
-        <PropertyAnalyticsPanel property={selected} loading={loading} error={error} data={data} />
+      {viewProperty && (
+        <>
+          <PropertyAnalyticsPanel
+            property={viewProperty}
+            loading={loading}
+            error={error}
+            data={data}
+            isPortfolio={isPortfolio}
+          />
+          {isPortfolio && data?.propertyBreakdown && data.propertyBreakdown.length > 0 && (
+            <PortfolioBreakdownCharts breakdown={data.propertyBreakdown} currency={currency} />
+          )}
+        </>
       )}
     </div>
   );
