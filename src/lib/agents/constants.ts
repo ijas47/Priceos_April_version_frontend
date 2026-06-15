@@ -43,6 +43,8 @@ export const BOOKING_INTELLIGENCE_ID = process.env.LYZR_BOOKING_INTELLIGENCE_AGE
 export const MARKET_RESEARCH_ID = process.env.LYZR_MARKET_RESEARCH_AGENT_ID || "699991985dbb137e7b660594";
 export const PRICE_GUARD_ID = process.env.LYZR_PRICE_GUARD_AGENT_ID || "6999933b83d9dff0252dd86f";
 export const MARKETING_AGENT_ID = process.env.Marketing_Agent_ID || "699993adb8bd4d3aac102a81";
+export const LISTING_OPTIMIZER_AGENT_ID =
+  process.env.LYZR_LISTING_OPTIMIZER_AGENT_ID || process.env.Marketing_Agent_ID || "";
 
 // Worker agents (used by UI panels and agent orchestration)
 export const EVENT_AGENT_ID = "event-agent";

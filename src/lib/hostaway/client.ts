@@ -3,6 +3,7 @@ import type {
   HostawayCalendarDay,
   HostawayReservation,
   HostawayCalendarUpdate,
+  HostawayListingUpdate,
   HostawayApiError,
   HostawayRateLimit,
 } from "./types";
@@ -135,8 +136,26 @@ export class HostawayClient {
   /**
    * Fetch a single listing by ID
    */
-  async getListing(listingId: number): Promise<HostawayListing> {
-    return this.request<HostawayListing>(`/listings/${listingId}`);
+  async getListing(listingId: number, includeResources = true): Promise<HostawayListing> {
+    const qs = includeResources ? "?includeResources=1" : "";
+    return this.request<HostawayListing>(`/listings/${listingId}${qs}`);
+  }
+
+  /**
+   * Update listing content fields (partial body).
+   * BLOCKED unless HOSTAWAY_READ_ONLY=false.
+   */
+  async updateListing(listingId: number, body: HostawayListingUpdate): Promise<void> {
+    if (isHostawayReadOnly()) {
+      throw new Error(
+        "[PriceOS] updateListing() blocked — Hostaway is in READ-ONLY mode. " +
+          "Set HOSTAWAY_READ_ONLY=false to publish listing content."
+      );
+    }
+    await this.request<void>(`/listings/${listingId}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
   }
 
   /**

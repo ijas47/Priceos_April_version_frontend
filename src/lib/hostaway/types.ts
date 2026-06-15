@@ -17,11 +17,31 @@ export interface HostawayListing {
   amenities: string[];
   latitude?: number;
   longitude?: number;
+  description?: string;
+  externalListingName?: string;
+  internalListingName?: string;
+  airbnbName?: string;
+  airbnbSummary?: string;
+  homeawayPropertyHeadline?: string;
+  airbnbListingUrl?: string;
+  vrboListingUrl?: string;
+  averageReviewRating?: number;
   photos?: Array<{
     id: number;
     url: string;
     sortOrder: number;
+    airbnbCaption?: string;
+    vrboCaption?: string;
   }>;
+}
+
+/** Partial listing update — Hostaway accepts only changed fields. */
+export interface HostawayListingUpdate {
+  airbnbName?: string;
+  airbnbSummary?: string;
+  externalListingName?: string;
+  homeawayPropertyHeadline?: string;
+  description?: string;
 }
 
 export interface HostawayCalendarDay {

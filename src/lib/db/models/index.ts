@@ -54,3 +54,9 @@ export type { ISourceRun } from "./SourceRun";
 
 export { AgentJob } from "./AgentJob";
 export type { IAgentJob, JobStatus } from "./AgentJob";
+
+export { ListingContentSnapshot } from "./ListingContentSnapshot";
+export type { IListingContentSnapshot } from "./ListingContentSnapshot";
+
+export { ContentProposal } from "./ContentProposal";
+export type { IContentProposal } from "./ContentProposal";
