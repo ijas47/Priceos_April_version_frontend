@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB, InventoryMaster, Listing, Reservation } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { refreshListingCalendarFromHostaway } from "@/lib/engine/calendar-rates";
 import mongoose from "mongoose";
 
 export async function GET(req: NextRequest) {
@@ -25,6 +26,16 @@ export async function GET(req: NextRequest) {
         await connectDB();
 
         const lid = new mongoose.Types.ObjectId(listingId);
+
+        try {
+            await refreshListingCalendarFromHostaway(
+                lid,
+                new Date(from),
+                new Date(to)
+            );
+        } catch (err) {
+            console.warn("[calendar-metrics] Hostaway refresh skipped:", (err as Error).message);
+        }
 
         // Aggregate metrics from InventoryMaster
         const [agg] = await InventoryMaster.aggregate([

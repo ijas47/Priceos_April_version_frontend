@@ -42,9 +42,14 @@ function toListing(h: HostawayListing): Listing {
 }
 
 function toCalendarDay(h: HostawayCalendarDay): CalendarDay {
+  let status: CalendarDay["status"] = "available";
+  if (h.status === "booked") status = "booked";
+  else if (h.status === "blocked") status = "blocked";
+  else if (h.isAvailable === 0 || h.isAvailable === false) status = "booked";
+
   return {
     date: h.date,
-    status: h.status === "booked" ? "booked" : h.status === "blocked" ? "blocked" : "available",
+    status,
     price: h.price,
     minimumStay: h.minimumStay ?? 1,
     maximumStay: h.maximumStay ?? 365,

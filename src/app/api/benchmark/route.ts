@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB, BenchmarkData } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import {
+    getCalendarAvgPrice,
+    refreshListingCalendarFromHostaway,
+} from "@/lib/engine/calendar-rates";
 import mongoose from "mongoose";
 
 export async function GET(req: NextRequest) {
@@ -30,9 +34,37 @@ export async function GET(req: NextRequest) {
             query.dateTo = { $gte: dateFrom };
         }
 
+        const lid = new mongoose.Types.ObjectId(listingId);
+
+        if (dateFrom && dateTo) {
+            try {
+                await refreshListingCalendarFromHostaway(
+                    lid,
+                    new Date(dateFrom),
+                    new Date(dateTo)
+                );
+            } catch (err) {
+                console.warn("[benchmark] Hostaway refresh skipped:", (err as Error).message);
+            }
+        }
+
         const row = await BenchmarkData.findOne(query)
             .sort({ createdAt: -1 })
             .lean();
+
+        let summary: Record<string, unknown> | null = row
+            ? ({ ...row } as Record<string, unknown>)
+            : null;
+        if (summary && dateFrom && dateTo) {
+            const calendarAvg = await getCalendarAvgPrice(lid, dateFrom, dateTo);
+            if (calendarAvg > 0) {
+                summary = {
+                    ...summary,
+                    yourPrice: Math.round(calendarAvg),
+                    priceSource: "hostaway_calendar",
+                };
+            }
+        }
 
         console.log(
             `📊 [Benchmark API] listingId=${listingId} range=${dateFrom}→${dateTo} → ${
@@ -42,10 +74,10 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            hasData: !!row,
-            summary: row,
-            comps: (row as any)?.comps ?? [],
-            totalComps: (row as any)?.comps?.length ?? 0,
+            hasData: !!summary,
+            summary,
+            comps: (summary as { comps?: unknown[] } | null)?.comps ?? [],
+            totalComps: (summary as { comps?: unknown[] } | null)?.comps?.length ?? 0,
         });
     } catch (error) {
         console.error("API /api/benchmark GET Error:", error);

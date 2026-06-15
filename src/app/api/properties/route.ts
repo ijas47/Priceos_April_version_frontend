@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB, Listing, InventoryMaster, Reservation } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { refreshListingCalendarFromHostaway } from "@/lib/engine/calendar-rates";
 import { format, addDays } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -21,15 +22,50 @@ export async function GET() {
     const today = format(new Date(), "yyyy-MM-dd");
     const plus29 = format(addDays(new Date(), 29), "yyyy-MM-dd");
 
-    const [listings, inventory, reservations] = await Promise.all([
+    const [listings, reservations] = await Promise.all([
       Listing.find({ orgId: orgOid }).sort({ name: 1 }).lean(),
-      InventoryMaster.find({ orgId: orgOid, date: { $gte: today, $lte: plus29 } })
-        .select("listingId date status currentPrice")
-        .lean(),
       Reservation.find({ orgId: orgOid, status: { $ne: "cancelled" } })
         .select("listingId totalPrice channelName")
         .lean(),
     ]);
+
+    let inventory = await InventoryMaster.find({
+      orgId: orgOid,
+      date: { $gte: today, $lte: plus29 },
+    })
+      .select("listingId date status currentPrice")
+      .lean();
+
+    const needsRefresh = listings.filter((l) => {
+      const hostawayId = (l as { hostawayId?: string }).hostawayId;
+      if (!hostawayId) return false;
+      const lid = l._id.toString();
+      const inv = inventory.filter((r) => r.listingId?.toString() === lid);
+      if (inv.length === 0) return true;
+      const prices = new Set(inv.map((r) => Number(r.currentPrice || 0)));
+      return prices.size <= 1 && prices.has(Number(l.price || 0));
+    });
+
+    if (needsRefresh.length > 0) {
+      const CONCURRENCY = 4;
+      for (let i = 0; i < needsRefresh.length; i += CONCURRENCY) {
+        await Promise.all(
+          needsRefresh.slice(i, i + CONCURRENCY).map((l) =>
+            refreshListingCalendarFromHostaway(
+              l._id as mongoose.Types.ObjectId,
+              new Date(today),
+              new Date(plus29)
+            ).catch(() => 0)
+          )
+        );
+      }
+      inventory = await InventoryMaster.find({
+        orgId: orgOid,
+        date: { $gte: today, $lte: plus29 },
+      })
+        .select("listingId date status currentPrice")
+        .lean();
+    }
 
     const properties = listings.map((l) => {
       const lid = l._id.toString();
@@ -61,7 +97,7 @@ export async function GET() {
         bedrooms: l.bedroomsNumber ?? 0,
         bathrooms: l.bathroomsNumber ?? 0,
         basePrice: l.price ?? 0,
-        price: l.price ?? 0,
+        price: avgPrice,
         currency: l.currencyCode || "AED",
         currencyCode: l.currencyCode || "AED",
         priceFloor: l.priceFloor ?? 0,

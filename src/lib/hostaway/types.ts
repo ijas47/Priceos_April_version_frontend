@@ -52,6 +52,8 @@ export interface HostawayCalendarDay {
   minimumStay?: number;
   maximumStay?: number;
   note?: string;
+  /** Hostaway raw field — 1/0 or boolean */
+  isAvailable?: number | boolean;
 }
 
 export interface HostawayReservation {

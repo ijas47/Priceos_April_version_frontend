@@ -159,10 +159,8 @@ export class HostawayClient {
   }
 
   /**
-   * Fetch calendar for a listing (90-day window)
-   * @param listingId - HostAway listing ID
-   * @param startDate - Start date (YYYY-MM-DD)
-   * @param endDate - End date (YYYY-MM-DD)
+   * Fetch calendar for a listing (daily rates + availability).
+   * Hostaway API uses startDate/endDate query params.
    */
   async getCalendar(
     listingId: number,
@@ -170,14 +168,16 @@ export class HostawayClient {
     endDate: string
   ): Promise<HostawayCalendarDay[]> {
     const params = new URLSearchParams({
-      listingMapId: listingId.toString(),
-      dateFrom: startDate,
-      dateTo: endDate,
+      startDate,
+      endDate,
     });
 
-    return this.request<HostawayCalendarDay[]>(
+    const raw = await this.request<unknown[]>(
       `/listings/${listingId}/calendar?${params}`
     );
+
+    if (!Array.isArray(raw)) return [];
+    return raw.map((day) => normalizeHostawayCalendarDay(day, listingId));
   }
 
   /**
@@ -269,6 +269,38 @@ export class HostawayClient {
   getRateLimit(): HostawayRateLimit | null {
     return this.rateLimit;
   }
+}
+
+/** Map Hostaway calendar JSON (isAvailable + price) to our normalized day shape. */
+export function normalizeHostawayCalendarDay(
+  raw: unknown,
+  listingId: number
+): HostawayCalendarDay {
+  const row = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const date = String(row.date ?? "");
+  const price = Number(row.price ?? row.nightlyRate ?? 0);
+
+  let status: HostawayCalendarDay["status"] = "available";
+  const rawStatus = row.status;
+  if (typeof rawStatus === "string") {
+    const s = rawStatus.toLowerCase();
+    if (s.includes("book")) status = "booked";
+    else if (s.includes("block")) status = "blocked";
+    else status = "available";
+  } else if (row.isAvailable === 0 || row.isAvailable === false) {
+    status = "booked";
+  }
+
+  return {
+    listingId: Number(row.listingMapId ?? row.listingId ?? listingId),
+    date,
+    status,
+    price,
+    minimumStay: row.minimumStay != null ? Number(row.minimumStay) : undefined,
+    maximumStay: row.maximumStay != null ? Number(row.maximumStay) : undefined,
+    note: typeof row.note === "string" ? row.note : undefined,
+    isAvailable: row.isAvailable as number | boolean | undefined,
+  };
 }
 
 /**

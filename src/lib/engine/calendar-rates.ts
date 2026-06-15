@@ -1,38 +1,86 @@
 import mongoose from "mongoose";
-import { createPMSClient } from "@/lib/pms";
+import { format } from "date-fns";
+import { createHostawayClient } from "@/lib/hostaway/client";
+import { getHostawayApiKey } from "@/lib/env";
+import { resolveHostawayApiKey } from "@/lib/listing-content/hostaway-key";
 import { connectDB, InventoryMaster, Listing } from "@/lib/db";
-import { syncCalendarToDb } from "@/lib/sync-server-utils";
 
 function toNum(val: string | number | null | undefined): number {
   if (val === null || val === undefined) return 0;
   return typeof val === "string" ? parseFloat(val) : val;
 }
 
-/** Pull latest per-day rates from Hostaway into InventoryMaster (live mode only). */
+function mapCalendarStatus(
+  status: string
+): "available" | "booked" | "blocked" | "pending" {
+  if (status === "booked") return "booked";
+  if (status === "blocked") return "blocked";
+  return "available";
+}
+
+/**
+ * Pull latest per-day rates from Hostaway into InventoryMaster.
+ * Uses org/env API key directly — does not require HOSTAWAY_MODE=live.
+ */
 export async function refreshListingCalendarFromHostaway(
   listingId: mongoose.Types.ObjectId | string,
   startDate: Date,
   endDate: Date
-): Promise<void> {
+): Promise<number> {
   await connectDB();
   const lid =
     typeof listingId === "string"
       ? new mongoose.Types.ObjectId(listingId)
       : listingId;
 
-  const listing = await Listing.findById(lid).select("hostawayId").lean();
-  if (!listing?.hostawayId) return;
+  const listing = await Listing.findById(lid).select("hostawayId orgId").lean();
+  if (!listing?.hostawayId) return 0;
 
-  const client = createPMSClient();
-  if (client.getMode() !== "live") return;
+  const apiKey =
+    (listing.orgId ? await resolveHostawayApiKey(listing.orgId) : null) ||
+    getHostawayApiKey();
+  if (!apiKey) {
+    console.warn("[calendar-rates] no Hostaway API key — skipping calendar refresh");
+    return 0;
+  }
 
-  await syncCalendarToDb(
-    client,
-    [lid],
-    startDate,
-    endDate,
-    Number(listing.hostawayId)
+  const client = createHostawayClient(apiKey);
+  const calendarData = await client.getCalendar(
+    Number(listing.hostawayId),
+    format(startDate, "yyyy-MM-dd"),
+    format(endDate, "yyyy-MM-dd")
   );
+
+  if (calendarData.length === 0) return 0;
+
+  const orgId = listing.orgId || new mongoose.Types.ObjectId();
+  const bulkOps = calendarData
+    .filter((day) => day.date && day.price > 0)
+    .map((day) => ({
+      updateOne: {
+        filter: { listingId: lid, date: day.date },
+        update: {
+          $set: {
+            orgId,
+            listingId: lid,
+            date: day.date,
+            status: mapCalendarStatus(day.status),
+            currentPrice: day.price,
+            minStay: day.minimumStay || 1,
+            maxStay: day.maximumStay || 30,
+          },
+        },
+        upsert: true,
+      },
+    }));
+
+  if (bulkOps.length === 0) return 0;
+
+  for (let i = 0; i < bulkOps.length; i += 100) {
+    await InventoryMaster.bulkWrite(bulkOps.slice(i, i + 100));
+  }
+
+  return bulkOps.length;
 }
 
 /** Average synced calendar rate for a listing over a date window. */
@@ -63,15 +111,12 @@ export async function getCalendarAvgPrice(
 
 export function buildCalendarPriceMap(
   rows: Array<{ date: string; currentPrice?: string | number | null }>,
-  fallbackPrice: number
+  _fallbackPrice: number
 ): Map<string, number> {
   const map = new Map<string, number>();
   for (const row of rows) {
     const price = toNum(row.currentPrice);
     if (price > 0) map.set(row.date, price);
-  }
-  if (fallbackPrice > 0 && map.size === 0) {
-    // no-op: caller uses fallback per-day
   }
   return map;
 }
