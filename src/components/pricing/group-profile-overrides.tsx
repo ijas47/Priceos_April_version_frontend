@@ -221,7 +221,7 @@ export function GroupProfileOverrides({ group, onUpdated }: Props) {
               <MinStayProfileEditor profile={selectedMinStay} onChange={() => {}} readOnly />
             )}
             <p className="text-[10px] text-text-tertiary">
-              Edit tiers in Pricing → Profiles → Minstay Profiles (portfolio).
+              Edit tiers in Pricing → Pricing Rules → Portfolio defaults → Minstay Profiles.
             </p>
           </>
         )}

@@ -35,7 +35,7 @@ import type { MarketPricingPack, PricingProfile, MinStayProfile } from "@/lib/pr
 import { OccupancyMatrixEditor } from "./occupancy-matrix-editor";
 import { MinStayProfileEditor } from "./minstay-profile-editor";
 
-export function PricingProfilesPanel() {
+export function PricingProfilesPanel({ embedded = false }: { embedded?: boolean }) {
   const [pack, setPack] = useState<MarketPricingPack | null>(null);
   const [draft, setDraft] = useState<MarketPricingPack | null>(null);
   const [version, setVersion] = useState<string | null>(null);
@@ -141,11 +141,14 @@ export function PricingProfilesPanel() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Layers className="h-5 w-5" /> Portfolio Profiles
+          <h2 className={embedded ? "text-sm font-semibold flex items-center gap-2" : "text-lg font-semibold flex items-center gap-2"}>
+            <Layers className={embedded ? "h-4 w-4" : "h-5 w-5"} />{" "}
+            {embedded ? "Portfolio defaults" : "Portfolio Profiles"}
           </h2>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Edit pricing and min-stay profiles at portfolio level. Groups and units override these.
+            {embedded
+              ? "High / Low / Shoulder pricing profiles, seasonal calendar, and MLOS packs — same structure as PriceLabs account settings."
+              : "Edit pricing and min-stay profiles at portfolio level. Groups and units override these."}
           </p>
           <div className="flex gap-2 mt-2">
             {version && <Badge variant="secondary" className="text-[10px]">v{version}</Badge>}

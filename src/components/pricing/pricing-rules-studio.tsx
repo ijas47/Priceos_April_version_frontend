@@ -41,7 +41,34 @@ import {
 } from "@/components/ui/tooltip";
 import { OccupancyMatrixEditor } from "./occupancy-matrix-editor";
 import { MinStayProfileEditor } from "./minstay-profile-editor";
-import type { OccupancyMatrix, MinStayProfile, PricingProfile, MarketPricingPack } from "@/lib/pricing/types";
+import { PricingProfilesPanel } from "./pricing-profiles-panel";
+import type {
+  OccupancyMatrix,
+  MinStayProfile,
+  PricingProfile,
+  MarketPricingPack,
+  SeasonalSegment,
+} from "@/lib/pricing/types";
+
+/** Scope selector value for portfolio-level PriceLabs defaults (not a listing id). */
+export const PORTFOLIO_SCOPE_ID = "__portfolio__";
+
+function resolveSeasonForDate(pack: MarketPricingPack, date = new Date()) {
+  const calendarId = pack.portfolioDefaults.defaultSeasonalCalendarId;
+  const calendar = pack.seasonalCalendars.find((c) => c.id === calendarId);
+  if (!calendar) {
+    return { segment: null as SeasonalSegment | null, profile: pack.pricingProfiles[0] ?? null };
+  }
+  const md = `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const segment =
+    calendar.segments.find((s) => {
+      if (s.startMd <= s.endMd) return md >= s.startMd && md <= s.endMd;
+      return md >= s.startMd || md <= s.endMd;
+    }) ?? null;
+  const profileId = segment?.pricingProfileId;
+  const profile = pack.pricingProfiles.find((p) => p.id === profileId) ?? pack.pricingProfiles[0] ?? null;
+  return { segment, profile };
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1446,15 +1473,33 @@ function OccupancyTab({
   onConfigChange: (patch: Partial<EngineConfig>) => void;
 }) {
   const [saving, setSaving] = useState(false);
-  const [portfolioProfiles, setPortfolioProfiles] = useState<PricingProfile[]>([]);
+  const [pack, setPack] = useState<MarketPricingPack | null>(null);
+  const [previewProfileId, setPreviewProfileId] = useState<string | null>(null);
   const [inheritPortfolio, setInheritPortfolio] = useState(config.usePortfolioPricingDefaults !== false);
+  const portfolioProfiles = pack?.pricingProfiles ?? [];
 
   useEffect(() => {
     fetch("/api/pricing/profiles")
       .then((r) => r.json())
-      .then((d) => setPortfolioProfiles(d.pack?.pricingProfiles ?? []))
+      .then((d) => {
+        const loaded = d.pack as MarketPricingPack | undefined;
+        setPack(loaded ?? null);
+        if (loaded) {
+          const { profile } = resolveSeasonForDate(loaded);
+          if (profile) setPreviewProfileId(profile.id);
+        }
+      })
       .catch(() => {});
   }, []);
+
+  const previewProfile =
+    portfolioProfiles.find((p) => p.id === previewProfileId) ??
+    (pack ? resolveSeasonForDate(pack).profile : null);
+  const previewSegment = pack && previewProfile
+    ? pack.seasonalCalendars
+        .find((c) => c.id === pack.portfolioDefaults.defaultSeasonalCalendarId)
+        ?.segments.find((s) => s.pricingProfileId === previewProfile.id) ?? resolveSeasonForDate(pack).segment
+    : null;
 
   const applyPresetMatrix = (profileId: string) => {
     const profile = portfolioProfiles.find((p) => p.id === profileId);
@@ -1565,6 +1610,48 @@ function OccupancyTab({
             </p>
           </div>
 
+          {inheritPortfolio && previewProfile?.occupancyMatrix && (
+            <div className="rounded-lg border border-amber/20 bg-amber/5 p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                    Active portfolio matrix (read-only)
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    PriceLabs-style occupancy × lead-time grid from your seasonal calendar.
+                  </p>
+                </div>
+                <Select value={previewProfileId ?? previewProfile.id} onValueChange={setPreviewProfileId}>
+                  <SelectTrigger className="h-8 w-44 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {portfolioProfiles.map((p) => (
+                      <SelectItem key={p.id} value={p.id} className="text-xs">
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary" className="text-[10px]">{previewProfile.name}</Badge>
+                {previewSegment && (
+                  <Badge variant="outline" className="text-[10px]">{previewSegment.name} season</Badge>
+                )}
+              </div>
+              <OccupancyMatrixEditor
+                matrix={previewProfile.occupancyMatrix as OccupancyMatrix}
+                onChange={() => {}}
+                readOnly
+              />
+              <p className="text-[10px] text-muted-foreground">
+                To edit High / Low / Shoulder profiles or the seasonal calendar, choose{" "}
+                <span className="font-medium text-foreground">Portfolio defaults</span> in the header dropdown.
+              </p>
+            </div>
+          )}
+
           {!inheritPortfolio && (
             <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 space-y-3">
               <Label className="text-xs">Load preset from portfolio profile</Label>
@@ -1645,6 +1732,11 @@ function MinStayTab({
   const selected = pack?.minStayProfiles.find(
     (p) => p.id === config.minStayProfileOverrideId
   );
+  const inherited = pack ? resolveSeasonForDate(pack) : { segment: null, profile: null };
+  const inheritedMinStay =
+    pack?.minStayProfiles.find((p) => p.id === inherited.segment?.minStayProfileId) ??
+    pack?.minStayProfiles[0] ??
+    null;
 
   const handleSave = async () => {
     setSaving(true);
@@ -1685,6 +1777,23 @@ function MinStayTab({
         />
       </div>
 
+      {inherit && inheritedMinStay && (
+        <div className="rounded-lg border border-amber/20 bg-amber/5 p-4 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider">Active portfolio minstay (read-only)</h3>
+            <Badge variant="secondary" className="text-[10px]">{inheritedMinStay.name}</Badge>
+            {inherited.segment && (
+              <Badge variant="outline" className="text-[10px]">{inherited.segment.name} season</Badge>
+            )}
+          </div>
+          <MinStayProfileEditor profile={inheritedMinStay} onChange={() => {}} readOnly />
+          <p className="text-[10px] text-muted-foreground">
+            To edit MLOS Final, NY, or seasonal mapping, choose{" "}
+            <span className="font-medium text-foreground">Portfolio defaults</span> in the header dropdown.
+          </p>
+        </div>
+      )}
+
       {!inherit && pack && (
         <div className="space-y-3">
           <Label className="text-xs">Unit minstay profile override</Label>
@@ -1705,7 +1814,7 @@ function MinStayTab({
           </Select>
           {selected && <MinStayProfileEditor profile={selected} onChange={() => {}} readOnly />}
           <p className="text-[10px] text-muted-foreground">
-            To edit tiers, use Pricing → Profiles → Minstay Profiles (portfolio level).
+            Pick a different profile above, or turn off override to inherit portfolio defaults.
           </p>
         </div>
       )}
@@ -1742,6 +1851,7 @@ export function PricingRulesStudio({ listings }: Props) {
   );
   const [config, setConfig] = useState<EngineConfig>(DEFAULT_CONFIG);
   const [rules, setRules] = useState<PricingRule[]>([]);
+  const isPortfolioScope = selectedListingId === PORTFOLIO_SCOPE_ID;
   const selectedCurrency = listings.find((l) => l.id === selectedListingId)?.currencyCode || "AED";
   const [loading, setLoading] = useState(false);
 
@@ -1774,8 +1884,8 @@ export function PricingRulesStudio({ listings }: Props) {
   }, []);
 
   useEffect(() => {
-    if (selectedListingId) loadData(selectedListingId);
-  }, [selectedListingId, loadData]);
+    if (selectedListingId && !isPortfolioScope) loadData(selectedListingId);
+  }, [selectedListingId, isPortfolioScope, loadData]);
 
   const handleConfigChange = (patch: Partial<EngineConfig>) => {
     setConfig((prev) => ({ ...prev, ...patch }));
@@ -1800,21 +1910,26 @@ export function PricingRulesStudio({ listings }: Props) {
         <div>
           <h2 className="text-sm font-semibold text-foreground">Pricing Rules Studio</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            4-pass waterfall engine — guardrails always win. Changes save directly to MongoDB.
+            {isPortfolioScope
+              ? "Portfolio defaults (PriceLabs-style profiles & seasonal calendar) — inherited by all properties unless overridden."
+              : "Property-level overrides on top of portfolio defaults. Guardrails always win last."}
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-          {!loading && selectedListingId && (
+          {loading && !isPortfolioScope && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          {!loading && selectedListingId && !isPortfolioScope && (
             <span className="flex items-center gap-1 text-xs text-green-400">
               <CheckCircle2 className="h-3.5 w-3.5" /> Loaded
             </span>
           )}
           <Select value={selectedListingId} onValueChange={setSelectedListingId}>
-            <SelectTrigger className="w-56 h-8 text-xs bg-background border-border/70 text-foreground shadow-sm dark:bg-white/[0.04] dark:border-white/15">
-              <SelectValue placeholder="Select property…" />
+            <SelectTrigger className="w-64 h-8 text-xs bg-background border-border/70 text-foreground shadow-sm dark:bg-white/[0.04] dark:border-white/15">
+              <SelectValue placeholder="Select scope…" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value={PORTFOLIO_SCOPE_ID} className="text-xs font-semibold">
+                Portfolio defaults (all properties)
+              </SelectItem>
               {listings.map((l) => (
                 <SelectItem key={l.id} value={l.id} className="text-xs">
                   {l.name}
@@ -1825,7 +1940,11 @@ export function PricingRulesStudio({ listings }: Props) {
         </div>
       </div>
 
-      {loading ? (
+      {isPortfolioScope ? (
+        <div className="p-5">
+          <PricingProfilesPanel embedded />
+        </div>
+      ) : loading ? (
         <div className="flex items-center justify-center py-20 gap-3">
           <Loader2 className="h-6 w-6 animate-spin text-text-tertiary" />
           <span className="text-muted-foreground text-sm">Loading configuration…</span>

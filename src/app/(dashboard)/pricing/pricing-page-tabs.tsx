@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { FileText, Sliders, CalendarDays, BarChart3, Layers } from "lucide-react";
-import { PricingProfilesPanel } from "@/components/pricing/pricing-profiles-panel";
+import { FileText, Sliders, CalendarDays, BarChart3 } from "lucide-react";
 import { PricingClient, ProposalData } from "./pricing-client";
 import { PricingRulesStudio } from "@/components/pricing/pricing-rules-studio";
 import { PricingCalendarHeatmap } from "@/components/pricing/pricing-calendar-heatmap";
@@ -13,7 +12,6 @@ const TABS = [
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "proposals", label: "Proposals", icon: FileText },
   { id: "rules", label: "Pricing Rules", icon: Sliders },
-  { id: "profiles", label: "Profiles", icon: Layers },
   { id: "market", label: "Market Intel", icon: BarChart3 },
 ] as const;
 
@@ -72,11 +70,6 @@ export function PricingPageTabs({ initialProposals, listings, orgId }: Props) {
         {activeTab === "rules" && (
           <div className="p-4 sm:p-8 pt-4 sm:pt-6">
             <PricingRulesStudio listings={listings} />
-          </div>
-        )}
-        {activeTab === "profiles" && (
-          <div className="p-4 sm:p-8 pt-4 sm:pt-6">
-            <PricingProfilesPanel />
           </div>
         )}
         {activeTab === "market" && (
