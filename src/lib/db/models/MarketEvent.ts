@@ -10,6 +10,8 @@ export interface IMarketEvent extends Document {
   areas?: string[];
   impactLevel: "high" | "medium" | "low";
   upliftPct: number;
+  /** Source trust 0–100; derived from feed tier when not set */
+  confidence?: number;
   description?: string;
   source: "ai_detected" | "ticketmaster" | "eventbrite" | "serpapi" | "newsapi" | "manual" | "market_template";
   isActive: boolean;
@@ -32,6 +34,7 @@ const MarketEventSchema = new Schema<IMarketEvent>(
       default: "medium",
     },
     upliftPct: { type: Number, default: 0 },
+    confidence: { type: Number, min: 0, max: 100 },
     description: { type: String },
     source: {
       type: String,

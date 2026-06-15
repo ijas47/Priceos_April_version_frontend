@@ -23,11 +23,13 @@ const DEFAULT_MAX_AGE_DAYS = 7;
 
 export function sourceTagFromFinding(
     s: string
-): "ticketmaster" | "eventbrite" | "serpapi" | "newsapi" | "ai_detected" {
+): "ticketmaster" | "eventbrite" | "serpapi" | "newsapi" | "manual" | "market_template" | "ai_detected" {
     if (s === "ticketmaster") return "ticketmaster";
     if (s === "eventbrite") return "eventbrite";
+    if (s === "market_template") return "market_template";
     if (s.startsWith("serpapi")) return "serpapi";
     if (s === "newsapi") return "newsapi";
+    if (s === "manual" || s === "public_holiday_calendar") return "manual";
     return "ai_detected";
 }
 
@@ -154,6 +156,7 @@ export async function upsertVerifiedFindings(opts: {
         area,
         impactLevel: f.impact,
         upliftPct: f.suggestedPremiumPct,
+        confidence: Math.round((f.confidence ?? 0.75) * 100),
         description: `[${f.type}] ${f.description}${f.url ? ` (${f.url})` : ""}`,
         source: sourceTagFromFinding(f.source),
         isActive: true,
@@ -220,6 +223,23 @@ export async function ensureVerifiedMarketIntel(opts: {
         area: locationArea,
         findings: intel.findings,
     });
+
+    if (intel.findings.length > 0) {
+        const archived = await MarketEvent.updateMany(
+            {
+                orgId,
+                listingId,
+                source: "ai_detected",
+                startDate: { $lte: dateTo },
+                endDate: { $gte: dateFrom },
+                isActive: true,
+            },
+            { $set: { isActive: false } }
+        );
+        if (archived.modifiedCount > 0) {
+            console.log(`   Archived ${archived.modifiedCount} stale ai_detected events`);
+        }
+    }
 
     const upsert: UpsertIntelResult = {
         saved,

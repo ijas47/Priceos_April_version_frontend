@@ -44,18 +44,37 @@ export default async function MarketPage() {
   const listingsData = listingsRes?.ok ? await listingsRes.json() : { listings: [] };
   const revData = revRes?.ok ? await revRes.json() : { totals: { avgBookingValue: 0 } };
 
-  const formattedEvents = (eventsData.events ?? []).map((e: any) => ({
+  const formattedEvents = (eventsData.events ?? []).map((e: {
+    id?: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    impactLevel: string;
+    upliftPct?: number;
+    description?: string;
+    category?: string;
+    area?: string;
+    source?: string;
+    confidence?: number;
+    signalScore?: number;
+    verified?: boolean;
+  }) => ({
     id: e.id || Math.random().toString(36).substr(2, 9),
     title: e.name,
     startDate: e.startDate,
     endDate: e.endDate,
     impact: e.impactLevel,
-    suggestedPremiumPct: e.upliftPct,
+    suggestedPremiumPct: e.upliftPct ?? 0,
     description: e.description || "",
-    category: e.category || "General",
+    category: e.category || "Event",
     area: e.area || "Dubai",
     source: e.source,
+    confidence: e.confidence ?? 0,
+    signalScore: e.signalScore ?? 0,
+    verified: e.verified ?? false,
   }));
+
+  const sourceCounts = eventsData.sourceCounts ?? {};
 
   const formattedListings = (listingsData.listings ?? []).map((l: any) => ({
     id: l.id,
@@ -68,6 +87,7 @@ export default async function MarketPage() {
     <MarketIntelligenceClient
       orgId={session.orgId}
       events={formattedEvents}
+      sourceCounts={sourceCounts}
       occupancyPct={metricsData.avgOccupancyPct || 0}
       avgNightly={metricsData.avgNightlyRate || 0}
       listings={formattedListings}

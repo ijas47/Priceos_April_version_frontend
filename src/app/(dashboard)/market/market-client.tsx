@@ -45,11 +45,15 @@ interface MarketEvent {
   area: string;
   source?: string;
   url?: string;
+  confidence: number;
+  signalScore: number;
+  verified: boolean;
 }
 
 interface Props {
   orgId: string;
   events: MarketEvent[];
+  sourceCounts?: Record<string, number>;
   occupancyPct: number;
   avgNightly: number;
   listings: { id: string; name: string; currencyCode: string; area?: string }[];
@@ -84,13 +88,31 @@ function daysUntil(dateStr: string) {
   return `In ${days}d`;
 }
 
-export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNightly, listings }: Props) {
+function signalBarColor(score: number) {
+  if (score >= 70) return "bg-emerald-500";
+  if (score >= 45) return "bg-primary";
+  return "bg-orange-400";
+}
+
+export function MarketIntelligenceClient({
+  orgId,
+  events,
+  sourceCounts = {},
+  occupancyPct,
+  avgNightly,
+  listings,
+}: Props) {
   const router = useRouter();
   const [selectedListingId, setSelectedListingId] = useState<string>(listings[0]?.id ?? "");
   const [filterImpact, setFilterImpact] = useState<"all" | "high" | "medium" | "low">("all");
   const [filterArea, setFilterArea] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<"all" | "events" | "news">("all");
+  const [showUnverified, setShowUnverified] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
+
+  const verifiedEvents = useMemo(() => events.filter((e) => e.verified), [events]);
+  const unverifiedCount = events.length - verifiedEvents.length;
 
   async function handleSyncEvents() {
     setSyncing(true);
@@ -105,8 +127,14 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
       if (!res.ok) {
         setSyncMsg(json?.error?.message || "Sync failed");
       } else {
-        const { inserted = 0, updated = 0, benchmarksRefreshed = 0 } = json.data ?? {};
-        setSyncMsg(`Synced — ${inserted} events, ${benchmarksRefreshed} benchmarks`);
+        const { inserted = 0, listings: listingCount = 0, sourceBreakdown = {} } = json.data ?? {};
+        const feedParts = Object.entries(sourceBreakdown as Record<string, number>)
+          .filter(([, n]) => n > 0)
+          .map(([k, n]) => `${k}: ${n}`)
+          .join(", ");
+        setSyncMsg(
+          `Synced ${listingCount} listings — ${inserted} signals${feedParts ? ` (${feedParts})` : ""}`
+        );
         router.refresh();
       }
     } catch {
@@ -124,15 +152,20 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
   }, [events, listings]);
 
   const filteredEvents = useMemo(() => {
-    return events.filter((e) => {
-      if (filterImpact !== "all" && e.impact !== filterImpact) return false;
-      if (filterArea !== "all" && e.area !== filterArea) return false;
-      return true;
-    });
-  }, [events, filterImpact, filterArea]);
+    const pool = showUnverified ? events : verifiedEvents;
+    return pool
+      .filter((e) => {
+        if (filterImpact !== "all" && e.impact !== filterImpact) return false;
+        if (filterArea !== "all" && e.area !== filterArea) return false;
+        if (filterCategory === "events" && e.category === "News") return false;
+        if (filterCategory === "news" && e.category !== "News") return false;
+        return true;
+      })
+      .sort((a, b) => b.signalScore - a.signalScore || a.startDate.localeCompare(b.startDate));
+  }, [events, verifiedEvents, showUnverified, filterImpact, filterArea, filterCategory]);
 
-  const upcomingHigh = events.filter((e) => e.impact === "high");
-  const upcomingMedium = events.filter((e) => e.impact === "medium");
+  const upcomingHigh = verifiedEvents.filter((e) => e.impact === "high");
+  const upcomingMedium = verifiedEvents.filter((e) => e.impact === "medium");
 
   const IMPACT_PILL = [
     { id: "all", label: "All" },
@@ -196,12 +229,12 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
               tooltip: "Local events with high demand potential (Pass 1).",
             },
             {
-              label: "Total Events",
-              value: events.length,
-              sub: "Next 90 days",
+              label: "Verified Signals",
+              value: verifiedEvents.length,
+              sub: unverifiedCount > 0 ? `${unverifiedCount} unverified hidden` : "Next 90 days",
               icon: Calendar,
               color: "text-primary",
-              tooltip: "Total detected events near your properties.",
+              tooltip: "Ticketed, SERP, NewsAPI, and annual calendar signals. AI-detected items are hidden by default.",
             },
           ].map((kpi) => (
             <Tooltip key={kpi.label}>
@@ -231,7 +264,8 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
           <div>
             <h2 className="text-sm font-semibold text-foreground">Event Calendar</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Next 90 days · {filteredEvents.length} of {events.length} events
+              Ranked by signal score · {filteredEvents.length} shown
+              {!showUnverified && unverifiedCount > 0 ? ` (${unverifiedCount} unverified hidden)` : ""}
             </p>
           </div>
           {upcomingHigh.length > 0 && (
@@ -241,10 +275,52 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
           )}
         </div>
 
+        {/* Feed sources */}
+        {Object.keys(sourceCounts).length > 0 && (
+          <div className="px-5 py-2.5 border-b border-border bg-muted/20 flex flex-wrap gap-2 dark:border-white/10">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground self-center mr-1">
+              Active feeds
+            </span>
+            {Object.entries(sourceCounts)
+              .sort(([, a], [, b]) => b - a)
+              .map(([src, count]) => (
+                <SourceProvenanceBadge key={src} source={src} showUnverifiedWarning={false} />
+              ))}
+          </div>
+        )}
+
         {/* Filter bar */}
         {events.length > 0 && (
           <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center gap-3 flex-wrap dark:border-white/10 dark:bg-white/[0.02]">
             <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+
+            <div className="flex items-center gap-1.5">
+              {(["all", "events", "news"] as const).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setFilterCategory(id)}
+                  className={cn(
+                    "text-xs font-medium px-3 py-1.5 rounded-md border transition-colors capitalize",
+                    filterCategory === id
+                      ? "border-primary bg-primary/100 text-primary/950 shadow-sm dark:border-amber/40 dark:bg-amber/15 dark:text-amber"
+                      : "border-border bg-background text-foreground/90 hover:bg-muted dark:border-white/15 dark:bg-transparent dark:text-zinc-300"
+                  )}
+                >
+                  {id}
+                </button>
+              ))}
+            </div>
+
+            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showUnverified}
+                onChange={(e) => setShowUnverified(e.target.checked)}
+                className="rounded border-border"
+              />
+              Show unverified ({unverifiedCount})
+            </label>
 
             {/* Impact filter */}
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -279,10 +355,10 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
               </select>
             )}
 
-            {(filterImpact !== "all" || filterArea !== "all") && (
+            {(filterImpact !== "all" || filterArea !== "all" || filterCategory !== "all") && (
               <button
                 type="button"
-                onClick={() => { setFilterImpact("all"); setFilterArea("all"); }}
+                onClick={() => { setFilterImpact("all"); setFilterArea("all"); setFilterCategory("all"); }}
                 className="text-xs font-medium text-primary hover:text-primary underline-offset-2 hover:underline ml-auto dark:text-amber dark:hover:text-amber/90"
               >
                 Clear filters
@@ -319,6 +395,7 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
                 <TableRow className="border-border hover:bg-transparent dark:border-white/10">
                   <TableHead className="min-w-[120px] pl-4 text-xs font-semibold text-foreground">Date range</TableHead>
                   <TableHead className="min-w-[200px] text-xs font-semibold text-foreground">Event</TableHead>
+                  <TableHead className="w-[88px] text-xs font-semibold text-foreground">Signal</TableHead>
                   <TableHead className="w-[100px] text-xs font-semibold text-foreground">Impact</TableHead>
                   <TableHead className="w-[88px] text-xs font-semibold text-foreground">Timeline</TableHead>
                   <TableHead className="w-[72px] text-right text-xs font-semibold text-foreground">Uplift</TableHead>
@@ -367,6 +444,31 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
                           </>
                         );
                       })()}
+                    </TableCell>
+                    <TableCell className="align-top py-3">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex flex-col gap-1 min-w-[72px]">
+                              <span className="text-xs font-bold tabular-nums text-foreground">
+                                {event.signalScore}
+                              </span>
+                              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className={cn("h-full rounded-full", signalBarColor(event.signalScore))}
+                                  style={{ width: `${event.signalScore}%` }}
+                                />
+                              </div>
+                              <span className="text-[9px] text-muted-foreground tabular-nums">
+                                {event.confidence}% conf
+                              </span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent className="text-[10px] max-w-[220px]">
+                            Signal score blends impact, source trust, and uplift. Verified API feeds rank highest; AI-detected sinks to the bottom.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </TableCell>
                     <TableCell className="align-top py-3">
                       <span

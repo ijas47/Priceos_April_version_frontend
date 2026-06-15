@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB, MarketEvent } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 import { format, addDays } from "date-fns";
+import { scoreMarketEvent, compareEventSignals, confidenceFromSource } from "@/lib/research/event-scoring";
 
 export const dynamic = "force-dynamic";
 
@@ -22,24 +23,46 @@ export async function GET(req: NextRequest) {
       startDate: { $lte: dateTo },
       endDate: { $gte: dateFrom },
     })
-      .sort({ startDate: 1 })
-      .limit(200)
+      .limit(300)
       .lean();
 
-    const events = docs.map((e) => ({
-      id: e._id.toString(),
-      name: e.name,
-      startDate: e.startDate,
-      endDate: e.endDate,
-      impactLevel: e.impactLevel,
-      upliftPct: e.upliftPct ?? 0,
-      description: (e as unknown as Record<string, unknown>).description ?? "",
-      category: (e as unknown as Record<string, unknown>).category ?? "General",
-      area: (e as unknown as Record<string, unknown>).area ?? "",
-      source: e.source,
-    }));
+    const events = docs
+      .map((e) => {
+        const confidence =
+          e.confidence != null ? Number(e.confidence) : confidenceFromSource(e.source);
+        const scored = scoreMarketEvent({
+          source: e.source,
+          impactLevel: e.impactLevel,
+          upliftPct: e.upliftPct,
+          confidence,
+          startDate: e.startDate,
+        });
+        const desc = String((e as unknown as Record<string, unknown>).description ?? "");
+        const isNews = e.source === "newsapi" || desc.includes("[news]");
+        return {
+          id: e._id.toString(),
+          name: e.name,
+          startDate: e.startDate,
+          endDate: e.endDate,
+          impactLevel: e.impactLevel,
+          upliftPct: e.upliftPct ?? 0,
+          description: desc,
+          category: isNews ? "News" : "Event",
+          area: (e as unknown as Record<string, unknown>).area ?? "",
+          source: e.source,
+          confidence,
+          signalScore: scored.signalScore,
+          verified: scored.verified,
+        };
+      })
+      .sort(compareEventSignals);
 
-    return NextResponse.json({ events });
+    const sourceCounts = events.reduce<Record<string, number>>((acc, e) => {
+      acc[e.source] = (acc[e.source] || 0) + 1;
+      return acc;
+    }, {});
+
+    return NextResponse.json({ events, sourceCounts });
   } catch (error) {
     console.error("[Agent-tools market-events]", error);
     return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });

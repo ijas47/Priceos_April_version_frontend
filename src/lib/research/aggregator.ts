@@ -27,6 +27,7 @@ import {
     type SourceNews,
     type SourceError,
 } from "./sources";
+import { getKnownAnnualEvents } from "./known-annual-events";
 
 export interface IntelFinding {
     title: string;
@@ -183,7 +184,26 @@ export async function gatherMarketIntelligence(opts: {
         });
     }
 
-    findings.sort((a, b) => a.dateStart.localeCompare(b.dateStart));
+    // Curated annual calendar (GITEX, DSF, etc.) — high-confidence supplement
+    for (const annual of getKnownAnnualEvents(city, countryCode || "AE", dateFrom, dateTo)) {
+        const key = dedupeKey(annual.title, annual.dateStart);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (!sourcesUsed.includes("market_template")) sourcesUsed.push("market_template");
+        findings.push({
+            title: annual.title,
+            dateStart: annual.dateStart,
+            dateEnd: annual.dateEnd,
+            type: "event",
+            impact: annual.impact,
+            confidence: annual.confidence / 100,
+            description: annual.description,
+            source: "market_template",
+            suggestedPremiumPct: annual.suggestedPremiumPct,
+        });
+    }
+
+    findings.sort((a, b) => b.confidence - a.confidence || a.dateStart.localeCompare(b.dateStart));
 
     return {
         location,

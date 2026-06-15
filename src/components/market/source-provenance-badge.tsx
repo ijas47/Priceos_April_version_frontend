@@ -11,7 +11,7 @@ const SOURCE_STYLES: Record<string, string> = {
   serpapi: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400",
   newsapi: "bg-sky-500/10 text-sky-700 border-sky-600/30 dark:text-sky-400",
   manual: "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400",
-  market_template: "bg-blue-500/10 text-blue-600 border-blue-500/30",
+  market_template: "bg-indigo-500/10 text-indigo-700 border-indigo-500/30 dark:text-indigo-400",
   ai_detected: "bg-orange-500/10 text-orange-600 border-orange-500/30",
   perplexity: "bg-primary/10 text-primary border-primary/30",
 };
@@ -26,6 +26,7 @@ function SourceIcon({ source }: { source: string }) {
     case "newsapi":
       return <Newspaper className="h-2.5 w-2.5" />;
     case "manual":
+      return <Calendar className="h-2.5 w-2.5" />;
     case "market_template":
       return <Calendar className="h-2.5 w-2.5" />;
     case "perplexity":
