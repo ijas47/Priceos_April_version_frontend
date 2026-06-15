@@ -16,6 +16,7 @@ import {
     GUARDRAILS_AGENT_ID,
 } from "@/lib/agents/constants";
 import { gatherMarketIntelligence } from "@/lib/research/aggregator";
+import { upsertVerifiedFindings } from "@/lib/research/ensure-market-intel";
 import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
 import mongoose from "mongoose";
 
@@ -147,10 +148,16 @@ export async function POST(req: NextRequest) {
         // 3. Build prompts — agents ASSESS verified data, they don't invent it.
         const currentDate = new Date().toISOString().split("T")[0];
 
-        const marketingPrompt = `Today: ${currentDate}. City: ${city}. Area: ${area}. Date range: ${dateRange.from} to ${dateRange.to}. Property: ${bedrooms}BR, base price ${listing?.price || "Unknown"} ${currency}.
-VERIFIED_EVENTS (from Ticketmaster/Google Events/news feeds — treat as ground truth): ${verifiedEventsJson}
-Task: (1) Assess each verified event's pricing impact for this property. (2) Add public/school holidays for ${city} in range that you are CERTAIN of — mark them "holiday". (3) Do NOT invent concerts, conferences or festivals that are not in VERIFIED_EVENTS.
-Return JSON with events, holidays, news, daily_events arrays. Each item: title, date_start, date_end, impact, description, source, suggested_premium_pct, sentiment, demand_impact.`;
+        const marketingPrompt = `Today: ${currentDate}. City: ${city}. Date range: ${dateRange.from} to ${dateRange.to}.
+VERIFIED_EVENTS (ground truth — already stored, do NOT duplicate): ${verifiedEventsJson}
+
+Task: Return ONLY public/school holidays for ${city} that fall inside the date range and that you are CERTAIN of (e.g. national holidays with fixed or well-known dates).
+
+STRICT RULES:
+- Return JSON with a single key: "holidays" (array). No "events", "news", or "daily_events" keys.
+- Do NOT invent concerts, conferences, festivals, Ramadan/Eid dates, or sporting events — those come from verified feeds only.
+- If unsure of a holiday date, omit it.
+- Each holiday: title, date_start (YYYY-MM-DD), date_end (YYYY-MM-DD), impact ("low"|"medium"|"high"), description, source ("public_holiday_calendar"), suggested_premium_pct (number).`;
 
         const airbticsContext = airbticsMktCtx?.p50ADR
             ? `\nAIRBTICS_MARKET_DATA (real, use as anchor):
@@ -171,81 +178,61 @@ Find 10-15 comparable short-term rental properties. Return JSON with rate_distri
         const agentMkt = marketingRes.parsedJson || {};
         const agentBench = benchmarkRes.parsedJson || {};
 
-        console.log(`✅ Research complete. Verified: ${intel.findings.length}, Agent events: ${agentMkt?.events?.length || 0}, News: ${agentMkt?.news?.length || 0}`);
+        const holidayCount = Array.isArray(agentMkt?.holidays) ? agentMkt.holidays.length : 0;
+        console.log(`✅ Research complete. Verified: ${intel.findings.length}, Agent holidays only: ${holidayCount}`);
 
-        // 4. Save Market Events (upsert by orgId+name+startDate)
-        const allFindings: any[] = [];
+        // 4. Save Market Events
+        const verifiedSaved = await upsertVerifiedFindings({
+            orgId,
+            listingId: listingObjectId,
+            area,
+            findings: intel.findings,
+        });
+        console.log(`📥 Saved ${verifiedSaved} verified market events`);
 
-        // 4a. Verified findings first — stored with their real source so the
-        //     UI can distinguish "Ticketmaster confirmed" from "AI guessed".
-        const sourceTag = (s: string): "ticketmaster" | "eventbrite" | "serpapi" | "newsapi" | "ai_detected" => {
-            if (s === "ticketmaster") return "ticketmaster";
-            if (s === "eventbrite") return "eventbrite";
-            if (s.startsWith("serpapi")) return "serpapi";
-            if (s === "newsapi") return "newsapi";
-            return "ai_detected";
-        };
-        for (const f of intel.findings) {
-            allFindings.push({
-                orgId,
-                listingId: listingObjectId,
-                name: f.title,
-                startDate: f.dateStart,
-                endDate: f.dateEnd,
-                area,
-                impactLevel: f.impact,
-                upliftPct: f.suggestedPremiumPct,
-                description: `[${f.type}] ${f.description}${f.url ? ` (${f.url})` : ""}`,
-                source: sourceTag(f.source),
-                isActive: true,
-            });
-        }
-
-        // 4b. Agent assessments (holidays it is certain of, impact notes).
+        // 4b. Holidays only — never persist agent-invented events/news
         const verifiedNames = new Set(intel.findings.map((f) => f.title.toLowerCase().trim()));
-        const pushFinding = (e: any, eventType: string) => {
-            const name = e.title || e.headline || e.name;
-            if (!name) return;
-            // Skip agent duplicates of verified events — verified copy wins.
-            if (verifiedNames.has(String(name).toLowerCase().trim())) return;
+        let holidaysSaved = 0;
 
-            const impactLevel = (e.impact || e.demand_impact || "medium").toLowerCase().includes("high")
-                ? "high"
-                : (e.impact || e.demand_impact || "medium").toLowerCase().includes("low")
-                ? "low"
-                : "medium";
-
-            allFindings.push({
-                orgId,
-                listingId: listingObjectId,
-                name,
-                startDate: e.date_start || e.date || dateRange.from,
-                endDate: e.date_end || e.date || dateRange.from,
-                area,
-                impactLevel,
-                upliftPct: Number(e.suggested_premium_pct || 0),
-                description: `[${eventType}] ${e.description || ""}`,
-                source: "ai_detected" as const,
-                isActive: true,
-            });
-        };
-
-        if (Array.isArray(agentMkt.events)) agentMkt.events.forEach((e: any) => pushFinding(e, "event"));
-        if (Array.isArray(agentMkt.holidays)) agentMkt.holidays.forEach((e: any) => pushFinding(e, "holiday"));
-        if (Array.isArray(agentMkt.news)) agentMkt.news.forEach((e: any) => pushFinding(e, "news"));
-        if (Array.isArray(agentMkt.daily_events)) agentMkt.daily_events.forEach((e: any) => pushFinding(e, "daily_event"));
-
-        if (allFindings.length > 0) {
-            const bulkOps = allFindings.map((f) => ({
-                updateOne: {
-                    filter: { orgId: f.orgId, listingId: f.listingId, name: f.name, startDate: f.startDate },
-                    update: { $set: f },
-                    upsert: true,
-                },
-            }));
-            await MarketEvent.bulkWrite(bulkOps);
-            console.log(`📥 Saved ${allFindings.length} market events`);
+        if (Array.isArray(agentMkt.holidays)) {
+            await Promise.all(
+                agentMkt.holidays.map(async (e: { title?: string; name?: string; date_start?: string; date?: string; date_end?: string; impact?: string; description?: string; suggested_premium_pct?: number }) => {
+                    const name = e.title || e.name;
+                    if (!name || verifiedNames.has(String(name).toLowerCase().trim())) return;
+                    const start = e.date_start || e.date || dateRange.from;
+                    const end = e.date_end || e.date || start;
+                    if (start < dateRange.from || end > dateRange.to) return;
+                    const impactRaw = (e.impact || "medium").toLowerCase();
+                    const impactLevel = impactRaw.includes("high") ? "high" : impactRaw.includes("low") ? "low" : "medium";
+                    await MarketEvent.findOneAndUpdate(
+                        { orgId, listingId: listingObjectId, name, startDate: start },
+                        {
+                            $set: {
+                                orgId,
+                                listingId: listingObjectId,
+                                name,
+                                startDate: start,
+                                endDate: end,
+                                area,
+                                impactLevel,
+                                upliftPct: Number(e.suggested_premium_pct || 0),
+                                description: `[holiday] ${e.description || ""}`,
+                                source: "manual",
+                                isActive: true,
+                            },
+                        },
+                        { upsert: true }
+                    );
+                    holidaysSaved += 1;
+                })
+            );
         }
+
+        if (holidaysSaved > 0) {
+            console.log(`📥 Saved ${holidaysSaved} public holidays (agent, certain only)`);
+        }
+
+        const allFindingsCount = verifiedSaved + holidaysSaved;
 
         // 4. Save Benchmark Data (upsert by listingId+dateFrom+dateTo)
         //    Airbtics monthly metrics provide real ADR percentiles — prefer them
@@ -368,12 +355,13 @@ Find 10-15 comparable short-term rental properties. Return JSON with rate_distri
 
         return NextResponse.json({
             success: true,
-            eventsCount: allFindings.length,
+            eventsCount: allFindingsCount,
             verifiedEventsCount: intel.findings.length,
+            holidaysCount: holidaysSaved,
             researchSourcesUsed: intel.sourcesUsed,
             researchSourceErrors: intel.sourceErrors,
             researchSourceBreakdown: intel.sourceBreakdown,
-            aiDetectedEventsCount: allFindings.length - intel.findings.length,
+            aiDetectedEventsCount: 0,
             duration: `${duration}s`,
             guardrailsSetByAi,
             guardrails: generatedGuardrails,

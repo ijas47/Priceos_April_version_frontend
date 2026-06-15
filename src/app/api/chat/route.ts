@@ -12,6 +12,7 @@ import {
     GuestSummary,
 } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { ensureVerifiedMarketIntel } from "@/lib/research/ensure-market-intel";
 import mongoose from "mongoose";
 
 /**
@@ -162,8 +163,40 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
 
             console.log(`\n🔄 [Context Sync] Fetching fresh data for listing ${pid}...`);
 
+            const listing = await Listing.findById(pidObjectId).lean();
+            if (!listing) throw new Error("Property not found");
+
+            const intelRefresh = await ensureVerifiedMarketIntel({
+                orgId,
+                listingId: pidObjectId,
+                city: listing.city || "Dubai",
+                area: listing.area || listing.city || "Dubai",
+                countryCode: listing.countryCode || "AE",
+                dateFrom,
+                dateTo,
+            });
+            if (intelRefresh.refreshed) {
+                console.log(
+                    `✅ [MarketIntel] Refreshed: ${intelRefresh.upsert?.verifiedCount ?? 0} findings ` +
+                        `(${intelRefresh.assessment.reason})`
+                );
+            } else {
+                console.log(`✅ [MarketIntel] Cache hit: ${intelRefresh.assessment.reason}`);
+            }
+
+            const eventScope = {
+                orgId,
+                $or: [
+                    { listingId: pidObjectId },
+                    { listingId: { $exists: false } },
+                    { listingId: null },
+                ],
+                endDate: { $gte: dateFrom },
+                startDate: { $lte: dateTo },
+                isActive: true,
+            };
+
             const [
-                listing,
                 events,
                 benchmark,
                 calMetrics,
@@ -171,18 +204,12 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 guestSum,
                 rawInventory,
             ] = await Promise.all([
-                Listing.findById(pidObjectId).lean(),
-                MarketEvent.find({
-                    endDate: { $gte: dateFrom },
-                    startDate: { $lte: dateTo },
-                    isActive: true,
-                })
-                    .limit(50)
-                    .lean(),
+                MarketEvent.find(eventScope).limit(50).lean(),
                 BenchmarkData.findOne({
+                    orgId,
                     listingId: pidObjectId,
-                    dateTo: { $gte: dateFrom },
-                    dateFrom: { $lte: dateTo },
+                    dateFrom: { $lte: dateFrom },
+                    dateTo: { $gte: dateTo },
                 })
                     .sort({ createdAt: -1 })
                     .lean(),
@@ -303,11 +330,17 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                           reasoning: benchmark.reasoning || "",
                       }
                     : null,
+                market_intel: {
+                    refreshed: intelRefresh.refreshed,
+                    cache_reason: intelRefresh.assessment.reason,
+                    verified_events_in_window: intelRefresh.assessment.verifiedEventCount,
+                },
                 market_events: events.map((e) => ({
                     title: e.name,
                     start_date: e.startDate,
                     end_date: e.endDate,
                     impact: e.impactLevel,
+                    source: e.source,
                     description: e.description || "",
                     suggested_premium_pct: e.upliftPct || 0,
                 })),
