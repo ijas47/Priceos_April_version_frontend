@@ -6,6 +6,7 @@
 export type MarketEventSource =
   | "ticketmaster"
   | "eventbrite"
+  | "dtcm"
   | "serpapi"
   | "newsapi"
   | "manual"
@@ -18,6 +19,7 @@ export type MarketEventSource =
 export const SOURCE_TRUST_TIER: Record<string, number> = {
   ticketmaster: 3,
   eventbrite: 3,
+  dtcm: 3,
   serpapi: 2,
   newsapi: 2,
   manual: 2,
@@ -36,6 +38,7 @@ export interface EventTrustMeta {
 const SOURCE_LABELS: Record<string, string> = {
   ticketmaster: "Ticketmaster",
   eventbrite: "Eventbrite",
+  dtcm: "DTCM / Dubai Calendar",
   serpapi: "Google Events",
   newsapi: "NewsAPI",
   manual: "Public Holiday",

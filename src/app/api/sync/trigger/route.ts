@@ -3,6 +3,7 @@ import { createPMSClient } from "@/lib/pms";
 import { getSession } from "@/lib/auth/server";
 import { connectDB, Listing, Reservation } from "@/lib/db";
 import { syncListingsToDb, syncReservationsToDb, syncCalendarToDb, syncConversationsToDb } from "@/lib/sync-server-utils";
+import { syncOrgMarketEvents } from "@/lib/research/sync-org-events";
 import mongoose from "mongoose";
 
 // Global sync status tracker
@@ -111,6 +112,17 @@ async function performBackgroundSync(orgId: string) {
         console.log("📥 Step 4: Fetching Conversations...");
         const convStats = await syncConversationsToDb(hostawayToInternalIdMap);
         console.log(`✅ Step 4 Complete: Synced ${convStats.synced} conversations (${convStats.errors} errors).`);
+
+        // 5. Auto-refresh DTCM + verified events when Dubai + PMS connected
+        globalThis.syncStatus.message = 'Refreshing market events (DTCM if eligible)...';
+        try {
+            const eventSync = await syncOrgMarketEvents(orgOid, 90);
+            console.log(
+                `✅ Step 5: Market events — ${eventSync.totalSaved} saved. DTCM: ${eventSync.dtcm.enabled ? eventSync.dtcm.reason : "skipped"}`
+            );
+        } catch (evtErr) {
+            console.warn(`⚠️ Step 5: Market event refresh failed (non-fatal):`, (evtErr as Error).message);
+        }
 
         console.log("------------------------------------------");
         console.log("🎉 Hostaway Sync Finished Successfully.");

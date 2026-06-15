@@ -27,6 +27,7 @@ import {
     type SourceNews,
     type SourceError,
 } from "./sources";
+import { dtcmEvents } from "./sources/dtcm";
 import { getKnownAnnualEvents } from "./known-annual-events";
 
 export interface IntelFinding {
@@ -76,6 +77,7 @@ function sourceConfidence(source: SourceEvent["source"]): number {
     switch (source) {
         case "ticketmaster": return 0.9;
         case "eventbrite": return 0.9;
+        case "dtcm": return 0.95;
         case "serpapi_google_events": return 0.8;
         default: return 0.6;
     }
@@ -93,14 +95,21 @@ export async function gatherMarketIntelligence(opts: {
     dateFrom: string; // YYYY-MM-DD
     dateTo: string;   // YYYY-MM-DD
     includeNews?: boolean;
+    /** Auto-set when org is Dubai + PMS connected (see dtcm-eligibility.ts) */
+    enableDtcm?: boolean;
 }): Promise<MarketIntelligence> {
-    const { city, area, countryCode, dateFrom, dateTo, includeNews = true } = opts;
+    const { city, area, countryCode, dateFrom, dateTo, includeNews = true, enableDtcm = false } = opts;
     const location = area ? `${area}, ${city}` : city;
 
-    const [serpEv, tmEv, ebEv, serpNews, napiNews] = await Promise.all([
+    const dtcmPromise = enableDtcm
+        ? dtcmEvents(city, dateFrom, dateTo)
+        : Promise.resolve({ events: [] as SourceEvent[], mode: "curated" as const, error: undefined });
+
+    const [serpEv, tmEv, ebEv, dtcmEv, serpNews, napiNews] = await Promise.all([
         serpGoogleEvents(city, { dateFrom, dateTo }),
         ticketmasterEvents(city, dateFrom, dateTo, countryCode),
         eventbriteEvents(city, dateFrom, dateTo),
+        dtcmPromise,
         includeNews
             ? serpGoogleNews(`${city} tourism travel demand events`)
             : Promise.resolve({ news: [] as SourceNews[], error: undefined }),
@@ -109,7 +118,7 @@ export async function gatherMarketIntelligence(opts: {
             : Promise.resolve({ news: [] as SourceNews[], error: undefined }),
     ]);
 
-    const errors: SourceError[] = [serpEv.error, tmEv.error, ebEv.error, serpNews.error, napiNews.error]
+    const errors: SourceError[] = [serpEv.error, tmEv.error, ebEv.error, dtcmEv.error, serpNews.error, napiNews.error]
         .filter((e): e is SourceError => !!e);
 
     const sourceBreakdown: Record<string, SourceBreakdownEntry> = {
@@ -122,6 +131,15 @@ export async function gatherMarketIntelligence(opts: {
         eventbrite: ebEv.error
             ? { findings: 0, status: "error", error: ebEv.error.error }
             : { findings: ebEv.events.length, status: "ok" },
+        dtcm: !enableDtcm
+            ? { findings: 0, status: "skipped" }
+            : dtcmEv.error && dtcmEv.events.length === 0
+              ? { findings: 0, status: "error", error: dtcmEv.error.error }
+              : {
+                  findings: dtcmEv.events.length,
+                  status: "ok",
+                  error: dtcmEv.error?.error,
+                },
         serpapi_google_news: !includeNews
             ? { findings: 0, status: "skipped" }
             : serpNews.error
@@ -139,7 +157,12 @@ export async function gatherMarketIntelligence(opts: {
     const seen = new Set<string>();
 
     // Events — ticketed sources first so they win the dedupe.
-    const allEvents: SourceEvent[] = [...tmEv.events, ...ebEv.events, ...serpEv.events];
+    const allEvents: SourceEvent[] = [
+        ...tmEv.events,
+        ...ebEv.events,
+        ...dtcmEv.events,
+        ...serpEv.events,
+    ];
     for (const e of allEvents) {
         const key = dedupeKey(e.title, e.dateStart);
         if (seen.has(key)) continue;
@@ -153,7 +176,12 @@ export async function gatherMarketIntelligence(opts: {
             type: "event",
             impact,
             confidence: sourceConfidence(e.source),
-            description: [e.venue && `Venue: ${e.venue}`, `Source: ${e.source}`].filter(Boolean).join(". "),
+            description: [
+                e.venue && `Venue: ${e.venue}`,
+                e.source === "dtcm" ? "Source: DTCM / Dubai Calendar (DET)" : `Source: ${e.source}`,
+            ]
+                .filter(Boolean)
+                .join(". "),
             source: e.source,
             url: e.url,
             suggestedPremiumPct: premiumPct,

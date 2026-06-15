@@ -8,6 +8,7 @@ import { getEventTrust, normalizeEventSource } from "@/lib/research/source-trust
 const SOURCE_STYLES: Record<string, string> = {
   ticketmaster: "bg-violet-500/10 text-violet-600 border-violet-500/30",
   eventbrite: "bg-violet-500/10 text-violet-600 border-violet-500/30",
+  dtcm: "bg-teal-500/10 text-teal-700 border-teal-500/30 dark:text-teal-400",
   serpapi: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400",
   newsapi: "bg-sky-500/10 text-sky-700 border-sky-600/30 dark:text-sky-400",
   manual: "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400",
@@ -20,6 +21,7 @@ function SourceIcon({ source }: { source: string }) {
   switch (source) {
     case "ticketmaster":
     case "eventbrite":
+    case "dtcm":
       return <Ticket className="h-2.5 w-2.5" />;
     case "serpapi":
       return <Globe className="h-2.5 w-2.5" />;

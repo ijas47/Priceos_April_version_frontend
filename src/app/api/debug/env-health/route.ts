@@ -30,6 +30,8 @@ const EXPECTED_KEYS = [
   // Optional feeds
   "EVENTBRITE_API_KEY",
   "TICKETMASTER_API_KEY",
+  "DTCM_API_KEY",
+  "DTCM_API_BASE_URL",
   "PERPLEXITY_API_KEY",
   "SERP_API_KEY",
   "NEWS_API_KEY",
@@ -61,10 +63,11 @@ export async function GET() {
     newsApi: health.NEWS_API_KEY === "SET",
     ticketmaster: health.TICKETMASTER_API_KEY === "SET",
     eventbrite: health.EVENTBRITE_API_KEY === "SET",
+    dtcm: health.DTCM_API_KEY === "SET",
     perplexityFallback: health.PERPLEXITY_API_KEY === "SET",
   };
   const hasVerifiedFeed =
-    researchFeeds.serp || researchFeeds.ticketmaster || researchFeeds.eventbrite;
+    researchFeeds.serp || researchFeeds.ticketmaster || researchFeeds.eventbrite || researchFeeds.dtcm;
 
   let researchHint: string;
   if (!hasVerifiedFeed) {

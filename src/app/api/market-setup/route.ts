@@ -16,6 +16,7 @@ import {
 import { gatherMarketIntelligence } from "@/lib/research/aggregator";
 import { upsertVerifiedFindings } from "@/lib/research/ensure-market-intel";
 import { getStaticHolidaysForWindow } from "@/lib/research/static-holidays";
+import { resolveDtcmEligibility } from "@/lib/research/dtcm-eligibility";
 import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
 import mongoose from "mongoose";
 
@@ -114,12 +115,18 @@ export async function POST(req: NextRequest) {
         //     Eventbrite / news). This is structured ground truth — the Lyzr
         //     agents receive it as input instead of being asked to invent
         //     events from memory.
+        const dtcmStatus = await resolveDtcmEligibility(orgId);
         const intel = await gatherMarketIntelligence({
             city,
             area: area !== city ? area : undefined,
+            countryCode,
             dateFrom: dateRange.from,
             dateTo: dateRange.to,
+            enableDtcm: dtcmStatus.enabled,
         });
+        if (dtcmStatus.enabled) {
+            console.log(`🏛️ DTCM: ${dtcmStatus.reason}`);
+        }
         console.log(`🔎 Verified intel: ${intel.findings.length} findings from [${intel.sourcesUsed.join(", ") || "none"}]`);
         console.log(`   Source breakdown:`, JSON.stringify(intel.sourceBreakdown));
         if (intel.sourceErrors.length) {
@@ -356,6 +363,11 @@ Find 10-15 comparable short-term rental properties. Return JSON with rate_distri
             researchSourceBreakdown: intel.sourceBreakdown,
             holidaysSource: "static_calendar",
             benchmarkSource: airbticsHasBenchmark ? "airbtics" : "lyzr_fallback",
+            dtcm: {
+                enabled: dtcmStatus.enabled,
+                reason: dtcmStatus.reason,
+                hasApiKey: dtcmStatus.hasApiKey,
+            },
             aiDetectedEventsCount: 0,
             duration: `${duration}s`,
             guardrailsSetByAi,

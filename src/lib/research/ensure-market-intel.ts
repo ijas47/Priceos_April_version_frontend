@@ -9,10 +9,12 @@
 import mongoose from "mongoose";
 import { connectDB, MarketEvent, BenchmarkData } from "@/lib/db";
 import { gatherMarketIntelligence, type IntelFinding, type SourceBreakdownEntry } from "./aggregator";
+import { resolveDtcmEligibility } from "./dtcm-eligibility";
 
 export const VERIFIED_EVENT_SOURCES = [
     "ticketmaster",
     "eventbrite",
+    "dtcm",
     "serpapi",
     "newsapi",
 ] as const;
@@ -23,9 +25,10 @@ const DEFAULT_MAX_AGE_DAYS = 7;
 
 export function sourceTagFromFinding(
     s: string
-): "ticketmaster" | "eventbrite" | "serpapi" | "newsapi" | "manual" | "market_template" | "ai_detected" {
+): "ticketmaster" | "eventbrite" | "dtcm" | "serpapi" | "newsapi" | "manual" | "market_template" | "ai_detected" {
     if (s === "ticketmaster") return "ticketmaster";
     if (s === "eventbrite") return "eventbrite";
+    if (s === "dtcm") return "dtcm";
     if (s === "market_template") return "market_template";
     if (s.startsWith("serpapi")) return "serpapi";
     if (s === "newsapi") return "newsapi";
@@ -204,13 +207,20 @@ export async function ensureVerifiedMarketIntel(opts: {
         `🔄 [MarketIntel] Refreshing verified feeds for ${locationArea} (${dateFrom}→${dateTo}): ${assessment.reason}`
     );
 
+    const dtcm = await resolveDtcmEligibility(orgId);
+
     const intel = await gatherMarketIntelligence({
         city,
         area: area && area !== city ? area : undefined,
         countryCode,
         dateFrom,
         dateTo,
+        enableDtcm: dtcm.enabled,
     });
+
+    if (dtcm.enabled) {
+        console.log(`   DTCM: ${dtcm.reason}`);
+    }
 
     console.log(`   Source breakdown:`, JSON.stringify(intel.sourceBreakdown));
     if (intel.sourceErrors.length) {
