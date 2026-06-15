@@ -18,6 +18,10 @@ import { upsertVerifiedFindings } from "@/lib/research/ensure-market-intel";
 import { getStaticHolidaysForWindow } from "@/lib/research/static-holidays";
 import { resolveDtcmEligibility } from "@/lib/research/dtcm-eligibility";
 import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
+import {
+    getCalendarAvgPrice,
+    refreshListingCalendarFromHostaway,
+} from "@/lib/engine/calendar-rates";
 import mongoose from "mongoose";
 
 export const dynamic = "force-dynamic";
@@ -96,6 +100,26 @@ export async function POST(req: NextRequest) {
         const currency = listing?.currencyCode || "AED";
         console.log(`🏠 Property: "${listing?.name || "Unknown"}" in ${area}, ${city} (${bedrooms}BR)`);
 
+        try {
+            await refreshListingCalendarFromHostaway(
+                listingObjectId,
+                new Date(dateRange.from),
+                new Date(dateRange.to)
+            );
+        } catch (err) {
+            console.warn("[market-setup] calendar refresh skipped:", (err as Error).message);
+        }
+
+        const calendarAvgPrice = await getCalendarAvgPrice(
+            listingObjectId,
+            dateRange.from,
+            dateRange.to
+        );
+        const yourListingPrice =
+            calendarAvgPrice > 0
+                ? Math.round(calendarAvgPrice)
+                : Number(listing?.price || 0);
+
         // 2a. Fetch Airbtics market context (ADR, seasonality, pacing)
         let airbticsMktCtx: Awaited<ReturnType<typeof getMarketContext>> | null = null;
         const countryCode = listing?.countryCode || "AE";
@@ -154,7 +178,7 @@ export async function POST(req: NextRequest) {
 
         if (!airbticsHasBenchmark) {
             const airbticsContext = "";
-            const benchmarkPrompt = `City: ${city}. Area: ${area}. ${bedrooms}BR. Base price: ${listing?.price || "Unknown"} ${currency}. Date range: ${dateRange.from} to ${dateRange.to}.${airbticsContext}
+            const benchmarkPrompt = `City: ${city}. Area: ${area}. ${bedrooms}BR. Current calendar avg rate: ${yourListingPrice || "Unknown"} ${currency}. Date range: ${dateRange.from} to ${dateRange.to}.${airbticsContext}
 Find 10-15 comparable short-term rental properties. Return JSON with rate_distribution (p25,p50,p75,p90,avg_weekday,avg_weekend), pricing_verdict (verdict,percentile,your_price), rate_trend (direction,pct_change), recommended_rates (weekday,weekend,event_peak,reasoning), comps array.`;
 
             const benchmarkRes = await callLyzrAgent(
@@ -246,7 +270,7 @@ Find 10-15 comparable short-term rental properties. Return JSON with rate_distri
             p90Rate: rateDist?.p90 || Math.round(medianRate * 1.3),
             avgWeekday: rateDist?.avg_weekday || medianRate,
             avgWeekend: rateDist?.avg_weekend || Math.round(medianRate * 1.25),
-            yourPrice: Number(pricingVerdict?.your_price) || listing?.price || medianRate,
+            yourPrice: Number(pricingVerdict?.your_price) || yourListingPrice || medianRate,
             percentile: Number(pricingVerdict?.percentile) || 50,
             verdict: (pricingVerdict?.verdict as string) || "FAIR",
             rateTrend: (rateTrend?.direction as string) || "stable",

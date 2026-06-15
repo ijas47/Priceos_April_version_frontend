@@ -34,7 +34,7 @@ export default async function AgentChatPage() {
       ...p,
       id: String(p.id ?? p._id ?? ""),
       _id: String(p.id ?? p._id ?? ""),
-      price: Number(p.basePrice ?? p.price ?? 0),
+      price: Number(p.avgPrice ?? p.basePrice ?? p.price ?? 0),
       occupancy: Number(p.occupancyPct ?? 0),
       avgPrice: Number(p.avgPrice ?? p.basePrice ?? p.price ?? 0),
     }));

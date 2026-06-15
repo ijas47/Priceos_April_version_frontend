@@ -88,9 +88,12 @@ export function CompactPropertyCard({
             </div>
           </div>
           <div className="flex flex-col items-end">
-            <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-[0.1em] mb-0.5">Target Rate</span>
+            <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-[0.1em] mb-0.5">Avg Rate</span>
             <span className="text-xs font-black text-foreground tabular-nums tracking-tighter">
-              {property.currencyCode} {parseFloat(property.price as string).toLocaleString()}
+              {property.currencyCode}{" "}
+              {Number(
+                (property as { avgPrice?: number | string }).avgPrice ?? property.price ?? 0
+              ).toLocaleString("en-US")}
             </span>
           </div>
         </div>

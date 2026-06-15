@@ -12,6 +12,11 @@ import { fitElasticityModel } from "@/lib/elasticity/model";
 import type { BookingObservation, ElasticityParams } from "@/lib/elasticity/types";
 import { computeOptimizedPrice, isElasticityPricingEnabled } from "./optimization";
 import { computeDemandModifier, getDefaultSignals } from "@/lib/demand/modifiers";
+import {
+    refreshListingCalendarFromHostaway,
+    buildCalendarPriceMap,
+    resolveDayCalendarPrice,
+} from "./calendar-rates";
 
 function toNum(val: string | number | null | undefined): number {
     if (val === null || val === undefined) return 0;
@@ -121,10 +126,23 @@ export async function runPipeline(
         today.setHours(0, 0, 0, 0);
         const endDate = addDays(today, 364);
 
+        // Prefer Hostaway calendar rates (per-day) over the static listing base price.
+        try {
+            await refreshListingCalendarFromHostaway(lid, today, endDate);
+        } catch (err) {
+            console.warn(
+                "[runPipeline] calendar refresh failed — using cached inventory:",
+                (err as Error).message
+            );
+        }
+
         const existingInventory = await InventoryMaster.find({
             listingId: lid,
             date: { $gte: dateStr(today) },
-        }).sort({ date: 1 }).lean();
+        })
+            .select("date status currentPrice")
+            .sort({ date: 1 })
+            .lean();
 
         const bookingMap = new Map<string, { isBooked: boolean }>();
         for (const day of existingInventory) {
@@ -144,7 +162,11 @@ export async function runPipeline(
 
         let daysChanged = 0;
         const bulkOps: any[] = [];
-        const listingBasePrice = toNum(listing.price);
+        const listingFallbackPrice = toNum(listing.price);
+        const calendarPriceByDate = buildCalendarPriceMap(
+            existingInventory,
+            listingFallbackPrice
+        );
         const floor = config.absoluteMinPrice;
         const ceiling = config.absoluteMaxPrice;
 
@@ -153,7 +175,7 @@ export async function runPipeline(
         // and precompute the per-month source-market demand modifier. When the
         // ELASTICITY_PRICING flag is off (default) the optimized price is only
         // RECORDED as a shadow value; the rulebook price still drives proposals.
-        const elasticityParams = await buildElasticityParams(lid, today, listingBasePrice);
+        const elasticityParams = await buildElasticityParams(lid, today, listingFallbackPrice);
         const elasticityEnabled = isElasticityPricingEnabled();
         const marketTemplate = (listing.city || "").toLowerCase();
         const demandByMonth = new Map<number, number>();
@@ -185,7 +207,16 @@ export async function runPipeline(
             };
 
             const signal = marketSignals.get(ds);
-            const result = computeDay(currentDate, today, config, allRules, bookingCtx, signal);
+            const dayCalendarPrice = resolveDayCalendarPrice(
+                ds,
+                calendarPriceByDate,
+                listingFallbackPrice
+            );
+            const dayConfig: ListingConfig = {
+                ...config,
+                basePrice: dayCalendarPrice > 0 ? dayCalendarPrice : config.basePrice,
+            };
+            const result = computeDay(currentDate, today, dayConfig, allRules, bookingCtx, signal);
 
             // ── Revenue optimization ──────────────────────────────────────────
             // Only optimize bookable (available) days; booked/blocked days keep
@@ -209,9 +240,9 @@ export async function runPipeline(
                 if (elasticityEnabled) optimizedPrice = opt.finalPrice;
             }
 
-            // Compute change % vs listing base price (proposed - base) / base
-            const changePct = listingBasePrice > 0
-                ? Math.round(((optimizedPrice - listingBasePrice) / listingBasePrice) * 1000) / 10
+            // Compute change % vs this day's Hostaway calendar rate.
+            const changePct = dayCalendarPrice > 0
+                ? Math.round(((optimizedPrice - dayCalendarPrice) / dayCalendarPrice) * 1000) / 10
                 : 0;
 
             bulkOps.push({
@@ -223,8 +254,8 @@ export async function runPipeline(
                             listingId: lid,
                             date: ds,
                             status: bookingCtx.isBooked ? "booked" : "available",
-                            currentPrice: listingBasePrice,
-                            basePrice: listingBasePrice,
+                            currentPrice: dayCalendarPrice,
+                            basePrice: dayCalendarPrice,
                             proposedPrice: optimizedPrice,
                             elasticityPrice,
                             elasticityWeight,
