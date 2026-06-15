@@ -570,8 +570,8 @@ function SeasonsTab({
       <div className="flex items-start gap-2 text-xs bg-amber/5 border border-amber/20 rounded-lg p-3">
         <Info className="h-3.5 w-3.5 mt-0.5 text-amber shrink-0" />
         <span className="text-text-secondary">
-          Seasons follow the <span className="font-semibold text-foreground">PriceLabs seasonal calendar</span>:
-          each date range maps to a pricing profile (High / Low / Shoulder) and minstay profile.
+          Seasons use your portfolio <span className="font-semibold text-foreground">seasonal calendar</span>:
+          each date range maps to a pricing profile (High / Low / Shoulder) and a minimum-stay profile.
           One-off events belong in <span className="font-semibold text-foreground">Date Overrides</span>.
         </span>
       </div>
@@ -1632,7 +1632,7 @@ function OccupancyTab({
                     Active portfolio matrix (read-only)
                   </h3>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    PriceLabs-style occupancy × lead-time grid from your seasonal calendar.
+                    Occupancy × lead-time matrix from your active seasonal calendar.
                   </p>
                 </div>
                 <Select value={previewProfileId ?? previewProfile.id} onValueChange={setPreviewProfileId}>
@@ -1845,12 +1845,12 @@ function MinStayTab({
 
 const STUDIO_TABS = [
   { value: "guardrails", label: "Guardrails", icon: Shield, tooltip: "Global floor/ceiling prices and stay limits. These always win last." },
-  { value: "seasons", label: "Seasons", icon: Sun, tooltip: "PriceLabs seasonal calendar — maps date ranges to pricing & minstay profiles." },
+  { value: "seasons", label: "Seasons", icon: Sun, tooltip: "Seasonal calendar — maps date ranges to pricing & minimum-stay profiles." },
   { value: "leadtime", label: "Lead Time", icon: Clock, tooltip: "Last-minute discounts, far-out premiums, and day-of-week logic." },
   { value: "gap", label: "Gap Logic", icon: Layers, tooltip: "Inventory rules for orphan nights and short gaps between bookings." },
   { value: "los", label: "LOS Discounts", icon: TrendingDown, tooltip: "Length of Stay discounts (e.g. 7+ nights, 30+ nights)." },
   { value: "overrides", label: "Date Overrides", icon: AlignLeft, tooltip: "High-priority overrides for specific events or manual blocks." },
-  { value: "occupancy", label: "Occupancy", icon: Activity, tooltip: "Occupancy × lead-time matrix (PriceLabs-style)." },
+  { value: "occupancy", label: "Occupancy", icon: Activity, tooltip: "Occupancy × lead-time matrix tied to your portfolio calendar." },
   { value: "minstay", label: "Minstay", icon: CalendarRange, tooltip: "Minimum stay profile — inherit portfolio or override per unit." },
 ];
 
@@ -1925,7 +1925,7 @@ export function PricingRulesStudio({ listings }: Props) {
           <h2 className="text-sm font-semibold text-foreground">Pricing Rules Studio</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             {isPortfolioScope
-              ? "Portfolio defaults (PriceLabs-style profiles & seasonal calendar) — inherited by all properties unless overridden."
+              ? "Portfolio defaults (profiles & seasonal calendar) — inherited by all properties unless overridden."
               : "Property-level overrides on top of portfolio defaults. Guardrails always win last."}
           </p>
         </div>

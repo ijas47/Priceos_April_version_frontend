@@ -148,7 +148,7 @@ export function PricingProfilesPanel({ embedded = false }: { embedded?: boolean 
           </h2>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
             {embedded
-              ? "High / Low / Shoulder pricing profiles, seasonal calendar, and MLOS packs — same structure as PriceLabs account settings."
+              ? "High / Low / Shoulder pricing profiles, seasonal calendar, and minimum-stay packs for your portfolio."
               : "Edit pricing and min-stay profiles at portfolio level. Groups and units override these."}
           </p>
           <div className="flex gap-2 mt-2">
