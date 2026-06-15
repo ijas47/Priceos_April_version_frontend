@@ -219,8 +219,8 @@ export function MarketIntelligenceClient({
           <div>
             <p className="font-semibold">
               {dtcmEligibility.enabled
-                ? "DTCM / Dubai Calendar active"
-                : "DTCM / Dubai Calendar inactive"}
+                ? "Dubai Gov events active (DTCM + DCUL)"
+                : "Dubai Gov events inactive"}
             </p>
             <p className="text-xs mt-0.5 opacity-90">{dtcmEligibility.reason}</p>
           </div>

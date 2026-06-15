@@ -7,6 +7,7 @@ export type MarketEventSource =
   | "ticketmaster"
   | "eventbrite"
   | "dtcm"
+  | "dcul"
   | "serpapi"
   | "newsapi"
   | "manual"
@@ -20,6 +21,7 @@ export const SOURCE_TRUST_TIER: Record<string, number> = {
   ticketmaster: 3,
   eventbrite: 3,
   dtcm: 3,
+  dcul: 3,
   serpapi: 2,
   newsapi: 2,
   manual: 2,
@@ -39,6 +41,7 @@ const SOURCE_LABELS: Record<string, string> = {
   ticketmaster: "Ticketmaster",
   eventbrite: "Eventbrite",
   dtcm: "DTCM / Dubai Calendar",
+  dcul: "Dubai Culture (DCUL)",
   serpapi: "Google Events",
   newsapi: "NewsAPI",
   manual: "Public Holiday",

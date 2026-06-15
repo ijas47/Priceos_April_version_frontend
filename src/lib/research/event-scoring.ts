@@ -17,7 +17,7 @@ const IMPACT_WEIGHT: Record<EventImpact, number> = {
 export function confidenceFromSource(source?: string | null): number {
   const key = normalizeEventSource(source);
   const tier = getEventTrust(source).tier;
-  if (key === "dtcm") return 92;
+  if (key === "dtcm" || key === "dcul") return 92;
   if (tier >= 3) return 90;
   if (tier === 2) {
     const key = normalizeEventSource(source);
@@ -58,7 +58,7 @@ function impactOf(e: ScorableEvent): EventImpact {
 
 function categoryFromSource(source?: string | null): EventSignalScore["category"] {
   const key = normalizeEventSource(source);
-  if (key === "ticketmaster" || key === "eventbrite" || key === "dtcm") return "ticketed";
+  if (key === "ticketmaster" || key === "eventbrite" || key === "dtcm" || key === "dcul") return "ticketed";
   if (key === "serpapi") return "indexed";
   if (key === "newsapi") return "news";
   if (key === "market_template") return "ticketed";

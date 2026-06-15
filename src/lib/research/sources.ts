@@ -10,7 +10,7 @@
  *   SERP_API_KEY          serpapi.com
  *   TICKETMASTER_API_KEY  developer.ticketmaster.com (Discovery v2)
  *   EVENTBRITE_API_KEY    eventbrite.com (private token)
- *   DTCM_API_KEY          Dubai Gov / DET Dubai Calendar API
+ *   DUBAI_GOV_API_KEY     Dubai Gov portal (DTCM + DCUL events) — alias: DTCM_API_KEY
  *   NEWS_API_KEY          newsapi.org
  */
 
@@ -21,7 +21,7 @@ export interface SourceEvent {
     venue?: string;
     city?: string;
     url?: string;
-    source: "serpapi_google_events" | "ticketmaster" | "eventbrite" | "dtcm";
+    source: "serpapi_google_events" | "ticketmaster" | "eventbrite" | "dtcm" | "dcul";
     raw?: unknown;
 }
 

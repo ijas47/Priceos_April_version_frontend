@@ -15,6 +15,7 @@ export const VERIFIED_EVENT_SOURCES = [
     "ticketmaster",
     "eventbrite",
     "dtcm",
+    "dcul",
     "serpapi",
     "newsapi",
 ] as const;
@@ -25,10 +26,11 @@ const DEFAULT_MAX_AGE_DAYS = 7;
 
 export function sourceTagFromFinding(
     s: string
-): "ticketmaster" | "eventbrite" | "dtcm" | "serpapi" | "newsapi" | "manual" | "market_template" | "ai_detected" {
+): "ticketmaster" | "eventbrite" | "dtcm" | "dcul" | "serpapi" | "newsapi" | "manual" | "market_template" | "ai_detected" {
     if (s === "ticketmaster") return "ticketmaster";
     if (s === "eventbrite") return "eventbrite";
     if (s === "dtcm") return "dtcm";
+    if (s === "dcul") return "dcul";
     if (s === "market_template") return "market_template";
     if (s.startsWith("serpapi")) return "serpapi";
     if (s === "newsapi") return "newsapi";

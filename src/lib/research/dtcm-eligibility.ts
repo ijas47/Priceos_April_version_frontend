@@ -98,7 +98,9 @@ export async function resolveDtcmEligibility(
     isDubaiOrganization(org) || dubaiListings.length > 0 || listings.every(isDubaiListing);
   const pmsConnected = isPmsConnected(org, listings);
   const hasApiKey = Boolean(
-    process.env.DTCM_API_KEY?.trim() || process.env.DTCM_SUBSCRIPTION_KEY?.trim()
+    process.env.DUBAI_GOV_API_KEY?.trim() ||
+    process.env.DTCM_API_KEY?.trim() ||
+    process.env.DTCM_SUBSCRIPTION_KEY?.trim()
   );
 
   let enabled = isDubaiMarket && pmsConnected;
@@ -111,9 +113,9 @@ export async function resolveDtcmEligibility(
     reason = "PMS not connected — connect Hostaway to enable DTCM calendar";
     enabled = false;
   } else if (hasApiKey) {
-    reason = "Dubai + PMS connected — live DTCM API enabled";
+    reason = "Dubai + PMS connected — live DTCM + DCUL feeds enabled";
   } else {
-    reason = "Dubai + PMS connected — curated DTCM calendar (set DTCM_API_KEY for live API)";
+    reason = "Dubai + PMS connected — curated DTCM calendar (set DUBAI_GOV_API_KEY for live API)";
   }
 
   return {
