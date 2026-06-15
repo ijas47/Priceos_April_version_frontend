@@ -132,6 +132,19 @@ export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
     maxTokens: 2000,
     rationale: "Legacy agent — holidays now from static calendar; kept for Studio parity",
   },
+  ...(process.env.LYZR_LISTING_OPTIMIZER_AGENT_ID
+    ? [
+        {
+          lyzrAgentId: process.env.LYZR_LISTING_OPTIMIZER_AGENT_ID,
+          name: "Listing Optimizer",
+          tier: "analyst" as const,
+          model: GEMINI_FLASH_LITE,
+          temperature: 0.2,
+          maxTokens: 3000,
+          rationale: "OTA listing copy SEO — Airbnb/Booking/VRBO titles and descriptions",
+        },
+      ]
+    : []),
   {
     lyzrAgentId: process.env.LYZR_Competitor_Benchmark_Agent_ID || "699e7b559ff614f6db8964cf",
     name: "Competitor Benchmark",
