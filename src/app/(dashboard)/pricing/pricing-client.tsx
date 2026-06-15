@@ -40,9 +40,15 @@ import {
   Zap,
   Maximize2,
   Activity,
-  Sparkles,
+  Info,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { backendFetch } from "@/lib/api/backend-client";
 // import { LiveInferenceFlowGraph, FlowStage } from "@/components/chat/live-inference-flow-graph";
@@ -152,42 +158,36 @@ function DeltaBadge({ pct }: { pct: number | null }) {
   );
 }
 
-/**
- * Shows the revenue-optimized (elasticity + demand) "shadow" price alongside
- * the rulebook proposal, so the operator can compare before enabling
- * ELASTICITY_PRICING. Renders nothing until the engine has recorded one.
- */
-function OptimizedPriceHint({ row }: { row: ProposalData }) {
+function OptimizedPriceInfo({ row }: { row: ProposalData }) {
   if (row.elasticityPrice == null) return null;
   const optimal = Number(row.elasticityPrice);
-  const proposed = Number(row.proposedPrice ?? row.currentPrice);
   if (!Number.isFinite(optimal) || optimal <= 0) return null;
 
   const conf = Math.round((row.elasticityWeight ?? 0) * 100);
-  const diff = proposed > 0 ? Math.round(((optimal - proposed) / proposed) * 1000) / 10 : 0;
-  const same = Math.abs(optimal - proposed) < 0.5;
+  const currency = row.currencyCode || "AED";
 
   return (
-    <div
-      className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-violet-400/90"
-      title={
-        `Aria revenue-optimized price (shadow). Model confidence ${conf}% — grows with booking history. ` +
-        (same
-          ? "Currently matches the proposal."
-          : "Not applied yet — set ELASTICITY_PRICING=on to let it drive proposals.")
-      }
-    >
-      <Sparkles className="h-2.5 w-2.5 shrink-0" />
-      <span className="font-semibold tabular-nums">
-        {row.currencyCode || "AED"} {optimal.toLocaleString("en-US")}
-      </span>
-      {!same && (
-        <span className={cn("tabular-nums", diff > 0 ? "text-green-400/80" : "text-red-400/80")}>
-          ({diff > 0 ? "+" : ""}{diff}%)
-        </span>
-      )}
-      <span className="text-muted-foreground/60">· conf {conf}%</span>
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-violet-400/90 hover:text-violet-300"
+          aria-label="Aria revenue-optimized price details"
+        >
+          <Info className="h-3.5 w-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+        <p className="font-medium text-violet-300">Aria revenue-optimized price</p>
+        <p className="mt-1 text-muted-foreground">
+          {currency} {optimal.toLocaleString("en-US")} · elasticity + demand · {conf}% confidence
+        </p>
+        <p className="mt-1 text-muted-foreground/80">
+          Confidence rises as booking history grows.
+        </p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -652,6 +652,7 @@ export function PricingClient({
   ];
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="space-y-5">
       {/* KPI Strip — pending only */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -858,14 +859,6 @@ export function PricingClient({
         </div>
       ) : (
         <div className="rounded-2xl border border-border/70 overflow-hidden bg-card shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
-          {activeTab === "pending" && (
-            <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border/60 bg-muted/30 dark:bg-white/[0.02] text-[11px] text-muted-foreground">
-              <Sparkles className="h-3 w-3 shrink-0 text-violet-400/90" />
-              <span>
-                The <span className="font-medium text-violet-400/90">violet price</span> is Aria&apos;s revenue-optimized rate (elasticity + demand), now driving proposals — confidence rises as booking history grows.
-              </span>
-            </div>
-          )}
           <div className="overflow-x-auto overflow-y-auto max-h-[70vh] scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
           <Table>
             <TableHeader className="bg-muted/50 dark:bg-white/[0.04] sticky top-0 z-10">
@@ -943,11 +936,13 @@ export function PricingClient({
                         <div className="text-xs text-muted-foreground line-through">
                           {row.currencyCode || "AED"} {Number(row.currentPrice).toLocaleString("en-US")}
                         </div>
-                        <div className="text-sm font-bold text-foreground">
-                          {row.currencyCode || "AED"} {Number(row.proposedPrice).toLocaleString("en-US")}
+                        <div className="flex items-center gap-1.5">
+                          <div className="text-sm font-bold text-foreground">
+                            {row.currencyCode || "AED"} {Number(row.proposedPrice).toLocaleString("en-US")}
+                          </div>
+                          <OptimizedPriceInfo row={row} />
                         </div>
                         <DeltaBadge pct={row.changePct} />
-                        <OptimizedPriceHint row={row} />
                       </div>
                     ) : (
                       <div className="space-y-0.5">
@@ -1144,5 +1139,6 @@ export function PricingClient({
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 }
