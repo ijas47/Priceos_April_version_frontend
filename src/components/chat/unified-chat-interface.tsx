@@ -77,7 +77,7 @@ import { addDays, differenceInCalendarDays, format, startOfDay } from "date-fns"
 import { Tooltip, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { toast } from "sonner";
-import { pollJob } from "@/lib/api/poll-job";
+import { resolveChatResponse } from "@/lib/api/poll-job";
 import { normalizeChatAgentOutput, hydrateAssistantMessage } from "@/lib/chat/normalize-agent-response";
 import { buildBaseScopeId, generateThreadSessionId } from "@/lib/chat/agent-session-id";
 import {
@@ -602,12 +602,6 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
-      }
-
-      const { jobId } = await response.json();
-
       const stepAgentMap: Record<string, { tool: string; agent: string }> = {
         routing:    { tool: "CRO Router",         agent: "CRO Router" },
         analyzing:  { tool: "Property Analyst",   agent: "Property Analyst" },
@@ -616,7 +610,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
       };
       const stepKeys = Object.keys(stepAgentMap);
 
-      const data = await pollJob<{ message: string; metadata?: unknown; proposals?: unknown[] }>(jobId, {
+      const data = await resolveChatResponse<{ message: string; metadata?: unknown; proposals?: unknown[] }>(response, {
         onPoll: (elapsed) => {
           const idx = Math.min(Math.floor(elapsed / 8000), stepKeys.length - 1);
           const step = stepKeys[idx];
@@ -657,10 +651,13 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
       }
     } catch (error) {
       console.error(`Chat Error:`, error);
+      const detail = error instanceof Error ? error.message : "Unknown error";
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "Sorry, I encountered an error connecting to the agent. Please try again.",
+        content: detail.includes("temporarily unavailable") || detail.includes("timed out")
+          ? `${detail} Please try again.`
+          : `Sorry, I encountered an error: ${detail}`,
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {

@@ -8,7 +8,7 @@ import { Bot, Send, Loader2, RefreshCw, X, Activity } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
-import { pollJob } from "@/lib/api/poll-job";
+import { resolveChatResponse } from "@/lib/api/poll-job";
 import { cn } from "@/lib/utils";
 import { useLyzrAgentEvents } from "@/hooks/use-lyzr-agent-events";
 // import { LiveInferenceFlowGraph, type FlowStage } from "./live-inference-flow-graph";
@@ -131,11 +131,7 @@ export function DashboardChatPopup({ isOpen, onOpenChange }: DashboardChatPopupP
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to get response");
-
-      const { jobId } = await response.json();
-
-      // Animate graph stages while polling
+      // Animate graph stages while waiting for response
       setTimeout(() => {
         emitGraphEvent({ timestamp: new Date().toISOString(), event_type: "tool_response", tool_name: "Portfolio Router", agent_name: "Portfolio Router", iteration: 1, status: "done" });
         emitGraphEvent({ timestamp: new Date().toISOString(), event_type: "tool_called", tool_name: "Data Analyst", agent_name: "Data Analyst", iteration: 1, status: "active" });
@@ -143,7 +139,7 @@ export function DashboardChatPopup({ isOpen, onOpenChange }: DashboardChatPopupP
         setStatusText("Data Analyst is working…");
       }, 3000);
 
-      const data = await pollJob<{ message: string }>(jobId);
+      const data = await resolveChatResponse<{ message: string }>(response);
 
       emitGraphEvent({ timestamp: new Date().toISOString(), event_type: "tool_response", tool_name: "Data Analyst", agent_name: "Data Analyst", iteration: 1, status: "done" });
       emitGraphEvent({ timestamp: new Date().toISOString(), event_type: "tool_called", tool_name: "Response", agent_name: "Portfolio Router", iteration: 1, status: "active" });

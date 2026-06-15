@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { after } from "next/server";
 import { MANAGER_AGENT_ID } from "@/lib/agents/constants";
-import { createJob, getJob, completeJob, failJob } from "@/lib/jobs/store";
+import { getJob } from "@/lib/jobs/store";
 import {
     connectDB,
     ChatMessage,
@@ -51,6 +50,12 @@ interface ChatRequest {
     isChatActive?: boolean;
 }
 
+export interface ChatResponsePayload {
+    message: string;
+    proposals?: unknown[];
+    metadata?: unknown;
+}
+
 export const maxDuration = 300;
 
 /** Poll async agent job status — GET /api/chat?jobId=... */
@@ -81,6 +86,9 @@ export async function POST(req: NextRequest) {
         if (!LYZR_API_KEY) {
             return NextResponse.json({ error: "LYZR_API_KEY not configured" }, { status: 500 });
         }
+        if (!LYZR_API_URL) {
+            return NextResponse.json({ error: "LYZR_API_URL not configured" }, { status: 500 });
+        }
         if (!AGENT_ID) {
             return NextResponse.json({ error: "AGENT_ID not configured" }, { status: 500 });
         }
@@ -90,20 +98,19 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const jobId = await createJob();
-
-        after(async () => {
-            await executeChatJob(jobId, body, session.orgId);
-        });
-
-        return NextResponse.json({ jobId });
+        // Run synchronously — Vercel serverless does not reliably finish
+        // background work scheduled via after(), which left jobs stuck "running".
+        const result = await runChat(body, session.orgId);
+        return NextResponse.json(result);
     } catch (error) {
         console.error("[chat POST]", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        const message =
+            error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
-async function executeChatJob(jobId: string, body: ChatRequest, orgIdStr: string) {
+async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatResponsePayload> {
     const requestTimestamp = new Date().toISOString();
     const startTime = performance.now();
 
@@ -150,8 +157,7 @@ async function executeChatJob(jobId: string, body: ChatRequest, orgIdStr: string
             try {
                 pidObjectId = new mongoose.Types.ObjectId(pid);
             } catch {
-                await failJob(jobId, "Invalid propertyId");
-                return;
+                throw new Error("Invalid propertyId");
             }
 
             console.log(`\n🔄 [Context Sync] Fetching fresh data for listing ${pid}...`);
@@ -399,8 +405,7 @@ async function executeChatJob(jobId: string, body: ChatRequest, orgIdStr: string
         if (!response.ok) {
             const rawText = await response.text();
             console.error(`\n❌ LYZR API ERROR — ${response.status}: ${rawText.substring(0, 300)}`);
-            await failJob(jobId, "AI agent is temporarily unavailable. Please try again.");
-            return;
+            throw new Error("AI agent is temporarily unavailable. Please try again.");
         }
 
         const data = await response.json();
@@ -446,17 +451,18 @@ async function executeChatJob(jobId: string, body: ChatRequest, orgIdStr: string
             console.error("Failed to save assistant reply to DB:", err);
         }
 
-        await completeJob(jobId, {
+        return {
             message: agentReply || "No message received from agent",
             proposals: enforcedProposals ?? undefined,
-        });
+        };
     } catch (error) {
         const duration = Math.round(performance.now() - startTime);
         console.error(
             `\n💥 UNHANDLED ERROR — ${duration}ms:`,
             error instanceof Error ? error.message : error
         );
-        await failJob(jobId, "Sorry, something went wrong. Please try again.");
+        if (error instanceof Error) throw error;
+        throw new Error("Sorry, something went wrong. Please try again.");
     }
 }
 

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
-const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+// Default to self-hosted Next.js API routes — never proxy to localhost in production.
+const backendUrl = process.env.NEXT_PUBLIC_API_URL || "/api";
 const backendOrigin = backendUrl.replace(/\/api\/?$/, "") || backendUrl;
 
 const securityHeaders = [

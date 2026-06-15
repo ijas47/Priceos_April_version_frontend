@@ -48,3 +48,33 @@ export async function pollJob<T = Record<string, unknown>>(
 
   throw new Error("Agent timed out — please try again");
 }
+
+/** Handles sync `{ message }` or legacy async `{ jobId }` chat API responses. */
+export async function resolveChatResponse<T extends { message: string }>(
+  response: Response,
+  options: {
+    intervalMs?: number;
+    timeoutMs?: number;
+    onPoll?: (elapsedMs: number) => void;
+  } = {}
+): Promise<T> {
+  const body = await response.json().catch(() => ({} as Record<string, unknown>));
+
+  if (!response.ok) {
+    const err =
+      typeof body.error === "string"
+        ? body.error
+        : `API Error: ${response.status}`;
+    throw new Error(err);
+  }
+
+  if (typeof body.jobId === "string" && body.jobId.length > 0) {
+    return pollJob<T>(body.jobId, options);
+  }
+
+  if (typeof body.message === "string") {
+    return body as T;
+  }
+
+  throw new Error("Invalid chat API response");
+}
