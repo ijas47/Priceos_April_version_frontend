@@ -42,6 +42,7 @@ import {
 import { OccupancyMatrixEditor } from "./occupancy-matrix-editor";
 import { MinStayProfileEditor } from "./minstay-profile-editor";
 import { PricingProfilesPanel } from "./pricing-profiles-panel";
+import { SeasonalCalendarView } from "./seasonal-calendar-view";
 import type {
   OccupancyMatrix,
   MinStayProfile,
@@ -480,59 +481,60 @@ function GuardrailsTab({
   );
 }
 
-// ── Seasons Tab ───────────────────────────────────────────────────────────────
+// ── Seasons Tab (portfolio seasonal calendar) ─────────────────────────────────
 
 function SeasonsTab({
   listingId,
+  config,
+  onConfigChange,
   rules,
   onRulesChange,
 }: {
   listingId: string;
+  config: EngineConfig;
+  onConfigChange: (patch: Partial<EngineConfig>) => void;
   rules: PricingRule[];
   onRulesChange: () => void;
 }) {
-  const seasonRules = rules.filter((r) => r.ruleType === "SEASON");
-  const [newName, setNewName] = useState("");
-  const [newFrom, setNewFrom] = useState("");
-  const [newTo, setNewTo] = useState("");
-  const [newAdj, setNewAdj] = useState(0);
-  const [newMinStay, setNewMinStay] = useState("");
+  const [pack, setPack] = useState<MarketPricingPack | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showLegacy, setShowLegacy] = useState(false);
 
-  const handleAdd = async () => {
-    if (!newName || !newFrom || !newTo) {
-      toast.error("Name, start and end dates are required.");
-      return;
-    }
+  const inheritPortfolio = !config.seasonalCalendarOverrideId;
+  const legacySeasonRules = rules.filter(
+    (r) => r.ruleType === "SEASON" && !r.name.startsWith("[UAE]")
+  );
+
+  useEffect(() => {
+    fetch("/api/pricing/profiles")
+      .then((r) => r.json())
+      .then((d) => setPack(d.pack ?? null))
+      .catch(() => {});
+  }, []);
+
+  const activeCalendarId =
+    config.seasonalCalendarOverrideId ??
+    pack?.portfolioDefaults.defaultSeasonalCalendarId ??
+    "";
+  const activeCalendar = pack?.seasonalCalendars.find((c) => c.id === activeCalendarId);
+
+  const handleSave = async () => {
     setSaving(true);
     try {
-      await createRule(listingId, {
-        ruleType: "SEASON",
-        name: newName,
-        enabled: true,
-        priority: 10,
-        startDate: newFrom,
-        endDate: newTo,
-        priceAdjPct: newAdj,
-        minStayOverride: newMinStay ? Number(newMinStay) : undefined,
-        isBlocked: false,
-        closedToArrival: false,
-        closedToDeparture: false,
-        suspendLastMinute: false,
-        suspendGapFill: false,
+      await patchConfig(listingId, {
+        seasonalCalendarOverrideId: inheritPortfolio ? null : config.seasonalCalendarOverrideId,
+        usePortfolioPricingDefaults: config.usePortfolioPricingDefaults,
       });
-      toast.success(`Season "${newName}" saved to database.`);
-      setNewName(""); setNewFrom(""); setNewTo(""); setNewAdj(0); setNewMinStay("");
-      onRulesChange();
+      toast.success("Seasonal calendar settings saved.");
     } catch {
-      toast.error("Failed to create season rule.");
+      toast.error("Failed to save seasonal calendar settings.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleToggle = async (rule: PricingRule) => {
+  const handleToggleLegacy = async (rule: PricingRule) => {
     try {
       await toggleRule(listingId, rule._id, !rule.enabled);
       toast.success(`"${rule.name}" ${!rule.enabled ? "enabled" : "disabled"}.`);
@@ -542,11 +544,11 @@ function SeasonsTab({
     }
   };
 
-  const handleDelete = async (rule: PricingRule) => {
+  const handleDeleteLegacy = async (rule: PricingRule) => {
     setDeletingId(rule._id);
     try {
       await deleteRule(listingId, rule._id);
-      toast.success(`Season "${rule.name}" deleted.`);
+      toast.success(`Season rule "${rule.name}" deleted.`);
       onRulesChange();
     } catch {
       toast.error("Failed to delete rule.");
@@ -555,141 +557,153 @@ function SeasonsTab({
     }
   };
 
+  if (!pack) {
+    return (
+      <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground text-sm">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading seasonal calendar…
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-text-tertiary">
-        Seasonal rules apply a price adjustment across a date range. Stored in MongoDB as SEASON rules.
+    <div className="space-y-5">
+      <div className="flex items-start gap-2 text-xs bg-amber/5 border border-amber/20 rounded-lg p-3">
+        <Info className="h-3.5 w-3.5 mt-0.5 text-amber shrink-0" />
+        <span className="text-text-secondary">
+          Seasons follow the <span className="font-semibold text-foreground">PriceLabs seasonal calendar</span>:
+          each date range maps to a pricing profile (High / Low / Shoulder) and minstay profile.
+          One-off events belong in <span className="font-semibold text-foreground">Date Overrides</span>.
+        </span>
+      </div>
+
+      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Scope</h3>
+            <p className="text-[11px] text-text-tertiary mt-0.5">
+              {inheritPortfolio
+                ? "Using portfolio seasonal calendar (group overrides still apply in the engine)."
+                : "This unit uses a different seasonal calendar from the portfolio pack."}
+            </p>
+          </div>
+          <Switch
+            checked={inheritPortfolio}
+            onCheckedChange={(v) => {
+              if (v) {
+                onConfigChange({ seasonalCalendarOverrideId: null });
+              } else {
+                onConfigChange({
+                  seasonalCalendarOverrideId:
+                    config.seasonalCalendarOverrideId ??
+                    pack.portfolioDefaults.defaultSeasonalCalendarId,
+                });
+              }
+            }}
+          />
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-2">
+          {inheritPortfolio ? "Inheriting portfolio defaults" : "Unit calendar override active"}
+        </p>
+      </div>
+
+      {!inheritPortfolio && pack.seasonalCalendars.length > 1 && (
+        <div className="space-y-2">
+          <Label className="text-xs">Unit seasonal calendar</Label>
+          <Select
+            value={config.seasonalCalendarOverrideId ?? undefined}
+            onValueChange={(id) => onConfigChange({ seasonalCalendarOverrideId: id })}
+          >
+            <SelectTrigger className="h-8 text-xs max-w-sm">
+              <SelectValue placeholder="Select calendar" />
+            </SelectTrigger>
+            <SelectContent>
+              {pack.seasonalCalendars.map((c) => (
+                <SelectItem key={c.id} value={c.id} className="text-xs">
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {activeCalendar && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="text-[10px]">{activeCalendar.name}</Badge>
+            {inheritPortfolio && (
+              <Badge variant="outline" className="text-[10px]">Inherited</Badge>
+            )}
+          </div>
+          <SeasonalCalendarView pack={pack} calendarId={activeCalendarId} />
+        </div>
+      )}
+
+      <p className="text-[10px] text-muted-foreground">
+        To edit segment dates, pricing profile mapping, or base adjustments, choose{" "}
+        <span className="font-medium text-foreground">Portfolio defaults</span> in the header dropdown.
       </p>
 
-      {/* Existing rules */}
-      {seasonRules.length > 0 && (
-        <div className="space-y-2">
-          {seasonRules.map((rule) => (
-            <div
-              key={rule._id}
-              className="rounded-lg border border-white/5 bg-white/[0.02] p-4 flex items-center gap-4 flex-wrap"
-            >
-              <Switch
-                checked={rule.enabled}
-                onCheckedChange={() => handleToggle(rule)}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-text-primary">{rule.name}</p>
-                <p className="text-[11px] text-text-tertiary">
-                  {rule.startDate} → {rule.endDate}
-                  {rule.minStayOverride ? ` · ${rule.minStayOverride}N min` : ""}
-                </p>
-              </div>
-              <Badge
-                className={cn(
-                  "text-[10px] border",
-                  (rule.priceAdjPct ?? 0) > 0
-                    ? "bg-green-500/10 text-green-400 border-green-500/20"
-                    : (rule.priceAdjPct ?? 0) < 0
-                    ? "bg-red-500/10 text-red-400 border-red-500/20"
-                    : "bg-white/5 text-text-tertiary border-white/10"
-                )}
-              >
-                {(rule.priceAdjPct ?? 0) > 0 ? "+" : ""}{rule.priceAdjPct ?? 0}%
-              </Badge>
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={deletingId === rule._id}
-                onClick={() => handleDelete(rule)}
-                className="h-7 w-7 text-muted-foreground hover:text-red-400 shrink-0"
-              >
-                {deletingId === rule._id
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <Trash2 className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
+      <Button
+        size="sm"
+        onClick={handleSave}
+        disabled={saving}
+        className="bg-amber text-black hover:bg-amber/90 h-9 text-xs gap-2"
+      >
+        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+        Save Seasonal Calendar
+      </Button>
 
-      {seasonRules.length === 0 && (
-        <p className="text-xs text-muted-foreground py-2">No season rules yet. Add one below.</p>
-      )}
-
-      {/* Add new */}
-      <div className="rounded-lg border border-dashed border-white/10 p-4 space-y-4">
-        <p className="text-xs font-medium text-text-secondary">Add Season Rule</p>
-        <div className="space-y-4">
-          <div className="w-full min-w-0">
-            <Label className="text-xs text-text-tertiary mb-1 block">Season Name</Label>
-            <Input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="e.g. Peak Winter"
-              className="h-8 text-sm bg-white/5 border-white/10 w-full"
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="min-w-0">
-              <Label className="text-xs text-text-tertiary mb-1 block">Start Date</Label>
-              <Input
-                type="date"
-                value={newFrom}
-                onChange={(e) => setNewFrom(e.target.value)}
-                className="h-8 text-sm bg-white/5 border-white/10 w-full"
-              />
-            </div>
-            <div className="min-w-0">
-              <Label className="text-xs text-text-tertiary mb-1 block">End Date</Label>
-              <Input
-                type="date"
-                value={newTo}
-                onChange={(e) => setNewTo(e.target.value)}
-                className="h-8 text-sm bg-white/5 border-white/10 w-full"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-            <div className="min-w-0 space-y-2">
-              <Label className="text-xs text-text-tertiary block">
-                Price Adjustment:{" "}
-                <span
-                  className={cn(
-                    "font-bold",
-                    newAdj > 0 ? "text-green-400" : newAdj < 0 ? "text-red-400" : "text-muted-foreground"
-                  )}
+      {legacySeasonRules.length > 0 && (
+        <div className="rounded-lg border border-dashed border-white/10">
+          <button
+            type="button"
+            onClick={() => setShowLegacy((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-left text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            Legacy custom season rules ({legacySeasonRules.length})
+            <span className="text-[10px]">{showLegacy ? "Hide" : "Show"}</span>
+          </button>
+          {showLegacy && (
+            <div className="px-4 pb-4 space-y-2 border-t border-white/5">
+              <p className="text-[10px] text-muted-foreground pt-3">
+                Older per-date SEASON rules. Prefer the seasonal calendar above; use Date Overrides for events.
+              </p>
+              {legacySeasonRules.map((rule) => (
+                <div
+                  key={rule._id}
+                  className="rounded-lg border border-white/5 bg-white/[0.02] p-3 flex items-center gap-3 flex-wrap"
                 >
-                  {newAdj > 0 ? "+" : ""}
-                  {newAdj}%
-                </span>
-              </Label>
-              <Slider
-                min={-60}
-                max={100}
-                step={5}
-                value={[newAdj]}
-                onValueChange={([v]) => setNewAdj(v)}
-                className="w-full"
-              />
+                  <Switch checked={rule.enabled} onCheckedChange={() => handleToggleLegacy(rule)} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{rule.name}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {rule.startDate} → {rule.endDate}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px]">
+                    {(rule.priceAdjPct ?? 0) > 0 ? "+" : ""}
+                    {rule.priceAdjPct ?? 0}%
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={deletingId === rule._id}
+                    onClick={() => handleDeleteLegacy(rule)}
+                    className="h-7 w-7"
+                  >
+                    {deletingId === rule._id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                </div>
+              ))}
             </div>
-            <div className="min-w-0 sm:max-w-xs">
-              <Label className="text-xs text-text-tertiary mb-1 block">Min Stay</Label>
-              <Input
-                type="number"
-                value={newMinStay}
-                onChange={(e) => setNewMinStay(e.target.value)}
-                placeholder="optional"
-                className="h-8 text-sm bg-white/5 border-white/10 w-full"
-              />
-            </div>
-          </div>
+          )}
         </div>
-        <Button
-          size="sm"
-          onClick={handleAdd}
-          disabled={saving}
-          className="bg-amber text-black hover:bg-amber/90 h-8 text-xs gap-1.5"
-        >
-          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-          Add Season
-        </Button>
-      </div>
+      )}
     </div>
   );
 }
@@ -1831,7 +1845,7 @@ function MinStayTab({
 
 const STUDIO_TABS = [
   { value: "guardrails", label: "Guardrails", icon: Shield, tooltip: "Global floor/ceiling prices and stay limits. These always win last." },
-  { value: "seasons", label: "Seasons", icon: Sun, tooltip: "Broad date-range price adjustments (e.g. Summer/Winter)." },
+  { value: "seasons", label: "Seasons", icon: Sun, tooltip: "PriceLabs seasonal calendar — maps date ranges to pricing & minstay profiles." },
   { value: "leadtime", label: "Lead Time", icon: Clock, tooltip: "Last-minute discounts, far-out premiums, and day-of-week logic." },
   { value: "gap", label: "Gap Logic", icon: Layers, tooltip: "Inventory rules for orphan nights and short gaps between bookings." },
   { value: "los", label: "LOS Discounts", icon: TrendingDown, tooltip: "Length of Stay discounts (e.g. 7+ nights, 30+ nights)." },
@@ -1991,6 +2005,8 @@ export function PricingRulesStudio({ listings }: Props) {
           <TabsContent value="seasons">
             <SeasonsTab
               listingId={selectedListingId}
+              config={config}
+              onConfigChange={handleConfigChange}
               rules={rules}
               onRulesChange={handleRulesChange}
             />

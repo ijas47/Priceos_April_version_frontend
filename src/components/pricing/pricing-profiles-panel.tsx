@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import type { MarketPricingPack, PricingProfile, MinStayProfile } from "@/lib/pricing/types";
 import { OccupancyMatrixEditor } from "./occupancy-matrix-editor";
 import { MinStayProfileEditor } from "./minstay-profile-editor";
+import { SeasonalCalendarView } from "./seasonal-calendar-view";
 
 export function PricingProfilesPanel({ embedded = false }: { embedded?: boolean }) {
   const [pack, setPack] = useState<MarketPricingPack | null>(null);
@@ -237,34 +238,10 @@ export function PricingProfilesPanel({ embedded = false }: { embedded?: boolean 
         </TabsContent>
 
         <TabsContent value="calendar">
-          <div className="rounded-xl border border-border/70 bg-card p-4 dark:border-white/10 overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-left text-muted-foreground border-b border-border/50">
-                  <th className="py-2 pr-4">Season</th>
-                  <th className="py-2 pr-4">Dates</th>
-                  <th className="py-2 pr-4">Pricing profile</th>
-                  <th className="py-2 pr-4">Minstay profile</th>
-                  <th className="py-2">Base adj %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {draft.seasonalCalendars[0]?.segments.map((seg) => (
-                  <tr key={seg.id} className="border-b border-border/30">
-                    <td className="py-2 pr-4 font-medium">{seg.name}</td>
-                    <td className="py-2 pr-4 text-muted-foreground">{seg.startMd} → {seg.endMd}</td>
-                    <td className="py-2 pr-4">
-                      {draft.pricingProfiles.find((p) => p.id === seg.pricingProfileId)?.name}
-                    </td>
-                    <td className="py-2 pr-4">
-                      {draft.minStayProfiles.find((p) => p.id === seg.minStayProfileId)?.name}
-                    </td>
-                    <td className="py-2">{seg.baseAdjPct != null ? `${seg.baseAdjPct}%` : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SeasonalCalendarView
+            pack={draft}
+            calendarId={draft.portfolioDefaults.defaultSeasonalCalendarId}
+          />
         </TabsContent>
       </Tabs>
 
