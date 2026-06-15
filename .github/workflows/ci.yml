@@ -39,3 +39,7 @@ jobs:
         run: npm run build
         env:
           HOSTAWAY_MODE: mock
+          MONGODB_URI: mongodb://ci-placeholder/priceos
+          JWT_SECRET: ci_jwt_secret_minimum_32_characters_long
+          LYZR_API_KEY: sk-ci-placeholder
+          LYZR_API_URL: https://agent-prod.studio.lyzr.ai/v3/inference/chat/

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { MANAGER_AGENT_ID } from "@/lib/agents/constants";
+import { createJob, getJob, completeJob, failJob } from "@/lib/jobs/store";
 import {
     connectDB,
     ChatMessage,
@@ -49,12 +51,63 @@ interface ChatRequest {
     isChatActive?: boolean;
 }
 
+export const maxDuration = 300;
+
+/** Poll async agent job status — GET /api/chat?jobId=... */
+export async function GET(req: NextRequest) {
+    try {
+        const jobId = req.nextUrl.searchParams.get("jobId");
+        if (!jobId) {
+            return NextResponse.json({ error: "jobId is required" }, { status: 400 });
+        }
+        const job = await getJob(jobId);
+        if (!job) {
+            return NextResponse.json({ error: "Job not found" }, { status: 404 });
+        }
+        return NextResponse.json(job);
+    } catch (error) {
+        console.error("[chat GET]", error);
+        return NextResponse.json({ error: "Failed to fetch job" }, { status: 500 });
+    }
+}
+
 export async function POST(req: NextRequest) {
+    try {
+        const body: ChatRequest = await req.json();
+
+        if (!body.message?.trim()) {
+            return NextResponse.json({ error: "Message is required" }, { status: 400 });
+        }
+        if (!LYZR_API_KEY) {
+            return NextResponse.json({ error: "LYZR_API_KEY not configured" }, { status: 500 });
+        }
+        if (!AGENT_ID) {
+            return NextResponse.json({ error: "AGENT_ID not configured" }, { status: 500 });
+        }
+
+        const session = await getSession();
+        if (!session?.orgId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const jobId = await createJob();
+
+        after(async () => {
+            await executeChatJob(jobId, body, session.orgId);
+        });
+
+        return NextResponse.json({ jobId });
+    } catch (error) {
+        console.error("[chat POST]", error);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+}
+
+async function executeChatJob(jobId: string, body: ChatRequest, orgIdStr: string) {
     const requestTimestamp = new Date().toISOString();
     const startTime = performance.now();
 
     try {
-        const body: ChatRequest = await req.json();
         const { message, context, sessionId, dateRange } = body;
 
         console.log(`\n${"═".repeat(60)}`);
@@ -65,22 +118,8 @@ export async function POST(req: NextRequest) {
         console.log(`  Message:  "${message}"`);
         console.log(`${"─".repeat(60)}`);
 
-        if (!message?.trim()) {
-            return NextResponse.json({ error: "Message is required" }, { status: 400 });
-        }
-        if (!LYZR_API_KEY) {
-            return NextResponse.json({ error: "LYZR_API_KEY not configured" }, { status: 500 });
-        }
-        if (!AGENT_ID) {
-            return NextResponse.json({ error: "AGENT_ID not configured" }, { status: 500 });
-        }
-
         await connectDB();
-        const session = await getSession();
-        if (!session?.orgId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-        const orgId = new mongoose.Types.ObjectId(session.orgId);
+        const orgId = new mongoose.Types.ObjectId(orgIdStr);
 
         const lyzrSessionId =
             sessionId ||
@@ -111,7 +150,8 @@ export async function POST(req: NextRequest) {
             try {
                 pidObjectId = new mongoose.Types.ObjectId(pid);
             } catch {
-                return NextResponse.json({ error: "Invalid propertyId" }, { status: 400 });
+                await failJob(jobId, "Invalid propertyId");
+                return;
             }
 
             console.log(`\n🔄 [Context Sync] Fetching fresh data for listing ${pid}...`);
@@ -359,13 +399,8 @@ export async function POST(req: NextRequest) {
         if (!response.ok) {
             const rawText = await response.text();
             console.error(`\n❌ LYZR API ERROR — ${response.status}: ${rawText.substring(0, 300)}`);
-            return NextResponse.json(
-                {
-                    message: "I'm having trouble connecting to the AI agent. Please try again.",
-                    error: `Lyzr API returned ${response.status}`,
-                },
-                { status: 502 }
-            );
+            await failJob(jobId, "AI agent is temporarily unavailable. Please try again.");
+            return;
         }
 
         const data = await response.json();
@@ -411,9 +446,9 @@ export async function POST(req: NextRequest) {
             console.error("Failed to save assistant reply to DB:", err);
         }
 
-        return NextResponse.json({
+        await completeJob(jobId, {
             message: agentReply || "No message received from agent",
-            proposals: enforcedProposals,
+            proposals: enforcedProposals ?? undefined,
         });
     } catch (error) {
         const duration = Math.round(performance.now() - startTime);
@@ -421,13 +456,7 @@ export async function POST(req: NextRequest) {
             `\n💥 UNHANDLED ERROR — ${duration}ms:`,
             error instanceof Error ? error.message : error
         );
-        return NextResponse.json(
-            {
-                message: "Sorry, something went wrong. Please try again.",
-                error: error instanceof Error ? error.message : "Unknown error",
-            },
-            { status: 500 }
-        );
+        await failJob(jobId, "Sorry, something went wrong. Please try again.");
     }
 }
 

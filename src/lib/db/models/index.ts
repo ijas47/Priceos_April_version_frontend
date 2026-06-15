@@ -51,3 +51,6 @@ export type { IDetector } from "./Detector";
 
 export { SourceRun } from "./SourceRun";
 export type { ISourceRun } from "./SourceRun";
+
+export { AgentJob } from "./AgentJob";
+export type { IAgentJob, JobStatus } from "./AgentJob";

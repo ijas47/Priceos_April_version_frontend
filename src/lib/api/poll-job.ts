@@ -4,7 +4,7 @@
  * Replaces SSE streaming for all Lyzr agent calls.
  * Flow:
  *   1. POST to agent endpoint → { jobId }
- *   2. Poll GET /api/jobs/{jobId} every `intervalMs` until status = "complete" | "error"
+ *   2. Poll GET /api/chat?jobId={jobId} every `intervalMs` until status = "complete" | "error"
  *   3. Resolve with result or reject with error string
  */
 
@@ -29,7 +29,7 @@ export async function pollJob<T = Record<string, unknown>>(
   while (Date.now() < deadline) {
     await new Promise<void>((r) => setTimeout(r, intervalMs));
 
-    const res = await fetch(`/api/jobs/${jobId}`);
+    const res = await fetch(`/api/chat?jobId=${encodeURIComponent(jobId)}`);
     if (!res.ok) throw new Error(`Poll failed with status ${res.status}`);
 
     const job: JobResult<T> = await res.json();
