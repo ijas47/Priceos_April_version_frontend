@@ -42,9 +42,11 @@ function SignInForm() {
                 router.push("/onboarding");
                 return;
             }
+            if (data.user?.orgId) {
+                localStorage.setItem("priceos-orgId", data.user.orgId);
+            }
             if (data.accessToken) {
                 localStorage.setItem("priceos-token", data.accessToken);
-                localStorage.setItem("priceos-orgId", data.user?.orgId || "");
             }
 
             router.push("/dashboard");
@@ -140,9 +142,11 @@ function SignUpForm() {
                 setLoading(false);
                 return;
             }
+            if (data.user?.orgId) {
+                localStorage.setItem("priceos-orgId", data.user.orgId);
+            }
             if (data.accessToken) {
                 localStorage.setItem("priceos-token", data.accessToken);
-                localStorage.setItem("priceos-orgId", data.user?.orgId || "");
             }
 
             router.push("/pending-approval");

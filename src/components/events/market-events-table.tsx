@@ -28,7 +28,7 @@ interface MarketEventRow {
     isActive: boolean;
 }
 import { cn } from "@/lib/utils";
-import { getOrgId } from "@/lib/auth/client";
+import { getOrgId, onOrgIdHydrated, resolveOrgId } from "@/lib/auth/client";
 import { SourceProvenanceBadge } from "@/components/market/source-provenance-badge";
 
 export function MarketEventsTable() {
@@ -55,7 +55,7 @@ export function MarketEventsTable() {
             setError(null);
             try {
                 const params = new URLSearchParams();
-                const orgId = getOrgId();
+                const orgId = getOrgId() ?? (await resolveOrgId());
                 if (!orgId) {
                     setError("Not signed in — org context missing");
                     setLoading(false);
@@ -80,6 +80,8 @@ export function MarketEventsTable() {
 
         fetchEvents();
     }, [contextType, propertyId, dateRange, marketRefreshTrigger]);
+
+    useEffect(() => onOrgIdHydrated(() => triggerMarketRefresh()), [triggerMarketRefresh]);
 
     if (loading || isMarketAnalysisRunning) {
         return (

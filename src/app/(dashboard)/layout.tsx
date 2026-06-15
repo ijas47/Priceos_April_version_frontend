@@ -2,16 +2,21 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AgentCacheProvider } from "@/lib/cache/agent-cache-provider";
 import { InactivityMonitor } from "@/components/auth/inactivity-wrapper";
 import { ApprovalGuard } from "@/components/auth/approval-guard";
+import { SessionHydrator } from "@/components/auth/session-hydrator";
 import { ThemeToggleFloating } from "@/components/layout/theme-toggle-floating";
+import { getSession } from "@/lib/auth/server";
 import { Suspense } from "react";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getSession();
+
   return (
     <div className="flex h-screen w-full bg-surface-0 overflow-hidden text-text-primary">
+      <SessionHydrator orgId={session?.orgId} />
       <InactivityMonitor />
       <ApprovalGuard />
       
