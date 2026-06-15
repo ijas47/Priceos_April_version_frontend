@@ -114,7 +114,7 @@ export const UAE_PRICING_PROFILES: PricingProfile[] = [
 
 export const UAE_PRICELABS_DEFAULTS: MarketPricingPack = {
   marketCode: "UAE_DXB",
-  version: "2026-06-pricelabs-v1",
+  version: "2026-06-uae-v1",
   source: "PriceLabs production export (screenshots Jun 2026)",
   pricingProfiles: UAE_PRICING_PROFILES,
   minStayProfiles: [

@@ -11,7 +11,7 @@ import { CompSetViewer } from "@/components/pricing/comp-set-viewer";
 const TABS = [
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "proposals", label: "Proposals", icon: FileText },
-  { id: "rules", label: "Pricing Rules", icon: Sliders },
+  { id: "rules", label: "Property Rules", icon: Sliders },
   { id: "market", label: "Market Intel", icon: BarChart3 },
 ] as const;
 

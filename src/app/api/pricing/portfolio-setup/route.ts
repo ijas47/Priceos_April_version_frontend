@@ -30,7 +30,9 @@ export async function GET() {
     const orgId = new mongoose.Types.ObjectId(session.orgId);
 
     const [org, total, configured] = await Promise.all([
-      Organization.findById(orgId).select("pricingStrategy marketCode").lean(),
+      Organization.findById(orgId)
+        .select("pricingStrategy marketCode pricingPackVersion settings.guardrails")
+        .lean(),
       Listing.countDocuments({ orgId }),
       Listing.countDocuments({ orgId, priceFloor: { $gt: 0 }, priceCeiling: { $gt: 0 } }),
     ]);
@@ -40,6 +42,8 @@ export async function GET() {
       configuredProperties: configured,
       strategy: org?.pricingStrategy ?? null,
       marketCode: org?.marketCode ?? null,
+      pricingPackVersion: org?.pricingPackVersion ?? null,
+      guardrails: org?.settings?.guardrails ?? null,
     });
   } catch (error) {
     console.error("[portfolio-setup GET]", error);

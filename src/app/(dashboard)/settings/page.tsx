@@ -12,7 +12,7 @@ import {
   Check,
   Sparkles,
 } from "lucide-react";
-import { SmartPricingCard } from "@/components/settings/smart-pricing-card";
+import { PortfolioPricingSettings } from "@/components/settings/portfolio-pricing-settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -88,6 +88,7 @@ const PLAN_LIMITS: Record<string, string> = {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState("connections");
   const [org, setOrg] = useState<OrgSettings | null>(null);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,6 +104,13 @@ export default function SettingsPage() {
   const [selectedMarket, setSelectedMarket] = useState("");
   const [useCurrencyOverride, setUseCurrencyOverride] = useState(false);
   const [currencyOverride, setCurrencyOverride] = useState("");
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "pricing" || tab === "organization" || tab === "connections") {
+      setActiveTab(tab);
+    }
+  }, []);
+
   // Fetch org settings + markets in parallel
   useEffect(() => {
     Promise.all([
@@ -191,7 +199,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="connections" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-surface-1 border border-border-subtle p-1 h-12">
           <TabsTrigger
             value="connections"
@@ -427,7 +435,7 @@ export default function SettingsPage() {
           value="pricing"
           className="mt-8 space-y-8 animate-in fade-in-50 duration-500"
         >
-          <SmartPricingCard />
+          <PortfolioPricingSettings />
         </TabsContent>
 
         {/* ── TAB: Organization ─────────────────────────────────────────── */}

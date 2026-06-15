@@ -51,13 +51,13 @@ const STRATEGY_OPTIONS: {
 ];
 
 /**
- * Smart Pricing Setup — applies portfolio + property level pricing rules to ALL
- * existing properties in one click. Useful for properties connected before the
- * onboarding wizard, or to re-baseline the whole portfolio before a demo.
+ * Bulk property setup — copies portfolio guardrails + profile pack onto every
+ * listing, seeds per-unit floor/ceiling and rules, then runs the pricing engine.
+ * Portfolio profiles themselves are edited above in Portfolio Profiles.
  *
  * Writes only to MongoDB; never pushes to Hostaway.
  */
-export function SmartPricingCard() {
+export function SmartPricingCard({ onApplied }: { onApplied?: () => void }) {
   const [status, setStatus] = useState<Status | null>(null);
   const [strategy, setStrategy] = useState<Strategy>("balanced");
   const [running, setRunning] = useState(false);
@@ -105,12 +105,13 @@ export function SmartPricingCard() {
         duration: 7000,
       });
       loadStatus();
+      onApplied?.();
     } catch (err) {
       toast.error("Setup failed", { description: (err as Error).message });
     } finally {
       setRunning(false);
     }
-  }, [strategy, loadStatus]);
+  }, [strategy, loadStatus, onApplied]);
 
   const allConfigured =
     status && status.totalProperties > 0 && status.configuredProperties >= status.totalProperties;
@@ -120,11 +121,12 @@ export function SmartPricingCard() {
       <div className="flex flex-col gap-1">
         <h3 className="text-title font-semibold text-text-primary flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-amber" />
-          Smart Pricing Setup
+          Bulk property setup
         </h3>
         <p className="text-body-xs text-text-tertiary">
-          Apply pricing guardrails, seasonal rules, and length-of-stay discounts to every property
-          at once. Pulls live market data when available, then runs the pricing engine.
+          Push the portfolio policy above onto every property: org guardrails, profile pack,
+          per-unit floor/ceiling from market data, seasonal + LOS rules, then run the pricing
+          engine. Use after syncing new listings or changing strategy — not for editing profiles.
         </p>
       </div>
 

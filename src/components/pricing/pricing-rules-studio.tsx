@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/tooltip";
 import { OccupancyMatrixEditor } from "./occupancy-matrix-editor";
 import { MinStayProfileEditor } from "./minstay-profile-editor";
-import { PricingProfilesPanel } from "./pricing-profiles-panel";
+import { PortfolioInheritanceBanner } from "./portfolio-inheritance-banner";
 import { SeasonalCalendarView } from "./seasonal-calendar-view";
 import type {
   OccupancyMatrix,
@@ -51,7 +51,7 @@ import type {
   SeasonalSegment,
 } from "@/lib/pricing/types";
 
-/** Scope selector value for portfolio-level PriceLabs defaults (not a listing id). */
+/** @deprecated Portfolio defaults live in Settings → Pricing; property rules only here. */
 export const PORTFOLIO_SCOPE_ID = "__portfolio__";
 
 function resolveSeasonForDate(pack: MarketPricingPack, date = new Date()) {
@@ -1865,7 +1865,6 @@ export function PricingRulesStudio({ listings }: Props) {
   );
   const [config, setConfig] = useState<EngineConfig>(DEFAULT_CONFIG);
   const [rules, setRules] = useState<PricingRule[]>([]);
-  const isPortfolioScope = selectedListingId === PORTFOLIO_SCOPE_ID;
   const selectedCurrency = listings.find((l) => l.id === selectedListingId)?.currencyCode || "AED";
   const [loading, setLoading] = useState(false);
 
@@ -1873,7 +1872,7 @@ export function PricingRulesStudio({ listings }: Props) {
     if (!listingId) return;
     setLoading(true);
     try {
-      if (!isPersistedListingId(listingId)) {
+      if (!listingId || !isPersistedListingId(listingId)) {
         setConfig(DEFAULT_CONFIG);
         setRules([]);
         return;
@@ -1898,8 +1897,8 @@ export function PricingRulesStudio({ listings }: Props) {
   }, []);
 
   useEffect(() => {
-    if (selectedListingId && !isPortfolioScope) loadData(selectedListingId);
-  }, [selectedListingId, isPortfolioScope, loadData]);
+    if (selectedListingId) loadData(selectedListingId);
+  }, [selectedListingId, loadData]);
 
   const handleConfigChange = (patch: Partial<EngineConfig>) => {
     setConfig((prev) => ({ ...prev, ...patch }));
@@ -1922,28 +1921,24 @@ export function PricingRulesStudio({ listings }: Props) {
       {/* Header with listing selector */}
       <div className="px-5 py-4 border-b border-border/70 flex items-center justify-between gap-4 dark:border-white/10">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Pricing Rules Studio</h2>
+          <h2 className="text-sm font-semibold text-foreground">Property pricing rules</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {isPortfolioScope
-              ? "Portfolio defaults (profiles & seasonal calendar) — inherited by all properties unless overridden."
-              : "Property-level overrides on top of portfolio defaults. Guardrails always win last."}
+            Per-unit overrides on top of portfolio defaults (Settings → Pricing). Guardrails
+            always win last.
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          {loading && !isPortfolioScope && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-          {!loading && selectedListingId && !isPortfolioScope && (
+          {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          {!loading && selectedListingId && (
             <span className="flex items-center gap-1 text-xs text-green-400">
               <CheckCircle2 className="h-3.5 w-3.5" /> Loaded
             </span>
           )}
           <Select value={selectedListingId} onValueChange={setSelectedListingId}>
             <SelectTrigger className="w-64 h-8 text-xs bg-background border-border/70 text-foreground shadow-sm dark:bg-white/[0.04] dark:border-white/15">
-              <SelectValue placeholder="Select scope…" />
+              <SelectValue placeholder="Select property…" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={PORTFOLIO_SCOPE_ID} className="text-xs font-semibold">
-                Portfolio defaults (all properties)
-              </SelectItem>
               {listings.map((l) => (
                 <SelectItem key={l.id} value={l.id} className="text-xs">
                   {l.name}
@@ -1954,11 +1949,11 @@ export function PricingRulesStudio({ listings }: Props) {
         </div>
       </div>
 
-      {isPortfolioScope ? (
-        <div className="p-5">
-          <PricingProfilesPanel embedded />
-        </div>
-      ) : loading ? (
+      <div className="px-5 pt-4">
+        <PortfolioInheritanceBanner />
+      </div>
+
+      {loading ? (
         <div className="flex items-center justify-center py-20 gap-3">
           <Loader2 className="h-6 w-6 animate-spin text-text-tertiary" />
           <span className="text-muted-foreground text-sm">Loading configuration…</span>
