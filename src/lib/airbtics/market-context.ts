@@ -131,28 +131,61 @@ export async function getCompSet(
     };
 }
 
+function isDubaiMarket(city: string, countryCode: string): boolean {
+    const c = city.trim().toLowerCase();
+    const cc = countryCode.trim().toUpperCase();
+    return c === "dubai" && (cc === "AE" || cc === "UAE" || cc === "ARE");
+}
+
+/** Known market IDs when /markets/search returns nothing (Dubai = 2286 per Airbtics). */
+function knownMarketFallback(city: string, countryCode: string): string | null {
+    if (!isDubaiMarket(city, countryCode)) return null;
+    const fromEnv = process.env.AIRBTICS_DUBAI_MARKET_ID?.trim();
+    return fromEnv || "2286";
+}
+
 /**
  * Resolve a city/country to an Airbtics market ID.
  * Searches the Airbtics market directory and caches the result permanently.
+ * Falls back to AIRBTICS_DUBAI_MARKET_ID (default 2286) for Dubai when search fails —
+ * same fallback used by /api/agent-tools/market-overview.
  */
 export async function resolveMarketId(
     city: string,
     countryCode: string
 ): Promise<string | null> {
-    if (!client.isAvailable()) return null;
-
     const key = `airbtics:marketId:${city.toLowerCase()}:${countryCode.toLowerCase()}`;
     const hit = cache.get(key);
     if (hit) return hit.data as string;
 
+    if (!client.isAvailable()) return knownMarketFallback(city, countryCode);
+
     try {
         const result = await client.searchMarket(city, countryCode);
         const markets = result?.markets ?? [];
-        if (markets.length === 0) return null;
+        if (markets.length === 0) {
+            const fallback = knownMarketFallback(city, countryCode);
+            if (fallback) {
+                console.warn(
+                    `[Airbtics] no search results for ${city}/${countryCode} — using market ${fallback}`
+                );
+                cache.set(key, { data: fallback, expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000 });
+                return fallback;
+            }
+            return null;
+        }
         const id = String(markets[0].market_id);
         cache.set(key, { data: id, expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000 });
         return id;
     } catch (err) {
+        const fallback = knownMarketFallback(city, countryCode);
+        if (fallback) {
+            console.warn(
+                `[Airbtics] market search failed for ${city}/${countryCode} (${(err as Error).message}) — using ${fallback}`
+            );
+            cache.set(key, { data: fallback, expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000 });
+            return fallback;
+        }
         console.error(`[Airbtics] market search failed for ${city}/${countryCode}:`, (err as Error).message);
         return null;
     }
