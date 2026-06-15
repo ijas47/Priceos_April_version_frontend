@@ -96,7 +96,16 @@ export interface MarketSignal {
     forwardOccupancy?: number;
     /** Market ADR for this exact date from future-pacing */
     pacingAdr?: number;
+    /** Trailing market occupancy from Airbtics summary (0..1) */
+    marketOccupancy?: number;
+    /** Active listings in market (supply proxy) */
+    activeListings?: number;
+    /** Oversupply pressure 0..1 derived from market occupancy (higher = softer market) */
+    supplyPressure?: number;
 }
+
+/** Blend weight toward Airbtics forward pacing ADR for a single day. */
+export const PACING_ADR_BLEND = 0.25;
 
 export interface DayResult {
     price: number;
@@ -179,9 +188,46 @@ export function computeDay(
                 const before = basePrice;
                 basePrice = basePrice * demandMult;
                 notes.push(
-                    `[MARKET] Demand ${(demandMult * 100 - 100).toFixed(0)}% (market occ ${(occ * 100).toFixed(0)}%) → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
+                    `[MARKET] Demand ${(demandMult * 100 - 100).toFixed(0)}% (fwd occ ${(occ * 100).toFixed(0)}%) → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
                 );
             }
+        }
+
+        // Supply: soft market (high supply pressure) + weak forward pacing → extra discount
+        const supplyPressure = marketSignal.supplyPressure;
+        const fwdOcc = marketSignal.forwardOccupancy;
+        if (
+            typeof supplyPressure === "number" &&
+            supplyPressure >= 0.45 &&
+            typeof fwdOcc === "number" &&
+            fwdOcc > 0 &&
+            fwdOcc < 0.55
+        ) {
+            const supplyMult = fwdOcc < 0.35 ? 0.93 : 0.96;
+            const before = basePrice;
+            basePrice = basePrice * supplyMult;
+            const supplyNote =
+                marketSignal.activeListings != null
+                    ? `supply ${marketSignal.activeListings.toLocaleString("en-US")} listings`
+                    : `mkt occ ${((marketSignal.marketOccupancy ?? 0) * 100).toFixed(0)}%`;
+            notes.push(
+                `[MARKET] Supply ${(supplyMult * 100 - 100).toFixed(0)}% (${supplyNote}, fwd ${(fwdOcc * 100).toFixed(0)}%) → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
+            );
+        }
+
+        // Pacing ADR: blend toward Airbtics predicted rate for this date
+        if (
+            typeof marketSignal.pacingAdr === "number" &&
+            marketSignal.pacingAdr > 0 &&
+            basePrice > 0
+        ) {
+            const before = basePrice;
+            basePrice =
+                basePrice * (1 - PACING_ADR_BLEND) +
+                marketSignal.pacingAdr * PACING_ADR_BLEND;
+            notes.push(
+                `[MARKET] Pacing ADR ${(PACING_ADR_BLEND * 100).toFixed(0)}% blend (mkt ${Math.round(marketSignal.pacingAdr)}) → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
+            );
         }
     }
 

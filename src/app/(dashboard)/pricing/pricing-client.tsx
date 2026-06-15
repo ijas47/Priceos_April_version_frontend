@@ -109,6 +109,29 @@ function fmtDate(dateStr: string) {
   }
 }
 
+function reasoningToText(reasoning: unknown): string {
+  if (!reasoning) return "";
+  if (typeof reasoning === "string") return reasoning;
+  if (typeof reasoning === "object") {
+    return Object.values(reasoning as Record<string, string>)
+      .filter(Boolean)
+      .join(" | ");
+  }
+  return String(reasoning);
+}
+
+function hasMarketReasoning(reasoning: unknown): boolean {
+  return reasoningToText(reasoning).includes("[MARKET]");
+}
+
+function parseReasoningSegments(text: string): string[] {
+  return text.split(/;\s*/).filter(Boolean);
+}
+
+function isMarketSegment(segment: string): boolean {
+  return segment.trimStart().startsWith("[MARKET]");
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function DeltaBadge({ pct }: { pct: number | null }) {
@@ -189,40 +212,59 @@ function RiskBadge({ pct }: { pct: number | null }) {
 
 function ReasoningCell({ reasoning }: { reasoning: any }) {
   const [open, setOpen] = useState(false);
-  if (!reasoning) return <span className="text-muted-foreground text-xs">—</span>;
-
-  // Convert object reasoning to string if needed
-  const text = useMemo(() => {
-    if (typeof reasoning === "string") return reasoning;
-    if (typeof reasoning === "object") {
-      return Object.values(reasoning as Record<string, string>)
-        .filter(Boolean)
-        .join(" | ");
-    }
-    return String(reasoning);
-  }, [reasoning]);
-
+  const text = useMemo(() => reasoningToText(reasoning), [reasoning]);
   if (!text) return <span className="text-muted-foreground text-xs">—</span>;
-  const short = text.length > 90;
+
+  const segments = parseReasoningSegments(text);
+  const marketSegments = segments.filter(isMarketSegment);
+  const otherSegments = segments.filter((s) => !isMarketSegment(s));
+  const visibleMarket = open ? marketSegments : marketSegments.slice(0, 2);
+  const visibleOther = open ? otherSegments : otherSegments.slice(0, 1);
+  const hiddenCount =
+    segments.length - visibleMarket.length - visibleOther.length;
 
   return (
-    <div className="text-xs text-foreground/80 leading-relaxed">
-      <span>{open || !short ? text : `${text.slice(0, 90)}…`}</span>
-      {short && (
+    <div className="space-y-1.5 text-xs leading-relaxed">
+      {marketSegments.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {visibleMarket.map((segment, i) => (
+            <span
+              key={`m-${i}`}
+              className="inline-flex items-center gap-1 rounded border border-cyan-500/25 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-300"
+              title={segment}
+            >
+              <Activity className="h-2.5 w-2.5 shrink-0 text-cyan-400/90" />
+              <span className="line-clamp-2">{segment.replace(/^\[MARKET\]\s*/, "")}</span>
+            </span>
+          ))}
+        </div>
+      )}
+      {visibleOther.length > 0 && (
+        <div className="space-y-0.5 text-foreground/70">
+          {visibleOther.map((segment, i) => (
+            <p key={`o-${i}`} className="line-clamp-2">
+              {segment}
+            </p>
+          ))}
+        </div>
+      )}
+      {hiddenCount > 0 && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             setOpen((v) => !v);
           }}
-          className="ml-1.5 text-primary hover:text-primary dark:text-amber/80 dark:hover:text-amber inline-flex items-center gap-0.5"
+          className="inline-flex items-center gap-0.5 text-primary hover:text-primary dark:text-amber/80 dark:hover:text-amber"
         >
           {open ? (
             <>
-              <ChevronUp className="h-3 w-3" />less
+              <ChevronUp className="h-3 w-3" />
+              less
             </>
           ) : (
             <>
-              <ChevronDown className="h-3 w-3" />more
+              <ChevronDown className="h-3 w-3" />
+              {hiddenCount} more
             </>
           )}
         </button>
@@ -393,6 +435,7 @@ export function PricingClient({
   // Filters
   const [filterProperty, setFilterProperty] = useState("all");
   const [filterDirection, setFilterDirection] = useState<"all" | "up" | "down">("all");
+  const [filterMarket, setFilterMarket] = useState<"all" | "market">("all");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
@@ -414,6 +457,9 @@ export function PricingClient({
       if (filterDirection === "up") list = list.filter((p) => (p.changePct ?? 0) > 0);
       if (filterDirection === "down") list = list.filter((p) => (p.changePct ?? 0) < 0);
     }
+    if (filterMarket === "market") {
+      list = list.filter((p) => hasMarketReasoning(p.reasoning));
+    }
 
     list = [...list].sort((a, b) => {
       let cmp = 0;
@@ -426,7 +472,7 @@ export function PricingClient({
     });
 
     return list;
-  }, [proposals, activeTab, filterProperty, filterDirection, sortKey, sortDir]);
+  }, [proposals, activeTab, filterProperty, filterDirection, filterMarket, sortKey, sortDir]);
 
   // Tab counts
   const counts = useMemo(
@@ -443,6 +489,11 @@ export function PricingClient({
   const pendingList = proposals.filter((p) => p.proposalStatus === "pending");
   const increases = pendingList.filter((p) => (p.changePct ?? 0) > 0).length;
   const decreases = pendingList.filter((p) => (p.changePct ?? 0) < 0).length;
+  const marketAdjusted = pendingList.filter((p) => hasMarketReasoning(p.reasoning)).length;
+  const tabMarketAdjusted = useMemo(
+    () => proposals.filter((p) => p.proposalStatus === activeTab && hasMarketReasoning(p.reasoning)).length,
+    [proposals, activeTab]
+  );
   const avgDelta =
     pendingList.length > 0
       ? Math.round(
@@ -603,11 +654,12 @@ export function PricingClient({
   return (
     <div className="space-y-5">
       {/* KPI Strip — pending only */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { label: "Pending", value: counts.pending, color: "text-primary" },
           { label: "Increases", value: increases, color: "text-green-400" },
           { label: "Decreases", value: decreases, color: "text-red-400" },
+          { label: "Market-adjusted", value: marketAdjusted, color: "text-cyan-400" },
           {
             label: "Avg Change",
             value: `${avgDelta > 0 ? "+" : ""}${avgDelta}%`,
@@ -692,6 +744,25 @@ export function PricingClient({
             </SelectContent>
           </Select>
         )}
+
+        <button
+          type="button"
+          onClick={() => setFilterMarket((v) => (v === "all" ? "market" : "all"))}
+          className={cn(
+            "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
+            filterMarket === "market"
+              ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300"
+              : "border-border/70 bg-background text-foreground hover:border-border"
+          )}
+        >
+          <Activity className="h-3.5 w-3.5" />
+          Market-adjusted
+          {tabMarketAdjusted > 0 && (
+            <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
+              {tabMarketAdjusted}
+            </span>
+          )}
+        </button>
 
         <div className="ml-auto flex items-center gap-2 rounded-xl border border-border/70 bg-background px-2 py-1 shadow-sm">
           <span className="text-[11px] font-semibold text-foreground">Sort:</span>
@@ -854,7 +925,14 @@ export function PricingClient({
 
                   {/* Property */}
                   <TableCell className="min-w-[180px] py-4 align-top">
-                    <div className="text-sm font-medium text-foreground leading-tight">{row.listingName}</div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <div className="text-sm font-medium text-foreground leading-tight">{row.listingName}</div>
+                      {hasMarketReasoning(row.reasoning) && (
+                        <Badge className="h-4 border-cyan-500/25 bg-cyan-500/10 px-1.5 text-[9px] font-semibold uppercase tracking-wide text-cyan-300">
+                          Market
+                        </Badge>
+                      )}
+                    </div>
                     <ConstraintBadges row={row} />
                   </TableCell>
 

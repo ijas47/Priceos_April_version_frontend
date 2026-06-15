@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { computeDay, type ListingConfig, type Rule, type BookingContext } from "./waterfall";
+import {
+  computeDay,
+  PACING_ADR_BLEND,
+  type ListingConfig,
+  type Rule,
+  type BookingContext,
+  type MarketSignal,
+} from "./waterfall";
 
 /**
  * Characterization tests for the pricing waterfall. These pin the most
@@ -180,5 +187,42 @@ describe("computeDay — rule effects", () => {
   it("always rounds price to 2 decimal places", () => {
     const res = computeDay(date, today, makeConfig({ basePrice: 333.333 }), [], noBooking);
     expect(res.price).toBe(Math.round(res.price * 100) / 100);
+  });
+});
+
+describe("computeDay — Pass 0 market anchor", () => {
+  it("blends toward pacing ADR at the configured weight", () => {
+    const signal: MarketSignal = { pacingAdr: 600 };
+    const res = computeDay(date, today, makeConfig({ basePrice: 500 }), [], noBooking, signal);
+    const expected = 500 * (1 - PACING_ADR_BLEND) + 600 * PACING_ADR_BLEND;
+    expect(res.price).toBe(expected);
+    expect(res.note).toContain("[MARKET] Pacing ADR");
+  });
+
+  it("applies a supply discount when pressure is high and forward occupancy is weak", () => {
+    const signal: MarketSignal = {
+      supplyPressure: 0.5,
+      forwardOccupancy: 0.5,
+      activeListings: 12000,
+      marketOccupancy: 0.5,
+    };
+    const res = computeDay(date, today, makeConfig({ basePrice: 500 }), [], noBooking, signal);
+    expect(res.price).toBe(480);
+    expect(res.note).toContain("[MARKET] Supply");
+  });
+
+  it("keeps aggressive market discounts inside the floor/ceiling band", () => {
+    const signal: MarketSignal = {
+      monthAnchorAdr: 200,
+      annualAnchorAdr: 1000,
+      forwardOccupancy: 0.2,
+      supplyPressure: 0.6,
+      pacingAdr: 250,
+      activeListings: 15000,
+    };
+    const res = computeDay(date, today, makeConfig(), [], noBooking, signal);
+    expect(res.price).toBeGreaterThanOrEqual(300);
+    expect(res.price).toBeLessThanOrEqual(1200);
+    expect(res.note).toContain("[MARKET]");
   });
 });

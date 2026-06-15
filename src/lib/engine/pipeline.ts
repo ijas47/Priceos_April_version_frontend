@@ -392,6 +392,13 @@ async function buildMarketSignals(
         }
 
         const annualAnchor = ctx.p50ADR;
+        const marketOcc = ctx.occupancy ?? null;
+        const activeListings = ctx.activeListings ?? null;
+        const supplyPressure =
+            marketOcc != null
+                ? Math.max(0, Math.min(1, 1 - marketOcc))
+                : undefined;
+
         for (let i = 0; i < days; i++) {
             const d = addDays(startDate, i);
             const ds = dateStr(d);
@@ -403,6 +410,9 @@ async function buildMarketSignals(
             if (annualAnchor) signal.annualAnchorAdr = annualAnchor;
             if (pacing?.occ !== undefined) signal.forwardOccupancy = pacing.occ;
             if (pacing?.adr !== undefined) signal.pacingAdr = pacing.adr;
+            if (marketOcc != null) signal.marketOccupancy = marketOcc;
+            if (activeListings != null) signal.activeListings = activeListings;
+            if (supplyPressure != null) signal.supplyPressure = supplyPressure;
             if (Object.keys(signal).length > 0) map.set(ds, signal);
         }
     } catch (err) {
