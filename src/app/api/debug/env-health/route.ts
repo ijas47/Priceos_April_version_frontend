@@ -33,6 +33,8 @@ const EXPECTED_KEYS = [
   "PERPLEXITY_API_KEY",
   "SERP_API_KEY",
   "NEWS_API_KEY",
+  "CRON_SECRET",
+  "AIRBTICS_API_KEY",
   "AGENT_ID",
 ] as const;
 
@@ -92,6 +94,7 @@ export async function GET() {
         : "Ready — use Sync page → Import from Hostaway",
     researchFeeds,
     researchFeedsReady: hasVerifiedFeed,
+    cronReady: health.CRON_SECRET === "SET",
     researchHint,
     note: "Values are never exposed by this endpoint. After changing env vars in Vercel, you must Redeploy for them to take effect.",
   });

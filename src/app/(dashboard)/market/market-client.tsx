@@ -30,6 +30,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { BenchmarkPanel } from "@/components/market/benchmark-panel";
+import { SourceProvenanceBadge } from "@/components/market/source-provenance-badge";
 
 interface MarketEvent {
   id: string;
@@ -321,6 +322,7 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
                   <TableHead className="w-[100px] text-xs font-semibold text-foreground">Impact</TableHead>
                   <TableHead className="w-[88px] text-xs font-semibold text-foreground">Timeline</TableHead>
                   <TableHead className="w-[72px] text-right text-xs font-semibold text-foreground">Uplift</TableHead>
+                  <TableHead className="hidden md:table-cell w-[120px] text-xs font-semibold text-foreground">Source</TableHead>
                   <TableHead className="hidden sm:table-cell w-[88px] text-xs font-semibold text-foreground">Area</TableHead>
                 </TableRow>
               </TableHeader>
@@ -394,6 +396,9 @@ export function MarketIntelligenceClient({ orgId, events, occupancyPct, avgNight
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell align-top py-3">
+                      <SourceProvenanceBadge source={event.source} />
                     </TableCell>
                     <TableCell className="hidden sm:table-cell align-top py-3">
                       {event.area ? (

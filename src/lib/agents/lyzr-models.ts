@@ -108,11 +108,11 @@ export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
   {
     lyzrAgentId: process.env.LYZR_MARKET_RESEARCH_AGENT_ID || "699991985dbb137e7b660594",
     name: "Market Research",
-    tier: "internet",
-    model: PERPLEXITY_SONAR,
-    temperature: 0.15,
+    tier: "analyst",
+    model: GEMINI_FLASH,
+    temperature: 0.1,
     maxTokens: 3000,
-    rationale: "Internet-connected for accurate event dates and market intel",
+    rationale: "Parse-only on verified SERP/News/DB intel — no live Sonar hallucinations",
   },
   {
     lyzrAgentId: process.env.LYZR_PRICE_GUARD_AGENT_ID || "6999933b83d9dff0252dd86f",
@@ -126,11 +126,11 @@ export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
   {
     lyzrAgentId: process.env.Marketing_Agent_ID || "699993adb8bd4d3aac102a81",
     name: "Marketing Agent",
-    tier: "internet",
-    model: PERPLEXITY_SONAR,
-    temperature: 0.2,
+    tier: "analyst",
+    model: GEMINI_FLASH_LITE,
+    temperature: 0.1,
     maxTokens: 2000,
-    rationale: "Web search for events/holidays during property setup",
+    rationale: "Legacy agent — holidays now from static calendar; kept for Studio parity",
   },
   {
     lyzrAgentId: process.env.LYZR_Competitor_Benchmark_Agent_ID || "699e7b559ff614f6db8964cf",

@@ -177,8 +177,8 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [EVENT_AGENT_ID]: {
     agentId: EVENT_AGENT_ID,
     name: "Market Research",
-    model: PERPLEXITY_SONAR,
-    temperature: 0.15,
+    model: GEMINI_FLASH,
+    temperature: 0.1,
     maxTokens: 3000,
     tools: [...MARKET_TOOLS],
   },
@@ -261,8 +261,8 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [MARKET_AGENT_ID]: {
     agentId: MARKET_AGENT_ID,
     name: "Market Agent",
-    model: PERPLEXITY_SONAR,
-    temperature: 0.15,
+    model: GEMINI_FLASH,
+    temperature: 0.1,
     maxTokens: 3000,
     tools: [...MARKET_TOOLS],
   },

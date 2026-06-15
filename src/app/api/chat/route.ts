@@ -13,6 +13,13 @@ import {
 } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 import { ensureVerifiedMarketIntel } from "@/lib/research/ensure-market-intel";
+import {
+    eventsOverlappingDate,
+    getLowestTrustTier,
+    UNVERIFIED_PREMIUM_CAP_PCT,
+    UNVERIFIED_PREMIUM_REJECT_PCT,
+    type MarketEventWindow,
+} from "@/lib/research/source-trust";
 import mongoose from "mongoose";
 
 /**
@@ -148,6 +155,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
         const needsDataInjection = prevDataMsgs.length === 0 && !isSystemMsg;
 
         let propertyDataPayload: any = null;
+        let marketEventsForGuardrails: MarketEventWindow[] = [];
 
         if (needsDataInjection && context.type === "property" && context.propertyId) {
             const pid = context.propertyId;
@@ -374,6 +382,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 })),
             };
 
+            marketEventsForGuardrails = propertyDataPayload.market_events;
             console.log(`✅ [Context Sync] Payload ready for injection.`);
         }
 
@@ -467,7 +476,12 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             Array.isArray(enforcedProposals) &&
             (floorPrice > 0 || ceilingPrice > 0)
         ) {
-            enforcedProposals = enforceGuardrails(enforcedProposals, floorPrice, ceilingPrice);
+            enforcedProposals = enforceGuardrails(
+                enforcedProposals,
+                floorPrice,
+                ceilingPrice,
+                marketEventsForGuardrails
+            );
             console.log(
                 `🛡️ [Guardrails] Enforced floor=${floorPrice} ceiling=${ceilingPrice} on ${enforcedProposals.length} proposals`
             );
@@ -546,7 +560,12 @@ function extractAgentMessage(response: any): { text: string; parsedJson: any | n
     }
 }
 
-function enforceGuardrails(proposals: any[], floorPrice: number, ceilingPrice: number): any[] {
+function enforceGuardrails(
+    proposals: any[],
+    floorPrice: number,
+    ceilingPrice: number,
+    marketEvents: MarketEventWindow[] = []
+): any[] {
     return proposals.map((p) => {
         const currentPrice = Number(p.current_price || p.currentPrice || 0);
         let proposedPrice = Number(p.proposed_price || p.proposedPrice || 0);
@@ -562,8 +581,61 @@ function enforceGuardrails(proposals: any[], floorPrice: number, ceilingPrice: n
             proposedPrice = ceilingPrice;
         }
 
-        const changePct =
+        let changePct =
             currentPrice > 0 ? Math.round(((proposedPrice - currentPrice) / currentPrice) * 100) : 0;
+
+        const proposalDate = String(p.date || p.proposal_date || "");
+        const dayEvents = proposalDate ? eventsOverlappingDate(proposalDate, marketEvents) : [];
+        const eventSources = dayEvents.map((e) => e.source);
+        const lowestTrust = getLowestTrustTier(eventSources);
+        const maxVerifiedPremium = dayEvents.reduce(
+            (max, e) => Math.max(max, Number(e.suggested_premium_pct || 0)),
+            0
+        );
+
+        const reasoning = p.reasoning;
+        const citesEventSignal =
+            dayEvents.length > 0 ||
+            (typeof reasoning === "object" &&
+                reasoning &&
+                Boolean(
+                    (reasoning as Record<string, string>).reason_event ||
+                        (reasoning as Record<string, string>).reason_news
+                ));
+
+        if (citesEventSignal && lowestTrust <= 0 && changePct > UNVERIFIED_PREMIUM_REJECT_PCT) {
+            verdict = "REJECTED";
+            notes.push(
+                `Event-driven +${changePct}% rejected — only unverified sources (ai_detected/perplexity) for ${proposalDate}`
+            );
+        } else if (citesEventSignal && lowestTrust <= 0 && changePct > UNVERIFIED_PREMIUM_CAP_PCT) {
+            const cappedPrice = Math.round(currentPrice * (1 + UNVERIFIED_PREMIUM_CAP_PCT / 100));
+            notes.push(
+                `Capped unverified event premium ${changePct}% → ${UNVERIFIED_PREMIUM_CAP_PCT}% (no verified feed)`
+            );
+            proposedPrice = Math.min(proposedPrice, cappedPrice);
+            if (verdict === "APPROVED") verdict = "FLAGGED";
+            changePct =
+                currentPrice > 0
+                    ? Math.round(((proposedPrice - currentPrice) / currentPrice) * 100)
+                    : 0;
+        } else if (
+            citesEventSignal &&
+            lowestTrust >= 2 &&
+            maxVerifiedPremium > 0 &&
+            changePct > maxVerifiedPremium + 10
+        ) {
+            const cappedPrice = Math.round(currentPrice * (1 + (maxVerifiedPremium + 5) / 100));
+            notes.push(
+                `Capped event premium ${changePct}% → verified ceiling ${maxVerifiedPremium + 5}%`
+            );
+            proposedPrice = Math.min(proposedPrice, cappedPrice);
+            if (verdict === "APPROVED") verdict = "FLAGGED";
+            changePct =
+                currentPrice > 0
+                    ? Math.round(((proposedPrice - currentPrice) / currentPrice) * 100)
+                    : 0;
+        }
 
         if (Math.abs(changePct) > 50) {
             verdict = "REJECTED";
@@ -583,6 +655,12 @@ function enforceGuardrails(proposals: any[], floorPrice: number, ceilingPrice: n
             riskLevel,
             guard_verdict: verdict,
             guardVerdict: verdict,
+            ...(dayEvents.length > 0
+                ? {
+                      event_trust_tier: lowestTrust,
+                      event_sources: eventSources,
+                  }
+                : {}),
             ...(notes.length > 0 ? { server_notes: notes.join("; ") } : {}),
         };
     });

@@ -28,6 +28,8 @@ interface MarketEventRow {
     isActive: boolean;
 }
 import { cn } from "@/lib/utils";
+import { getOrgId } from "@/lib/auth/client";
+import { SourceProvenanceBadge } from "@/components/market/source-provenance-badge";
 
 export function MarketEventsTable() {
     const [events, setEvents] = useState<MarketEventRow[]>([]);
@@ -53,7 +55,13 @@ export function MarketEventsTable() {
             setError(null);
             try {
                 const params = new URLSearchParams();
-                params.set("orgId", "69d776a671c7b939aaf49053");
+                const orgId = getOrgId();
+                if (!orgId) {
+                    setError("Not signed in — org context missing");
+                    setLoading(false);
+                    return;
+                }
+                params.set("orgId", orgId);
                 if (propertyId) params.set("listingId", String(propertyId));
                 if (dateRange?.from) params.set("dateFrom", format(dateRange.from, "yyyy-MM-dd"));
                 if (dateRange?.to) params.set("dateTo", format(dateRange.to, "yyyy-MM-dd"));
@@ -115,11 +123,12 @@ export function MarketEventsTable() {
     const handleRunAgent = async () => {
         setLoading(true);
         try {
+            const orgId = getOrgId();
             await fetch('/api/market-setup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    orgId: "69d776a671c7b939aaf49053",
+                    ...(orgId ? { orgId } : {}),
                     context: {
                         type: contextType,
                         propertyId: propertyId
@@ -282,21 +291,7 @@ export function MarketEventsTable() {
                                                     {ev.area && (
                                                         <Badge variant="outline" className="text-[9px] bg-blue-500/5 text-blue-500 border-blue-500/20">{ev.area}</Badge>
                                                     )}
-                                                    {ev.source === 'market_template' && (
-                                                        <Badge variant="outline" className="text-[9px] bg-blue-500/10 text-blue-500 border-blue-500/30">From Database</Badge>
-                                                    )}
-                                                    {ev.source === 'perplexity' && (
-                                                        <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary border-primary/30 flex items-center gap-1">
-                                                            <Sparkles className="h-2 w-2" />
-                                                            Agent AI Search
-                                                        </Badge>
-                                                    )}
-                                                    {ev.source && ev.source.startsWith('http') && (
-                                                        <Badge variant="outline" className="text-[9px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30 flex items-center gap-1">
-                                                            <div className="h-1 w-1 bg-emerald-500 rounded-full animate-pulse" />
-                                                            Live Web Source
-                                                        </Badge>
-                                                    )}
+                                                    <SourceProvenanceBadge source={ev.source} />
                                                 </div>
                                             </div>
                                         </TableCell>
