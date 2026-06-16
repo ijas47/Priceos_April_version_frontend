@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB, InventoryMaster, Listing, Reservation } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 import { refreshListingCalendarFromHostaway } from "@/lib/engine/calendar-rates";
+import { resolveDisplayRate } from "@/lib/pricing/display-rate";
 import mongoose from "mongoose";
 
 export async function GET(req: NextRequest) {
@@ -62,13 +63,10 @@ export async function GET(req: NextRequest) {
         let bookedDays = Number(agg?.bookedDays || 0);
         let availableDays = Number(agg?.availableDays || 0);
         let blockedDays = Number(agg?.blockedDays || 0);
-        let avgPriceVal = agg?.avgPrice ? Number(agg.avgPrice) : 0;
+        const avgCalendarRate = agg?.avgPrice ? Number(agg.avgPrice) : null;
 
-        // Fallback to listing base price if no inventory data
-        if (avgPriceVal === 0) {
-            const prop = await Listing.findById(lid).select("price").lean();
-            if (prop) avgPriceVal = Number(prop.price);
-        }
+        const listing = await Listing.findById(lid).select("price currencyCode").lean();
+        const listedPrice = Number(listing?.price ?? 0);
 
         const bookableDays = totalDays - blockedDays;
         const occupancy =
@@ -88,6 +86,12 @@ export async function GET(req: NextRequest) {
             status: d.status,
             price: Number(d.currentPrice),
         }));
+
+        const rateDisplay = resolveDisplayRate({
+            listedPrice,
+            calendarPrices: calendarDays.map((d) => d.price),
+            avgCalendarRate,
+        });
 
         // Reservations overlapping the range
         const resDocs = await Reservation.find({
@@ -116,7 +120,12 @@ export async function GET(req: NextRequest) {
             blockedDays,
             bookableDays,
             occupancy,
-            avgPrice: Math.round(avgPriceVal * 100) / 100,
+            listedPrice: rateDisplay.listedPrice,
+            avgCalendarRate: rateDisplay.avgCalendarRate,
+            displayRate: rateDisplay.displayRate,
+            rateLabel: rateDisplay.rateLabel,
+            /** @deprecated use displayRate — kept for chat context compatibility */
+            avgPrice: rateDisplay.displayRate,
             calendarDays,
             reservations,
         });

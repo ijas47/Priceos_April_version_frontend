@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { connectDB, Listing, InventoryMaster, Reservation } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 import { refreshListingCalendarFromHostaway } from "@/lib/engine/calendar-rates";
+import { resolveDisplayRate } from "@/lib/pricing/display-rate";
 import { format, addDays } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -72,10 +73,17 @@ export async function GET() {
       const inv = inventory.filter((r) => r.listingId?.toString() === lid);
       const booked = inv.filter((r) => r.status === "booked" || r.status === "pending");
       const occupancyPct = inv.length > 0 ? Math.round((booked.length / inv.length) * 100) : 0;
-      const avgPrice =
+      const listedPrice = Number(l.price ?? 0);
+      const calendarPrices = inv.map((r) => Number(r.currentPrice || 0));
+      const avgCalendarRaw =
         inv.length > 0
-          ? Math.round(inv.reduce((s, r) => s + (r.currentPrice || 0), 0) / inv.length)
-          : l.price || 0;
+          ? inv.reduce((s, r) => s + Number(r.currentPrice || 0), 0) / inv.length
+          : null;
+      const rateDisplay = resolveDisplayRate({
+        listedPrice,
+        calendarPrices,
+        avgCalendarRate: avgCalendarRaw,
+      });
 
       const res = reservations.filter((r) => r.listingId?.toString() === lid);
       const totalRevenue = res.reduce((s, r) => s + (r.totalPrice || 0), 0);
@@ -96,8 +104,12 @@ export async function GET() {
         area: l.area || "",
         bedrooms: l.bedroomsNumber ?? 0,
         bathrooms: l.bathroomsNumber ?? 0,
-        basePrice: l.price ?? 0,
-        price: avgPrice,
+        basePrice: listedPrice,
+        listedPrice: rateDisplay.listedPrice,
+        avgCalendarRate: rateDisplay.avgCalendarRate,
+        displayRate: rateDisplay.displayRate,
+        rateLabel: rateDisplay.rateLabel,
+        price: rateDisplay.displayRate,
         currency: l.currencyCode || "AED",
         currencyCode: l.currencyCode || "AED",
         priceFloor: l.priceFloor ?? 0,
@@ -109,7 +121,7 @@ export async function GET() {
         isActivated: l.isActive !== false,
         occupancyPct,
         occupancy: occupancyPct,
-        avgPrice,
+        avgPrice: rateDisplay.displayRate,
         pendingProposals: 0,
         totalReservations: res.length,
         totalRevenue: Math.round(totalRevenue),

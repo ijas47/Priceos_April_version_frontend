@@ -34,9 +34,14 @@ export default async function AgentChatPage() {
       ...p,
       id: String(p.id ?? p._id ?? ""),
       _id: String(p.id ?? p._id ?? ""),
-      price: Number(p.avgPrice ?? p.basePrice ?? p.price ?? 0),
-      occupancy: Number(p.occupancyPct ?? 0),
-      avgPrice: Number(p.avgPrice ?? p.basePrice ?? p.price ?? 0),
+      basePrice: Number(p.basePrice ?? p.listedPrice ?? p.price ?? 0),
+      listedPrice: Number(p.listedPrice ?? p.basePrice ?? p.price ?? 0),
+      avgCalendarRate: p.avgCalendarRate != null ? Number(p.avgCalendarRate) : null,
+      displayRate: Number(p.displayRate ?? p.avgPrice ?? p.basePrice ?? p.price ?? 0),
+      rateLabel: (p.rateLabel as "Listed Rate" | "Avg Rate" | undefined) ?? "Listed Rate",
+      price: Number(p.displayRate ?? p.avgPrice ?? p.basePrice ?? p.price ?? 0),
+      occupancy: Number(p.occupancyPct ?? p.occupancy ?? 0),
+      avgPrice: Number(p.displayRate ?? p.avgPrice ?? p.basePrice ?? p.price ?? 0),
     }));
   } catch (err) {
     console.error("[agent-chat page] failed to load properties", err);

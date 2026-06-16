@@ -195,12 +195,12 @@ export function SidebarTabbedView() {
                                         </div>
                                         <div className="h-12 w-px bg-border/50" />
                                         <div className="flex flex-col items-end">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Avg Rate</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{calendarMetrics?.rateLabel ?? "Listed Rate"}</span>
                                             <div className="flex items-baseline gap-1 mt-1">
                                                 {!calendarMetrics ? (
                                                     <span className="text-3xl font-bold text-muted-foreground/30 animate-pulse">--</span>
                                                 ) : (
-                                                    <><span className="text-3xl font-black tracking-tighter">{calendarMetrics.avgPrice.toFixed(0)}</span><span className="text-[12px] font-bold text-muted-foreground mb-0.5 ml-1">{propertyCurrency}</span></>
+                                                    <><span className="text-3xl font-black tracking-tighter">{(calendarMetrics.displayRate ?? calendarMetrics.avgPrice).toFixed(0)}</span><span className="text-[12px] font-bold text-muted-foreground mb-0.5 ml-1">{propertyCurrency}</span></>
                                                 )}
                                             </div>
                                         </div>

@@ -26,5 +26,12 @@ export interface PropertyListing {
 
 export interface PropertyWithMetrics extends PropertyListing {
   occupancy?: number;
+  /** PMS base/listing rate from Listing.price */
+  basePrice?: number | string;
+  /** Average of synced calendar nightly rates (when rates vary by day) */
+  avgCalendarRate?: number | string | null;
+  /** Value + label to render in property cards and summary chips */
+  displayRate?: number | string;
+  rateLabel?: "Listed Rate" | "Avg Rate";
   avgPrice?: number | string;
 }

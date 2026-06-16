@@ -387,7 +387,11 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
           const data = await res.json();
           const metrics = {
             occupancy: data.occupancy,
-            avgPrice: data.avgPrice,
+            listedPrice: data.listedPrice,
+            avgCalendarRate: data.avgCalendarRate,
+            displayRate: data.displayRate ?? data.avgPrice,
+            rateLabel: data.rateLabel ?? "Listed Rate",
+            avgPrice: data.displayRate ?? data.avgPrice,
             bookedDays: data.bookedDays,
             availableDays: data.availableDays,
             blockedDays: data.blockedDays,

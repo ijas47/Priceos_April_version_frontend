@@ -36,9 +36,12 @@ export default async function GuestChatPage() {
             ...p,
             id: String(p.id ?? p._id ?? ""),
             _id: String(p.id ?? p._id ?? ""),
-            price: Number(p.basePrice ?? p.price ?? 0),
-            occupancy: Number(p.occupancyPct ?? 0),
-            avgPrice: Number(p.avgPrice ?? p.basePrice ?? p.price ?? 0),
+            basePrice: Number(p.basePrice ?? p.listedPrice ?? p.price ?? 0),
+            displayRate: Number(p.displayRate ?? p.avgPrice ?? p.basePrice ?? p.price ?? 0),
+            rateLabel: (p.rateLabel as "Listed Rate" | "Avg Rate" | undefined) ?? "Listed Rate",
+            price: Number(p.displayRate ?? p.basePrice ?? p.price ?? 0),
+            occupancy: Number(p.occupancyPct ?? p.occupancy ?? 0),
+            avgPrice: Number(p.displayRate ?? p.avgPrice ?? p.basePrice ?? p.price ?? 0),
         }));
     } catch (err) {
         console.error("[guest-chat page] failed to load properties", err);
