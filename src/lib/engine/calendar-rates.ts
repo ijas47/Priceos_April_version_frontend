@@ -121,6 +121,10 @@ export function buildCalendarPriceMap(
   return map;
 }
 
+/**
+ * Per-day listed/calendar reference for change-% display and Pass 0 listed-ref weight (10%).
+ * Not the primary pricing anchor — Pass 0 uses comp-set + pacing when available.
+ */
 export function resolveDayCalendarPrice(
   date: string,
   priceByDate: Map<string, number>,

@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   computeDay,
-  PACING_ADR_BLEND,
   type ListingConfig,
   type Rule,
   type BookingContext,
@@ -191,12 +190,11 @@ describe("computeDay — rule effects", () => {
 });
 
 describe("computeDay — Pass 0 market anchor", () => {
-  it("blends toward pacing ADR at the configured weight", () => {
-    const signal: MarketSignal = { pacingAdr: 600 };
-    const res = computeDay(date, today, makeConfig({ basePrice: 500 }), [], noBooking, signal);
-    const expected = 500 * (1 - PACING_ADR_BLEND) + 600 * PACING_ADR_BLEND;
-    expect(res.price).toBe(expected);
-    expect(res.note).toContain("[MARKET] Pacing ADR");
+  it("de-anchors from listed price toward comp-set and pacing blend", () => {
+    const signal: MarketSignal = { compSetP50: 620, pacingAdr: 600, monthAnchorAdr: 580 };
+    const res = computeDay(date, today, makeConfig({ basePrice: 165 }), [], noBooking, signal);
+    expect(res.price).toBeGreaterThan(400);
+    expect(res.note).toContain("[MARKET] Anchor");
   });
 
   it("applies a supply discount when pressure is high and forward occupancy is weak", () => {
@@ -213,16 +211,87 @@ describe("computeDay — Pass 0 market anchor", () => {
 
   it("keeps aggressive market discounts inside the floor/ceiling band", () => {
     const signal: MarketSignal = {
-      monthAnchorAdr: 200,
-      annualAnchorAdr: 1000,
+      compSetP50: 480,
+      monthAnchorAdr: 500,
+      annualAnchorAdr: 520,
       forwardOccupancy: 0.2,
       supplyPressure: 0.6,
-      pacingAdr: 250,
+      pacingAdr: 450,
       activeListings: 15000,
     };
-    const res = computeDay(date, today, makeConfig(), [], noBooking, signal);
+    const res = computeDay(date, today, makeConfig({ basePrice: 165 }), [], noBooking, signal);
     expect(res.price).toBeGreaterThanOrEqual(300);
     expect(res.price).toBeLessThanOrEqual(1200);
     expect(res.note).toContain("[MARKET]");
+  });
+});
+
+describe("computeDay — booking recency", () => {
+  const recencyConfig = {
+    enabled: true,
+    minDiscountPct: 5,
+    maxDiscountPct: 15,
+    minDaysSinceBooking: 15,
+    maxDaysSinceBooking: 45,
+    forwardDays: 30,
+  };
+
+  it("applies a recency discount within forwardDays lead time", () => {
+    const nearDate = new Date("2026-06-20T00:00:00.000Z"); // 6 days out
+    const res = computeDay(
+      nearDate,
+      today,
+      makeConfig({
+        bookingRecency: recencyConfig,
+        daysSinceLastBooking: 30,
+      }),
+      [],
+      noBooking
+    );
+    expect(res.price).toBe(450); // 10% off 500
+    expect(res.note).toContain("[BOOKING_RECENCY]");
+  });
+
+  it("skips recency discount beyond forwardDays", () => {
+    const res = computeDay(
+      date,
+      today,
+      makeConfig({
+        bookingRecency: recencyConfig,
+        daysSinceLastBooking: 30,
+      }),
+      [],
+      noBooking
+    );
+    expect(res.price).toBe(500);
+    expect(res.note).not.toContain("[BOOKING_RECENCY]");
+  });
+});
+
+describe("computeDay — crisis regime", () => {
+  it("caps price at comp p25 on tier 4 crisis", () => {
+    const signal: MarketSignal = { compSetP25: 420, compSetP50: 480 };
+    const res = computeDay(
+      date,
+      today,
+      makeConfig({ basePrice: 500, crisisTier: 4 }),
+      [],
+      noBooking,
+      signal
+    );
+    expect(res.price).toBe(420);
+    expect(res.note).toContain("[CRISIS T4]");
+  });
+
+  it("leaves price unchanged when crisis tier is 0", () => {
+    const res = computeDay(
+      date,
+      today,
+      makeConfig({ crisisTier: 0 }),
+      [],
+      noBooking
+    );
+    expect(res.price).toBe(500);
+    expect(res.note).not.toContain("[CRISIS");
   });
 });

@@ -31,6 +31,15 @@ export type { IHostawayConversation } from "./HostawayConversation";
 export { BenchmarkData } from "./BenchmarkData";
 export type { IBenchmarkData } from "./BenchmarkData";
 
+export { DubaiCompListing } from "./DubaiCompListing";
+export type { IDubaiCompListing } from "./DubaiCompListing";
+
+export { DubaiMarketMonthly } from "./DubaiMarketMonthly";
+export type { IDubaiMarketMonthly } from "./DubaiMarketMonthly";
+
+export { DubaiMarketMeta } from "./DubaiMarketMeta";
+export type { IDubaiMarketMeta } from "./DubaiMarketMeta";
+
 export { PricingRule } from "./PricingRule";
 export type { IPricingRule } from "./PricingRule";
 

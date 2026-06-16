@@ -21,9 +21,15 @@ export interface IInventoryMaster extends Document {
   elasticityPrice?: number;
   elasticityWeight?: number;
   pBook?: number;
-  // Sync
+  // Sync / verification
   hostawayStatus?: string;
   lastSyncedAt?: Date;
+  syncVerified?: boolean;
+  syncVerifiedAt?: Date;
+  syncExpectedPrice?: number;
+  syncActualPrice?: number;
+  syncMismatchAed?: number;
+  syncVerifyAttempts?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -57,6 +63,12 @@ const InventorySchema = new Schema<IInventoryMaster>(
     pBook: { type: Number },
     hostawayStatus: { type: String },
     lastSyncedAt: { type: Date },
+    syncVerified: { type: Boolean },
+    syncVerifiedAt: { type: Date },
+    syncExpectedPrice: { type: Number },
+    syncActualPrice: { type: Number },
+    syncMismatchAed: { type: Number },
+    syncVerifyAttempts: { type: Number },
   },
   { timestamps: true }
 );

@@ -1,3 +1,12 @@
+import { resolveMarketAnchorBase } from "@/lib/pricing/market-anchor";
+import { resolvePaceDemandMultiplier } from "@/lib/pricing/booking-pace";
+import { resolveBookingRecencyDiscountPct } from "@/lib/pricing/booking-recency";
+import {
+    applyCrisisAdjustment,
+    type CrisisTier,
+} from "@/lib/pricing/crisis-regime";
+import type { BookingRecencyConfig } from "@/lib/pricing/types";
+
 /**
  * 4-pass pricing waterfall.
  *
@@ -52,6 +61,12 @@ export interface ListingConfig {
     gapFillLengthMax: number;
     gapFillDiscountPct: number;
     gapFillOverrideCico: boolean;
+
+    /** Portfolio booking-recency discount (PriceLabs account level). */
+    bookingRecency?: BookingRecencyConfig | null;
+    daysSinceLastBooking?: number | null;
+    /** Active geopolitical crisis tier for this run (0 = normal). */
+    crisisTier?: CrisisTier;
 }
 
 export interface Rule {
@@ -88,6 +103,10 @@ export interface BookingContext {
  * All fields optional — if not provided, the Market Anchor pass is a no-op.
  */
 export interface MarketSignal {
+    /** Comp-set median ADR (Airbtics bounds or benchmark comps) */
+    compSetP50?: number;
+    compSetP25?: number;
+    compSetP75?: number;
     /** Market p50 ADR for this date's month (anchor) */
     monthAnchorAdr?: number;
     /** Annual p50 ADR for the property's market */
@@ -102,6 +121,10 @@ export interface MarketSignal {
     activeListings?: number;
     /** Oversupply pressure 0..1 derived from market occupancy (higher = softer market) */
     supplyPressure?: number;
+    /** Where comp-set p50 was sourced (for reasoning notes) */
+    compSetSource?: string;
+    /** Booking pace vs STLY for this lead-time horizon (1.0 = on pace). */
+    bookingPaceRatio?: number;
 }
 
 /** Blend weight toward Airbtics forward pacing ADR for a single day. */
@@ -149,28 +172,13 @@ export function computeDay(
     const dow = getDow(date);
     const leadTime = daysBetween(today, date);
 
-    // ── Pass 0 — Market Anchor (Airbtics / comp set data) ─────────────────────
-    // Adjusts basePrice multiplicatively for seasonality and forward demand.
-    // No-op when no market signal is provided — preserves backward compatibility.
+    // ── Pass 0 — Market Anchor (comp-set + pacing; listed price = reference only) ─
+    const listedReference = config.basePrice;
+    const anchor = resolveMarketAnchorBase(listedReference, marketSignal);
+    let basePrice = anchor.price;
+    notes.push(...anchor.notes);
 
-    let basePrice = config.basePrice;
     if (marketSignal) {
-        // Seasonality: month anchor vs annual anchor (e.g. Dec p50=1100 vs annual p50=700 → 1.57x)
-        if (
-            marketSignal.monthAnchorAdr &&
-            marketSignal.annualAnchorAdr &&
-            marketSignal.annualAnchorAdr > 0
-        ) {
-            const seasonMult = marketSignal.monthAnchorAdr / marketSignal.annualAnchorAdr;
-            // Cap multiplier to sane range to avoid garbage data wrecking pricing
-            const capped = Math.min(2.0, Math.max(0.5, seasonMult));
-            const before = basePrice;
-            basePrice = basePrice * capped;
-            notes.push(
-                `[MARKET] Seasonality ${(capped * 100 - 100).toFixed(0)}% (month p50 ${marketSignal.monthAnchorAdr} vs annual ${marketSignal.annualAnchorAdr}) → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
-            );
-        }
-
         // Demand: forward occupancy → surge / discount
         if (
             typeof marketSignal.forwardOccupancy === "number" &&
@@ -215,19 +223,16 @@ export function computeDay(
             );
         }
 
-        // Pacing ADR: blend toward Airbtics predicted rate for this date
-        if (
-            typeof marketSignal.pacingAdr === "number" &&
-            marketSignal.pacingAdr > 0 &&
-            basePrice > 0
-        ) {
-            const before = basePrice;
-            basePrice =
-                basePrice * (1 - PACING_ADR_BLEND) +
-                marketSignal.pacingAdr * PACING_ADR_BLEND;
-            notes.push(
-                `[MARKET] Pacing ADR ${(PACING_ADR_BLEND * 100).toFixed(0)}% blend (mkt ${Math.round(marketSignal.pacingAdr)}) → ${before.toFixed(0)}→${basePrice.toFixed(0)}`
-            );
+        // Pacing is included in the weighted anchor blend — no second blend here.
+
+        // Booking pace vs STLY (nights-on-books pickup)
+        if (typeof marketSignal.bookingPaceRatio === "number") {
+            const pace = resolvePaceDemandMultiplier(marketSignal.bookingPaceRatio);
+            if (pace.multiplier !== 1 && pace.note) {
+                const before = basePrice;
+                basePrice = basePrice * pace.multiplier;
+                notes.push(`${pace.note} → ${before.toFixed(0)}→${basePrice.toFixed(0)}`);
+            }
         }
     }
 
@@ -348,6 +353,26 @@ export function computeDay(
         if (config.lastMinuteMinStay !== null) {
             minimumStay = config.lastMinuteMinStay;
             notes.push(`[LAST_MINUTE] min stay override to ${minimumStay}`);
+        }
+    }
+
+    // Booking recency: extra discount when portfolio has gone quiet
+    if (isAvailable === 1) {
+        const recencyDiscount = resolveBookingRecencyDiscountPct(
+            config.bookingRecency,
+            config.daysSinceLastBooking ?? null,
+            leadTime
+        );
+        if (recencyDiscount !== null && recencyDiscount > 0) {
+            const before = price;
+            price = price * (1 - recencyDiscount / 100);
+            const daysLabel =
+                config.daysSinceLastBooking != null
+                    ? `${config.daysSinceLastBooking}d since last booking`
+                    : "no booking history";
+            notes.push(
+                `[BOOKING_RECENCY] ${recencyDiscount}% discount (${daysLabel}, ${leadTime}d out) → ${before.toFixed(0)}→${price.toFixed(0)}`
+            );
         }
     }
 
@@ -474,6 +499,22 @@ export function computeDay(
                 closedToDeparture = 0;
                 notes.push(`[GAP_FILL] CICO restrictions overridden`);
             }
+        }
+    }
+
+    // ── Crisis regime (after inventory, before integrity clamps) ─────────────
+
+    const crisisTier = config.crisisTier ?? 0;
+    if (crisisTier > 0 && isAvailable === 1 && price > 0) {
+        const crisisResult = applyCrisisAdjustment(price, crisisTier, {
+            listedReference,
+            compSetP25: marketSignal?.compSetP25,
+            compSetP50: marketSignal?.compSetP50,
+        });
+        if (crisisResult.note) {
+            const before = price;
+            price = crisisResult.price;
+            notes.push(`${crisisResult.note} → ${before.toFixed(0)}→${price.toFixed(0)}`);
         }
     }
 

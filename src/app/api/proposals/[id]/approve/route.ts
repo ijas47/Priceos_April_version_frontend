@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB, InventoryMaster } from "@/lib/db";
 import { ChannelSyncAgent } from "@/lib/agents/channel-sync-agent";
 import { getSession } from "@/lib/auth/server";
+import { resolveHostawayApiKey } from "@/lib/listing-content/hostaway-key";
+import { getHostawayApiKey } from "@/lib/env";
 import mongoose from "mongoose";
 
 export async function POST(
@@ -53,18 +55,23 @@ export async function POST(
             },
         });
 
-        // Execute via Channel Sync Agent
-        const channelSyncAgent = new ChannelSyncAgent(
-            process.env.HOSTAWAY_API_KEY || ""
-        );
-
+        const apiKey =
+            (await resolveHostawayApiKey(session.orgId)) ||
+            getHostawayApiKey() ||
+            "";
+        const channelSyncAgent = new ChannelSyncAgent(apiKey);
         const result = await channelSyncAgent.executeProposal(id);
 
-        if (result.success) {
+        if (result.success && result.verified) {
             return NextResponse.json({
                 success: true,
-                message: `Price updated from AED ${Number(proposal.currentPrice).toLocaleString("en-US")} to AED ${proposedPrice.toLocaleString("en-US")} for ${proposal.date}. Updated ${result.updatedDays} days${result.verified ? " (verified)" : ""}.`,
+                message: `Price updated from AED ${Number(proposal.currentPrice).toLocaleString("en-US")} to AED ${proposedPrice.toLocaleString("en-US")} for ${proposal.date}. Verified on Hostaway (${result.actualPrice ?? proposedPrice} AED).`,
             });
+        } else if (result.success && !result.verified) {
+            return NextResponse.json({
+                success: false,
+                message: `Price pushed but Hostaway verification failed for ${proposal.date}. Expected ${proposedPrice} AED, read back ${result.actualPrice ?? "unknown"} AED. A sync alert was created.`,
+            }, { status: 502 });
         } else {
             // Revert on failure
             await InventoryMaster.findByIdAndUpdate(new mongoose.Types.ObjectId(id), {

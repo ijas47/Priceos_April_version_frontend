@@ -1,4 +1,15 @@
-import { connectDB, Listing, InventoryMaster, EngineRun, PropertyGroup, MarketTemplate, Organization } from "@/lib/db";
+import {
+    connectDB,
+    Listing,
+    InventoryMaster,
+    EngineRun,
+    PropertyGroup,
+    MarketTemplate,
+    Organization,
+    BenchmarkData,
+    Reservation,
+    MarketEvent,
+} from "@/lib/db";
 import {
     loadPricingContext,
     mergeRules,
@@ -18,7 +29,34 @@ import {
     BookingContext,
     MarketSignal,
 } from "./waterfall";
-import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
+import { getCompSet, getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
+import { resolveAreaBounds } from "@/lib/pricing/area-bounds";
+import {
+    compSetPercentilesFromAirbtics,
+    compSetPercentilesFromBenchmark,
+    type CompSetPercentiles,
+} from "@/lib/pricing/market-anchor";
+import { resolveDynamicFloor } from "@/lib/pricing/dynamic-floor";
+import { buildStlySummary, shiftIsoDate } from "@/lib/pricing/stly";
+import { computeDaysSinceLastBooking } from "@/lib/pricing/booking-recency";
+import { detectCrisisRegime } from "@/lib/pricing/crisis-regime";
+import {
+    isDubaiMarket,
+    buildDubaiMarketSignals,
+    buildDubaiMarketContext,
+    resolveDubaiCompSetPercentiles,
+    mergeMarketSignals,
+    isDubaiDatasetReady,
+} from "@/lib/market/dubai-airroi";
+import {
+    computeBookingPace,
+    paceRatioForLeadTime,
+    type BookingPaceSummary,
+} from "@/lib/pricing/booking-pace";
+import {
+    resolveBlendedOccupancyPct,
+    occupancyToPct,
+} from "@/lib/pricing/occupancy-blend";
 import { fitElasticityModel } from "@/lib/elasticity/model";
 import type { BookingObservation, ElasticityParams } from "@/lib/elasticity/types";
 import { computeOptimizedPrice, isElasticityPricingEnabled } from "./optimization";
@@ -135,6 +173,42 @@ export async function runPipeline(
         };
 
         const endDate = addDays(today, 364);
+        const todayStr = dateStr(today);
+        const crisisWindowEnd = dateStr(addDays(today, 90));
+
+        const [lastReservation, crisisEventRows] = await Promise.all([
+            Reservation.findOne({
+                listingId: lid,
+                status: { $in: ["confirmed", "pending", "checked_in", "checked_out"] },
+                checkOut: { $lte: todayStr },
+            })
+                .sort({ checkOut: -1 })
+                .select("checkOut")
+                .lean(),
+            MarketEvent.find({
+                orgId: listing.orgId,
+                isActive: true,
+                endDate: { $gte: todayStr },
+                startDate: { $lte: crisisWindowEnd },
+            })
+                .select("name description impactLevel confidence")
+                .limit(100)
+                .lean(),
+        ]);
+
+        const daysSinceLastBooking = computeDaysSinceLastBooking(
+            today,
+            lastReservation?.checkOut ?? null
+        );
+        const bookingRecencyConfig = pricingCtx.pack.portfolioDefaults.bookingRecency;
+        const crisisRegime = detectCrisisRegime(
+            crisisEventRows.map((e) => ({
+                name: e.name,
+                description: e.description,
+                impactLevel: e.impactLevel,
+                confidence: e.confidence,
+            }))
+        );
 
         // Prefer Hostaway calendar rates (per-day) over the static listing base price.
         try {
@@ -161,13 +235,101 @@ export async function runPipeline(
 
         const gapMap = computeGaps(today, endDate, bookingMap);
 
-        // ── Market signals from Airbtics (no-op if key/data missing) ──────────
-        const marketSignals = await buildMarketSignals(
-            listing.city || "",
-            listing.countryCode || "",
-            String(listing.bedroomsNumber || 2),
+        const pipelineEndDate = addDays(today, 364);
+        const pipelineEndStr = dateStr(pipelineEndDate);
+
+        // ── Market signals (Dubai open data primary, Airbtics fallback) ───────
+        let marketSignals = await buildMarketSignals(listing, today, 365);
+
+        const stlyFrom = shiftIsoDate(todayStr, -1);
+        const stlyTo = shiftIsoDate(pipelineEndStr, -1);
+        const [stlyInventory, stlyReservations, forwardReservations] = await Promise.all([
+            InventoryMaster.find({
+                listingId: lid,
+                date: { $gte: stlyFrom, $lte: stlyTo },
+            })
+                .select("date currentPrice status")
+                .lean(),
+            Reservation.find({
+                listingId: lid,
+                checkIn: { $lte: stlyTo },
+                checkOut: { $gte: stlyFrom },
+                status: { $in: ["confirmed", "pending", "checked_in", "checked_out"] },
+            })
+                .select("checkIn checkOut nights totalPrice status")
+                .lean(),
+            Reservation.find({
+                listingId: lid,
+                checkIn: { $lte: pipelineEndStr },
+                checkOut: { $gte: todayStr },
+                status: { $in: ["confirmed", "pending", "checked_in", "checked_out"] },
+            })
+                .select("checkIn checkOut status")
+                .lean(),
+        ]);
+
+        const bookingPace = computeBookingPace({
+            today: todayStr,
+            forwardInventory: existingInventory.map((r) => ({
+                date: r.date,
+                status: r.status,
+            })),
+            forwardReservations: forwardReservations.map((r) => ({
+                checkIn: r.checkIn,
+                checkOut: r.checkOut,
+                status: r.status,
+            })),
+            stlyInventory: stlyInventory.map((r) => ({
+                date: r.date,
+                status: r.status,
+            })),
+            stlyReservations: stlyReservations.map((r) => ({
+                checkIn: r.checkIn,
+                checkOut: r.checkOut,
+                status: r.status,
+            })),
+        });
+        marketSignals = enrichMarketSignalsWithPace(
+            marketSignals,
+            bookingPace,
             today,
             365
+        );
+
+        const city = listing.city || "Dubai";
+        const countryCode = listing.countryCode || "AE";
+        let blendedOccupancyPct = pricingCtx.occupancyPct;
+        if (isDubaiMarket(city, countryCode) && (await isDubaiDatasetReady())) {
+            const dubaiCtx = await buildDubaiMarketContext(
+                listing.area || city,
+                city,
+                listing.bedroomsNumber || 2
+            );
+            const marketOccPct = occupancyToPct(dubaiCtx?.latestMonth?.avgOccupancy);
+            blendedOccupancyPct = resolveBlendedOccupancyPct({
+                listingOccPct: pricingCtx.occupancyPct,
+                marketOccPct,
+                listingHistoryDays: listing.occupancyLookbackDays ?? 30,
+            });
+        }
+        const stlySummary = buildStlySummary(
+            dateStr(today),
+            dateStr(pipelineEndDate),
+            stlyInventory.map((r) => ({
+                date: r.date,
+                currentPrice: r.currentPrice,
+                status: r.status,
+            })),
+            stlyReservations.map((r) => ({
+                checkIn: r.checkIn,
+                checkOut: r.checkOut,
+                nights: r.nights,
+                totalPrice: Number(r.totalPrice || 0),
+                status: r.status,
+            }))
+        );
+        const stlyRateByDate = new Map(
+            stlySummary.days.map((d) => [d.date, d.stly_rate])
         );
 
         let daysChanged = 0;
@@ -177,7 +339,7 @@ export async function runPipeline(
             existingInventory,
             listingFallbackPrice
         );
-        const floor = baseConfig.absoluteMinPrice;
+        const staticFloor = baseConfig.absoluteMinPrice;
         const ceiling = baseConfig.absoluteMaxPrice;
 
         // ── Revenue optimization layer (elasticity + demand) ──────────────────
@@ -225,7 +387,7 @@ export async function runPipeline(
             let dayConfig: ListingConfig = {
                 ...baseConfig,
                 basePrice: dayCalendarPrice > 0 ? dayCalendarPrice : baseConfig.basePrice,
-                occupancyPct: pricingCtx.occupancyPct,
+                occupancyPct: blendedOccupancyPct,
             };
             dayConfig = applyProfileToConfig(
                 dayConfig,
@@ -268,7 +430,34 @@ export async function runPipeline(
                 };
             }
 
+            const floorResult = resolveDynamicFloor({
+                staticFloor,
+                leadTimeDays: leadTime,
+                stlyRate: stlyRateByDate.get(ds) ?? null,
+                safetyConfig: pricingCtx.pack.portfolioDefaults.safetyMinimumPrice,
+                compSetP25: signal?.compSetP25 ?? null,
+            });
+            dayConfig.absoluteMinPrice = floorResult.floor;
+            dayConfig.bookingRecency = bookingRecencyConfig;
+            dayConfig.daysSinceLastBooking = daysSinceLastBooking;
+            dayConfig.crisisTier = crisisRegime.tier;
+
             const result = computeDay(currentDate, today, dayConfig, allRules, bookingCtx, signal);
+
+            const reasoningParts = [result.note, floorResult.note].filter(Boolean);
+            if (bookingPace.primaryPaceRatio != null && i === 0) {
+                const w60 = bookingPace.windows.find((w) => w.horizonDays === 60);
+                if (w60) {
+                    reasoningParts.unshift(
+                        `[PACE] 60d pickup ${w60.bookedNights} vs STLY ${w60.stlyBookedNights} (${((w60.paceRatio ?? 1) * 100).toFixed(0)}%)`
+                    );
+                }
+            }
+            if (crisisRegime.tier > 0 && crisisRegime.reason) {
+                reasoningParts.unshift(
+                    `[CRISIS] Tier ${crisisRegime.tier}: ${crisisRegime.reason}`
+                );
+            }
 
             // ── Revenue optimization ──────────────────────────────────────────
             // Only optimize bookable (available) days; booked/blocked days keep
@@ -277,12 +466,13 @@ export async function runPipeline(
             let elasticityPrice: number | undefined;
             let elasticityWeight: number | undefined;
             let pBook: number | undefined;
-            if (result.isAvailable === 1 && ceiling > floor) {
+            const effectiveFloor = floorResult.floor;
+            if (result.isAvailable === 1 && ceiling > effectiveFloor) {
                 const month = currentDate.getMonth() + 1;
                 const opt = computeOptimizedPrice({
                     rulebookPrice: result.price,
                     params: elasticityParams,
-                    floor,
+                    floor: effectiveFloor,
                     ceiling,
                     demandModifierPct: demandModifierFor(month),
                 });
@@ -313,7 +503,7 @@ export async function runPipeline(
                             elasticityWeight,
                             pBook,
                             changePct,
-                            reasoning: result.note,
+                            reasoning: reasoningParts.join("; "),
                             proposalStatus: "pending",
                             minStay: result.minimumStay,
                             maxStay: result.maximumStay,
@@ -362,63 +552,186 @@ export async function runPipeline(
     }
 }
 
+interface ListingMarketInput {
+    _id: mongoose.Types.ObjectId;
+    city?: string;
+    countryCode?: string;
+    area?: string;
+    bedroomsNumber?: number;
+}
+
 /**
- * Build a date→MarketSignal map for the next N days using Airbtics data.
- * Falls back to empty map (no-op) when API key/data missing.
+ * Build a date→MarketSignal map for the next N days.
+ * Dubai AirROI open data is primary for Dubai listings; Airbtics fills gaps.
  */
 async function buildMarketSignals(
+    listing: ListingMarketInput,
+    startDate: Date,
+    days: number
+): Promise<Map<string, MarketSignal>> {
+    const city = listing.city || "Dubai";
+    const countryCode = listing.countryCode || "AE";
+    const bedrooms = listing.bedroomsNumber || 2;
+
+    let dubaiMap = new Map<string, MarketSignal>();
+    if (isDubaiMarket(city, countryCode) && (await isDubaiDatasetReady())) {
+        try {
+            dubaiMap = await buildDubaiMarketSignals(
+                listing.area || city,
+                city,
+                bedrooms,
+                startDate,
+                days
+            );
+        } catch (err) {
+            console.warn("[buildMarketSignals] Dubai dataset:", (err as Error).message);
+        }
+    }
+
+    let airbticsMap = new Map<string, MarketSignal>();
+    try {
+        airbticsMap = await buildAirbticsMarketSignals(
+            listing,
+            city,
+            countryCode,
+            startDate,
+            days
+        );
+    } catch (err) {
+        console.error("[buildMarketSignals] Airbtics:", (err as Error).message);
+    }
+
+    return mergeMarketSignals(dubaiMap, airbticsMap);
+}
+
+/** Airbtics-backed signals — used as fallback when Dubai open data is missing fields. */
+async function buildAirbticsMarketSignals(
+    listing: ListingMarketInput,
     city: string,
     countryCode: string,
-    bedrooms: string,
     startDate: Date,
     days: number
 ): Promise<Map<string, MarketSignal>> {
     const map = new Map<string, MarketSignal>();
+    const bedrooms = String(listing.bedroomsNumber || 2);
+    const endDate = addDays(startDate, days - 1);
+
+    const mktId = await resolveMarketId(city, countryCode);
+    if (!mktId) return map;
+
+    const ctx = await getMarketContext(mktId, bedrooms);
+
+    const compPercentiles = await resolveCompSetPercentiles(
+        listing,
+        city,
+        countryCode,
+        startDate,
+        endDate,
+        { skipDubai: true }
+    );
+
+    const monthAdr = new Map<string, number>();
+    for (const m of ctx.monthlyMetrics) {
+        if (m.month && m.p50_adr) monthAdr.set(m.month, m.p50_adr);
+    }
+    const pacingMap = new Map<string, { occ?: number; adr?: number }>();
+    for (const p of ctx.futurePacing) {
+        pacingMap.set(p.date, { occ: p.occupancy, adr: p.adr });
+    }
+
+    const annualAnchor = ctx.p50ADR;
+    const marketOcc = ctx.occupancy ?? null;
+    const activeListings = ctx.activeListings ?? null;
+    const supplyPressure =
+        marketOcc != null
+            ? Math.max(0, Math.min(1, 1 - marketOcc))
+            : undefined;
+
+    const compP50 =
+        compPercentiles.p50 ??
+        (annualAnchor && annualAnchor > 0 ? Math.round(annualAnchor) : undefined);
+
+    for (let i = 0; i < days; i++) {
+        const d = addDays(startDate, i);
+        const ds = dateStr(d);
+        const ym = ds.slice(0, 7);
+        const monthAnchor = monthAdr.get(ym);
+        const pacing = pacingMap.get(ds);
+        const signal: MarketSignal = {};
+        if (compP50) {
+            signal.compSetP50 = compP50;
+            if (compPercentiles.p25) signal.compSetP25 = compPercentiles.p25;
+            if (compPercentiles.p75) signal.compSetP75 = compPercentiles.p75;
+            signal.compSetSource = compPercentiles.source;
+        }
+        if (monthAnchor) signal.monthAnchorAdr = monthAnchor;
+        if (annualAnchor) signal.annualAnchorAdr = annualAnchor;
+        if (pacing?.occ !== undefined) signal.forwardOccupancy = pacing.occ;
+        if (pacing?.adr !== undefined) signal.pacingAdr = pacing.adr;
+        if (marketOcc != null) signal.marketOccupancy = marketOcc;
+        if (activeListings != null) signal.activeListings = activeListings;
+        if (supplyPressure != null) signal.supplyPressure = supplyPressure;
+        if (Object.keys(signal).length > 0) map.set(ds, signal);
+    }
+
+    return map;
+}
+
+async function resolveCompSetPercentiles(
+    listing: ListingMarketInput,
+    city: string,
+    countryCode: string,
+    startDate: Date,
+    endDate: Date,
+    options?: { skipDubai?: boolean }
+): Promise<CompSetPercentiles> {
+    const bedrooms = listing.bedroomsNumber || 2;
+    const bounds = resolveAreaBounds(listing.area || city, city);
+
+    if (!options?.skipDubai && bounds && isDubaiMarket(city, countryCode)) {
+        try {
+            if (await isDubaiDatasetReady()) {
+                const fromDubai = await resolveDubaiCompSetPercentiles(bounds, bedrooms);
+                if (fromDubai.p50) return fromDubai;
+            }
+        } catch (err) {
+            console.warn("[resolveCompSetPercentiles] Dubai dataset:", (err as Error).message);
+        }
+    }
+
+    if (bounds) {
+        try {
+            const compSet = await getCompSet(bounds, bedrooms);
+            if (compSet.listings.length > 0) {
+                const fromAirbtics = compSetPercentilesFromAirbtics(compSet.listings);
+                if (fromAirbtics.p50) return fromAirbtics;
+            }
+        } catch (err) {
+            console.warn("[resolveCompSetPercentiles] Airbtics comps:", (err as Error).message);
+        }
+    }
+
     try {
-        const mktId = await resolveMarketId(city, countryCode);
-        if (!mktId) return map;
-        const ctx = await getMarketContext(mktId, bedrooms);
-        if (!ctx.p50ADR) return map;
+        const bench = await BenchmarkData.findOne({
+            listingId: listing._id,
+            dateFrom: { $lte: dateStr(endDate) },
+            dateTo: { $gte: dateStr(startDate) },
+        })
+            .sort({ createdAt: -1 })
+            .lean();
 
-        // Build a per-month anchor from monthly metrics
-        const monthAdr = new Map<string, number>();
-        for (const m of ctx.monthlyMetrics) {
-            if (m.month && m.p50_adr) monthAdr.set(m.month, m.p50_adr);
-        }
-        // Build a per-date pacing lookup
-        const pacingMap = new Map<string, { occ?: number; adr?: number }>();
-        for (const p of ctx.futurePacing) {
-            pacingMap.set(p.date, { occ: p.occupancy, adr: p.adr });
-        }
-
-        const annualAnchor = ctx.p50ADR;
-        const marketOcc = ctx.occupancy ?? null;
-        const activeListings = ctx.activeListings ?? null;
-        const supplyPressure =
-            marketOcc != null
-                ? Math.max(0, Math.min(1, 1 - marketOcc))
-                : undefined;
-
-        for (let i = 0; i < days; i++) {
-            const d = addDays(startDate, i);
-            const ds = dateStr(d);
-            const ym = ds.slice(0, 7);
-            const monthAnchor = monthAdr.get(ym);
-            const pacing = pacingMap.get(ds);
-            const signal: MarketSignal = {};
-            if (monthAnchor) signal.monthAnchorAdr = monthAnchor;
-            if (annualAnchor) signal.annualAnchorAdr = annualAnchor;
-            if (pacing?.occ !== undefined) signal.forwardOccupancy = pacing.occ;
-            if (pacing?.adr !== undefined) signal.pacingAdr = pacing.adr;
-            if (marketOcc != null) signal.marketOccupancy = marketOcc;
-            if (activeListings != null) signal.activeListings = activeListings;
-            if (supplyPressure != null) signal.supplyPressure = supplyPressure;
-            if (Object.keys(signal).length > 0) map.set(ds, signal);
+        if (bench) {
+            return compSetPercentilesFromBenchmark(bench.comps ?? [], {
+                p25Rate: bench.p25Rate,
+                p50Rate: bench.p50Rate,
+                p75Rate: bench.p75Rate,
+            });
         }
     } catch (err) {
-        console.error("[buildMarketSignals]", (err as Error).message);
+        console.warn("[resolveCompSetPercentiles] benchmark:", (err as Error).message);
     }
-    return map;
+
+    return { p25: null, p50: null, p75: null, count: 0, source: "market_summary" };
 }
 
 /**
@@ -464,6 +777,27 @@ interface GapInfo {
     gapLength: number;
     gapStart: string;
     gapEnd: string;
+}
+
+function enrichMarketSignalsWithPace(
+    signals: Map<string, MarketSignal>,
+    paceSummary: BookingPaceSummary,
+    today: Date,
+    days: number
+): Map<string, MarketSignal> {
+    const enriched = new Map(signals);
+    for (let i = 0; i < days; i++) {
+        const currentDate = addDays(today, i);
+        const ds = dateStr(currentDate);
+        const leadTime = Math.round(
+            (currentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        const paceRatio = paceRatioForLeadTime(paceSummary, leadTime);
+        if (paceRatio == null) continue;
+        const existing = enriched.get(ds) ?? {};
+        enriched.set(ds, { ...existing, bookingPaceRatio: paceRatio });
+    }
+    return enriched;
 }
 
 function computeGaps(

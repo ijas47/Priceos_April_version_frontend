@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { FileText, Sliders, CalendarDays, BarChart3 } from "lucide-react";
 import { PricingClient, ProposalData } from "./pricing-client";
 import { PricingRulesStudio } from "@/components/pricing/pricing-rules-studio";
 import { PricingCalendarHeatmap } from "@/components/pricing/pricing-calendar-heatmap";
 import { CompSetViewer } from "@/components/pricing/comp-set-viewer";
+import { PortfolioBulkAdjustDialog } from "@/components/pricing/portfolio-bulk-adjust-dialog";
 
 const TABS = [
   { id: "calendar", label: "Calendar", icon: CalendarDays },
@@ -25,12 +27,23 @@ interface Props {
 
 export function PricingPageTabs({ initialProposals, listings, orgId }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("calendar");
+  const router = useRouter();
+
+  const handleBulkAdjustApplied = () => {
+    router.refresh();
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Page Header */}
       <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-0 shrink-0">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-1">Pricing Command Center</h1>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-1">
+          <h1 className="text-2xl sm:text-3xl font-bold">Pricing Command Center</h1>
+          <PortfolioBulkAdjustDialog
+            listings={listings}
+            onApplied={handleBulkAdjustApplied}
+          />
+        </div>
         <p className="text-muted-foreground text-sm max-w-2xl mb-4 sm:mb-6">
           365-day price calendar, AI proposals, and the rules driving every pricing decision.
         </p>

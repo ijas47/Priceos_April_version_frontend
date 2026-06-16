@@ -284,3 +284,67 @@ export function applyProfileToConfig(
 export function mergeRules(ctx: ResolvedPricingContext): Rule[] {
   return [...ctx.groupRules, ...ctx.listingRules];
 }
+
+export interface PricingRulesWindowSummary {
+  pack_version: string;
+  pack_source: string;
+  market_code: string;
+  segments_active_in_window: Array<{
+    segment_id: string;
+    segment_name: string;
+    profile_name: string | null;
+    base_adj_pct: number | null;
+    occupancy_preset: string | null;
+  }>;
+  portfolio_defaults: {
+    last_minute_within_days: number;
+    far_out_premium_pct: number | null;
+    orphan_discount_pct: number | null;
+  };
+  role: string;
+}
+
+/** Summarize which UAE / portfolio pricing pack segments apply in the analysis window. */
+export function summarizeActivePricingRules(
+  pack: MarketPricingPack,
+  windowFrom: string,
+  windowTo: string
+): PricingRulesWindowSummary {
+  const segments: PricingRulesWindowSummary["segments_active_in_window"] = [];
+  const seen = new Set<string>();
+
+  const cur = new Date(`${windowFrom}T12:00:00Z`);
+  const end = new Date(`${windowTo}T12:00:00Z`);
+  while (cur <= end) {
+    const dateStr = cur.toISOString().split("T")[0];
+    const { segment, profile } = resolveSeasonalSegment(pack, cur);
+    if (segment && !seen.has(segment.id)) {
+      seen.add(segment.id);
+      segments.push({
+        segment_id: segment.id,
+        segment_name: segment.name,
+        profile_name: profile?.name ?? null,
+        base_adj_pct: segment.baseAdjPct ?? null,
+        occupancy_preset: profile?.occupancyPreset ?? null,
+      });
+    }
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+
+  const lm = pack.portfolioDefaults.lastMinute;
+  const farOut = pack.portfolioDefaults.farOutPremium;
+  const orphan = pack.portfolioDefaults.orphanDays;
+
+  return {
+    pack_version: pack.version,
+    pack_source: pack.source,
+    market_code: pack.marketCode,
+    segments_active_in_window: segments,
+    portfolio_defaults: {
+      last_minute_within_days: lm.withinDays,
+      far_out_premium_pct: farOut?.enabled ? farOut.endPremiumPct : null,
+      orphan_discount_pct: orphan?.enabled ? orphan.discountPct : null,
+    },
+    role: "Operational rulebook (~20% weight): occupancy matrix, last-minute ramp, seasonal baseAdj, gap fill — applied in engine Pass 1–3 after market anchor.",
+  };
+}

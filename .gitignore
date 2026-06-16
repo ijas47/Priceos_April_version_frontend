@@ -33,6 +33,10 @@ node_modules/
 # misc
 *.pem
 
+# Open-source comp datasets (downloaded locally, not committed)
+/data/open-airbnb/
+/data/dubai-airroi/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

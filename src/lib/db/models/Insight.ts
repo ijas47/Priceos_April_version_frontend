@@ -12,7 +12,8 @@ export type InsightCategory =
   | "REVIEW_SCORE"
   | "EVENT_IMPACT"
   | "SEASONAL_SHIFT"
-  | "CHANNEL_MIX";
+  | "CHANNEL_MIX"
+  | "PMS_SYNC";
 
 export type InsightStatus =
   | "pending"

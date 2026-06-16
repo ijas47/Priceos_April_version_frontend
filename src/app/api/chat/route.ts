@@ -10,7 +10,10 @@ import {
     MarketEvent,
     BenchmarkData,
     GuestSummary,
+    Organization,
 } from "@/lib/db";
+import { buildStlySummary, compactStlyDays, shiftIsoDate } from "@/lib/pricing/stly";
+import { getOrgPricingPack, summarizeActivePricingRules } from "@/lib/pricing/resolve";
 import { getSession } from "@/lib/auth/server";
 import { ensureVerifiedMarketIntel } from "@/lib/research/ensure-market-intel";
 import {
@@ -204,6 +207,9 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 isActive: true,
             };
 
+            const stlyFrom = shiftIsoDate(dateFrom, -1);
+            const stlyTo = shiftIsoDate(dateTo, -1);
+
             const [
                 events,
                 benchmark,
@@ -211,6 +217,9 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 resRows,
                 guestSum,
                 rawInventory,
+                stlyInventory,
+                stlyReservations,
+                orgRow,
             ] = await Promise.all([
                 MarketEvent.find(eventScope).limit(50).lean(),
                 BenchmarkData.findOne({
@@ -256,6 +265,21 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 })
                     .sort({ date: 1 })
                     .lean(),
+                InventoryMaster.find({
+                    listingId: pidObjectId,
+                    date: { $gte: stlyFrom, $lte: stlyTo },
+                })
+                    .select("date currentPrice status")
+                    .lean(),
+                Reservation.find({
+                    listingId: pidObjectId,
+                    checkIn: { $lte: stlyTo },
+                    checkOut: { $gte: stlyFrom },
+                    status: { $in: ["confirmed", "pending", "checked_in", "checked_out"] },
+                })
+                    .select("checkIn checkOut nights totalPrice status")
+                    .lean(),
+                Organization.findById(orgId).select("pricingPack marketCode").lean(),
             ]);
 
             const calResult = calMetrics[0];
@@ -292,6 +316,42 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             );
             console.log(
                 `📦 [Context Sync] occ=${occupancy}% | booked=${bookedDays}d | bookings=${resRows.length}`
+            );
+
+            const stlySummary = buildStlySummary(
+                dateFrom,
+                dateTo,
+                stlyInventory.map((r) => ({
+                    date: r.date,
+                    currentPrice: r.currentPrice,
+                    status: r.status,
+                })),
+                stlyReservations.map((r) => ({
+                    checkIn: r.checkIn,
+                    checkOut: r.checkOut,
+                    nights: r.nights,
+                    totalPrice: Number(r.totalPrice || 0),
+                    status: r.status,
+                }))
+            );
+
+            const engineProposals = rawInventory
+                .filter((inv) => inv.proposedPrice != null)
+                .map((inv) => ({
+                    date: inv.date,
+                    current_price: Number(inv.currentPrice || listing?.price || 0),
+                    proposed_price: Number(inv.proposedPrice),
+                    change_pct: inv.changePct ?? null,
+                    proposal_status: inv.proposalStatus ?? "pending",
+                    reasoning: inv.reasoning ?? null,
+                    elasticity_price: inv.elasticityPrice ?? null,
+                }));
+
+            const pricingPack = getOrgPricingPack(orgRow ?? {});
+            const pricingRules = summarizeActivePricingRules(pricingPack, dateFrom, dateTo);
+            const windowDayCount = rawInventory.length || 1;
+            const engineCoveragePct = Math.round(
+                (engineProposals.length / windowDayCount) * 100
             );
 
             propertyDataPayload = {
@@ -380,6 +440,31 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     totalPrice: Number(r.totalPrice || 0),
                     channel: r.channelName || "Direct",
                 })),
+                stly: {
+                    summary: {
+                        stly_window_from: stlySummary.stly_window_from,
+                        stly_window_to: stlySummary.stly_window_to,
+                        booked_nights: stlySummary.booked_nights,
+                        avg_achieved_adr: stlySummary.avg_achieved_adr,
+                        avg_listed_rate: stlySummary.avg_listed_rate,
+                        occupancy_pct: stlySummary.occupancy_pct,
+                        data_coverage_pct: stlySummary.data_coverage_pct,
+                    },
+                    per_day: compactStlyDays(stlySummary),
+                    usage_note:
+                        "STLY is actual prior-year calendar/reservation data — NOT benchmark.p50 or listing.price. Weight ~20% in narrative; engine rules ~20%; comps/pacing dominate.",
+                },
+                engine_proposals: engineProposals,
+                pricing_rules: pricingRules,
+                data_quality: {
+                    has_benchmark: !!benchmark,
+                    has_engine_proposals: engineProposals.length > 0,
+                    engine_proposal_coverage_pct: engineCoveragePct,
+                    has_stly_data: stlySummary.data_coverage_pct > 0,
+                    stly_coverage_pct: stlySummary.data_coverage_pct,
+                    metrics_source: usingUIMetrics ? "ui" : "db",
+                    listed_price_is_reference_only: true,
+                },
             };
 
             marketEventsForGuardrails = propertyDataPayload.market_events;

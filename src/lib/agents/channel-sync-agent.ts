@@ -1,14 +1,18 @@
 import { createHostawayClient, isHostawayReadOnly } from "../hostaway/client";
-import { connectDB, InventoryMaster, Listing } from "@/lib/db";
+import { connectDB, InventoryMaster, Listing, Insight } from "@/lib/db";
 import { format, parseISO } from "date-fns";
 import mongoose from "mongoose";
 import type { HostawayCalendarUpdate } from "../hostaway/types";
+import { verifyCalendarPush } from "@/lib/pms/calendar-sync-verify";
 
 export interface ExecutionResult {
     success: boolean;
     proposalId: string;
     updatedDays: number;
     verified: boolean;
+    expectedPrice?: number;
+    actualPrice?: number | null;
+    mismatchAed?: number | null;
     error?: string;
     executedAt: Date;
 }
@@ -33,7 +37,6 @@ export class ChannelSyncAgent {
         try {
             await connectDB();
 
-            // Fetch proposal (inventoryMaster record)
             const proposal = await InventoryMaster.findById(
                 new mongoose.Types.ObjectId(proposalId)
             ).lean();
@@ -42,27 +45,21 @@ export class ChannelSyncAgent {
                 throw new Error(`Inventory day ${proposalId} not found`);
             }
 
-            // Get listing's hostawayId
             const listing = await Listing.findById(proposal.listingId)
-                .select("hostawayId")
+                .select("hostawayId name")
                 .lean();
 
-            // Single date update
             const dateStr = proposal.date;
             const dates = [parseISO(dateStr)];
-
-            // The price to execute: the staged proposedPrice if still present,
-            // else currentPrice (the approve route moves proposedPrice into
-            // currentPrice before calling us). This makes execution correct
-            // regardless of caller ordering.
             const priceToPush = Number(proposal.proposedPrice ?? proposal.currentPrice);
 
             let verified = false;
+            let actualPrice: number | null = null;
+            let mismatchAed: number | null = null;
+            let verifyAttempts = 0;
 
-            // If hostawayId exists, push to HostAway API
-            // (skipped in read-only mode — execution is DB-only)
             if (listing?.hostawayId && !isHostawayReadOnly()) {
-                const hostawayId = parseInt(listing.hostawayId);
+                const hostawayId = parseInt(listing.hostawayId, 10);
 
                 const updates: HostawayCalendarUpdate[] = dates.map((date) => ({
                     date: format(date, "yyyy-MM-dd"),
@@ -72,22 +69,67 @@ export class ChannelSyncAgent {
                 const client = createHostawayClient(this.hostawayApiKey);
                 await client.updateCalendar(hostawayId, updates);
 
-                verified = await this.verifyExecution(
+                const verification = await verifyCalendarPush(
+                    client,
                     hostawayId,
-                    format(dates[0], "yyyy-MM-dd"),
-                    format(dates[dates.length - 1], "yyyy-MM-dd"),
+                    dateStr,
                     priceToPush
                 );
+                verified = verification.verified;
+                actualPrice = verification.actualPrice;
+                mismatchAed = verification.mismatchAed;
+                verifyAttempts = verification.attempts;
+
+                await InventoryMaster.findByIdAndUpdate(proposalId, {
+                    $set: {
+                        syncVerified: verified,
+                        syncVerifiedAt: verification.verifiedAt,
+                        syncExpectedPrice: priceToPush,
+                        syncActualPrice: actualPrice ?? undefined,
+                        syncMismatchAed: mismatchAed ?? undefined,
+                        syncVerifyAttempts: verifyAttempts,
+                        lastSyncedAt: executedAt,
+                        proposalStatus: verified ? "pushed" : "approved",
+                    },
+                });
+
+                if (!verified) {
+                    await this.createSyncMismatchInsight({
+                        orgId: proposal.orgId,
+                        listingId: proposal.listingId,
+                        listingName: listing?.name,
+                        date: dateStr,
+                        expectedPrice: priceToPush,
+                        actualPrice,
+                        mismatchAed,
+                    });
+                }
             } else {
-                // No hostawayId - database-only mode
                 verified = true;
+                await InventoryMaster.findByIdAndUpdate(proposalId, {
+                    $set: {
+                        syncVerified: true,
+                        syncVerifiedAt: executedAt,
+                        syncExpectedPrice: priceToPush,
+                        syncActualPrice: priceToPush,
+                        syncMismatchAed: 0,
+                        lastSyncedAt: executedAt,
+                        proposalStatus: "pushed",
+                    },
+                });
             }
 
             return {
-                success: true,
+                success: verified,
                 proposalId,
                 updatedDays: dates.length,
                 verified,
+                expectedPrice: priceToPush,
+                actualPrice,
+                mismatchAed,
+                error: verified
+                    ? undefined
+                    : `Hostaway read-back mismatch: expected ${priceToPush}, got ${actualPrice ?? "unknown"}`,
                 executedAt,
             };
         } catch (error) {
@@ -118,20 +160,39 @@ export class ChannelSyncAgent {
         return results;
     }
 
-    private async verifyExecution(
-        hostawayId: number,
-        startDate: string,
-        endDate: string,
-        expectedPrice: number
-    ): Promise<boolean> {
-        try {
-            const client = createHostawayClient(this.hostawayApiKey);
-            const calendar = await client.getCalendar(hostawayId, startDate, endDate);
-            return calendar.every((day) => Math.abs(day.price - expectedPrice) < 0.01);
-        } catch (error) {
-            console.error("Verification failed:", error);
-            return false;
-        }
+    private async createSyncMismatchInsight(params: {
+        orgId: mongoose.Types.ObjectId;
+        listingId: mongoose.Types.ObjectId;
+        listingName?: string;
+        date: string;
+        expectedPrice: number;
+        actualPrice: number | null;
+        mismatchAed: number | null;
+    }): Promise<void> {
+        const label = params.listingName ?? "Listing";
+        const actual =
+            params.actualPrice != null
+                ? `${params.actualPrice} AED`
+                : "unreadable";
+
+        await Insight.create({
+            orgId: params.orgId,
+            listingId: params.listingId,
+            category: "PMS_SYNC",
+            severity: "high",
+            status: "pending",
+            title: `Hostaway sync mismatch — ${label}`,
+            summary: `${params.date}: pushed ${params.expectedPrice} AED but Hostaway shows ${actual}${params.mismatchAed != null ? ` (Δ ${params.mismatchAed} AED)` : ""}. Review calendar manually.`,
+            confidence: 95,
+            detectorKey: "sync_mismatch",
+            signalData: {
+                date: params.date,
+                expectedPrice: params.expectedPrice,
+                actualPrice: params.actualPrice,
+                mismatchAed: params.mismatchAed,
+            },
+            action: { type: "advisory", scope: params.date },
+        });
     }
 }
 
