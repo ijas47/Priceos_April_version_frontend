@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
 import { addDays, format } from "date-fns";
-import { connectDB, Listing, InventoryMaster, Reservation } from "@/lib/db";
+import { connectDB, InventoryMaster, Reservation } from "@/lib/db";
+import { findListingsForOrg } from "@/lib/db/org-scope";
 import { resolveDisplayRate } from "@/lib/pricing/display-rate";
 
 export interface DashboardPropertyMetric {
@@ -62,7 +62,6 @@ export async function loadPortfolioDashboardData(
   orgId: string
 ): Promise<PortfolioDashboardData> {
   await connectDB();
-  const orgOid = new mongoose.Types.ObjectId(orgId);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -70,22 +69,28 @@ export async function loadPortfolioDashboardData(
   const plus29Str = format(addDays(today, 29), "yyyy-MM-dd");
   const minus365Str = format(addDays(today, -365), "yyyy-MM-dd");
 
-  const [listings, inventory, reservations] = await Promise.all([
-    Listing.find({ orgId: orgOid }).sort({ name: 1 }).lean(),
-    InventoryMaster.find({
-      orgId: orgOid,
-      date: { $gte: todayStr, $lte: plus29Str },
-    })
-      .select("listingId date status currentPrice proposedPrice minStay maxStay")
-      .lean(),
-    Reservation.find({
-      orgId: orgOid,
-      status: { $ne: "cancelled" },
-      checkIn: { $lte: plus29Str },
-      checkOut: { $gte: minus365Str },
-    })
-      .select("listingId guestName guestEmail checkIn checkOut totalPrice nights channelName status")
-      .lean(),
+  const listings = await findListingsForOrg(orgId, { repair: true });
+  const listingIds = listings.map((l) => l._id);
+
+  const [inventory, reservations] = await Promise.all([
+    listingIds.length > 0
+      ? InventoryMaster.find({
+          listingId: { $in: listingIds },
+          date: { $gte: todayStr, $lte: plus29Str },
+        })
+          .select("listingId date status currentPrice proposedPrice minStay maxStay")
+          .lean()
+      : [],
+    listingIds.length > 0
+      ? Reservation.find({
+          listingId: { $in: listingIds },
+          status: { $ne: "cancelled" },
+          checkIn: { $lte: plus29Str },
+          checkOut: { $gte: minus365Str },
+        })
+          .select("listingId guestName guestEmail checkIn checkOut totalPrice nights channelName status")
+          .lean()
+      : [],
   ]);
 
   let totalHistoricalRevenue = 0;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
-import { connectDB, Listing } from "@/lib/db";
+import { connectDB } from "@/lib/db";
+import { findListingsForOrg } from "@/lib/db/org-scope";
 import { getSession } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +12,7 @@ export async function GET() {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await connectDB();
-    const orgOid = new mongoose.Types.ObjectId(session.orgId);
-    const docs = await Listing.find({ orgId: orgOid }).sort({ name: 1 }).lean();
+    const docs = await findListingsForOrg(session.orgId, { repair: true });
 
     const listings = docs.map((l) => ({
       ...l,

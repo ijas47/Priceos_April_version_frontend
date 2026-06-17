@@ -1,4 +1,6 @@
 import { connectDB, Listing, Reservation, InventoryMaster } from "@/lib/db";
+import { findListingsForOrg } from "@/lib/db/org-scope";
+import { getSession } from "@/lib/auth/server";
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 
@@ -30,13 +32,31 @@ export async function GET(req: Request) {
         let reservationsLastSynced: Date | null = null;
 
         if (context === "portfolio") {
-            [listingsCount, reservationsCount, calendarCount] = await Promise.all([
-                Listing.countDocuments(),
-                Reservation.countDocuments(),
-                InventoryMaster.countDocuments(),
-            ]);
-            const lastRes = await Reservation.findOne().sort({ createdAt: -1 }).select("createdAt").lean();
-            reservationsLastSynced = lastRes?.createdAt || null;
+            const session = await getSession();
+            if (session?.orgId) {
+                const listings = await findListingsForOrg(session.orgId, { repair: true });
+                const listingIds = listings.map((l) => l._id);
+                listingsCount = listings.length;
+                if (listingIds.length > 0) {
+                    [reservationsCount, calendarCount] = await Promise.all([
+                        Reservation.countDocuments({ listingId: { $in: listingIds } }),
+                        InventoryMaster.countDocuments({ listingId: { $in: listingIds } }),
+                    ]);
+                    const lastRes = await Reservation.findOne({ listingId: { $in: listingIds } })
+                        .sort({ createdAt: -1 })
+                        .select("createdAt")
+                        .lean();
+                    reservationsLastSynced = lastRes?.createdAt || null;
+                }
+            } else {
+                [listingsCount, reservationsCount, calendarCount] = await Promise.all([
+                    Listing.countDocuments(),
+                    Reservation.countDocuments(),
+                    InventoryMaster.countDocuments(),
+                ]);
+                const lastRes = await Reservation.findOne().sort({ createdAt: -1 }).select("createdAt").lean();
+                reservationsLastSynced = lastRes?.createdAt || null;
+            }
         } else if (propertyId) {
             let lid: mongoose.Types.ObjectId;
             try {

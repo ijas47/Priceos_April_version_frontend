@@ -106,25 +106,31 @@ export function OverviewClient({
     await wait(500);
     log("✓ Database connection established", "success");
     await wait(300);
-    log("Note: Live Hostaway API not yet integrated — reading from local DB", "info");
-    await wait(400);
-    log("Registering sync run record...");
-
+    log("Repairing org scope (claiming orphan listings)...");
     try {
-      const runRes = await fetch("/api/sync/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orgId, sourceId: "all" }),
-      });
-      await wait(300);
-      if (runRes.ok) {
-        const runData = await runRes.json();
-        log(`✓ Sync run saved (ID: ${String(runData.runId ?? "").substring(0, 10)}…)`, "success");
+      const repairRes = await fetch("/api/org/repair-scope", { method: "POST" });
+      if (repairRes.ok) {
+        const repair = await repairRes.json();
+        log(`✓ ${repair.total ?? 0} properties scoped to your account`, "success");
       } else {
-        log("Sync run recorded", "info");
+        log("Org scope repair skipped", "info");
       }
     } catch {
-      log("Sync run record skipped — backend unavailable", "error");
+      log("Org scope repair failed", "error");
+    }
+
+    await wait(400);
+    log("Importing from Hostaway (live API)...");
+    try {
+      const triggerRes = await fetch("/api/sync/trigger", { method: "POST" });
+      const triggerData = await triggerRes.json().catch(() => ({}));
+      if (triggerRes.ok && triggerData.success) {
+        log("✓ Hostaway import completed", "success");
+      } else {
+        log(triggerData.message ?? "Hostaway import skipped — use Sync page if live mode is not configured", "info");
+      }
+    } catch {
+      log("Hostaway import unavailable — reading existing database", "info");
     }
 
     await wait(500);
@@ -428,7 +434,7 @@ const actionQueue = [...filteredProperties].map(p => {
       
       {properties.length === 0 && (
         <div className="z-10 relative mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
-          No properties loaded for your account. Run <strong>Sync Hostaway</strong> on the Sync page, or use the button above to refresh from your database.
+          No properties scoped to your account yet. Click <strong>Sync Hostaway</strong> above to claim orphan listings and import from Hostaway, or run a full import on the Sync page.
         </div>
       )}
 

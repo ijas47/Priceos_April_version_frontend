@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { connectDB, Listing, InventoryMaster, Reservation } from "@/lib/db";
+import { connectDB, InventoryMaster, Reservation } from "@/lib/db";
+import { findListingsForOrg } from "@/lib/db/org-scope";
 import { getSession } from "@/lib/auth/server";
 import { refreshListingCalendarFromHostaway } from "@/lib/engine/calendar-rates";
 import { resolveDisplayRate } from "@/lib/pricing/display-rate";
@@ -18,24 +19,33 @@ export async function GET() {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await connectDB();
-    const orgOid = new mongoose.Types.ObjectId(session.orgId);
 
     const today = format(new Date(), "yyyy-MM-dd");
     const plus29 = format(addDays(new Date(), 29), "yyyy-MM-dd");
 
-    const [listings, reservations] = await Promise.all([
-      Listing.find({ orgId: orgOid }).sort({ name: 1 }).lean(),
-      Reservation.find({ orgId: orgOid, status: { $ne: "cancelled" } })
-        .select("listingId totalPrice channelName")
-        .lean(),
+    const listings = await findListingsForOrg(session.orgId, { repair: true });
+    const listingIds = listings.map((l) => l._id);
+
+    const [reservations, inventoryInitial] = await Promise.all([
+      listingIds.length > 0
+        ? Reservation.find({
+            listingId: { $in: listingIds },
+            status: { $ne: "cancelled" },
+          })
+            .select("listingId totalPrice channelName")
+            .lean()
+        : [],
+      listingIds.length > 0
+        ? InventoryMaster.find({
+            listingId: { $in: listingIds },
+            date: { $gte: today, $lte: plus29 },
+          })
+            .select("listingId date status currentPrice")
+            .lean()
+        : [],
     ]);
 
-    let inventory = await InventoryMaster.find({
-      orgId: orgOid,
-      date: { $gte: today, $lte: plus29 },
-    })
-      .select("listingId date status currentPrice")
-      .lean();
+    let inventory = inventoryInitial;
 
     const needsRefresh = listings.filter((l) => {
       const hostawayId = (l as { hostawayId?: string }).hostawayId;
@@ -67,12 +77,15 @@ export async function GET() {
           )
         );
       }
-      inventory = await InventoryMaster.find({
-        orgId: orgOid,
-        date: { $gte: today, $lte: plus29 },
-      })
-        .select("listingId date status currentPrice")
-        .lean();
+      inventory =
+        listingIds.length > 0
+          ? await InventoryMaster.find({
+              listingId: { $in: listingIds },
+              date: { $gte: today, $lte: plus29 },
+            })
+              .select("listingId date status currentPrice")
+              .lean()
+          : [];
     }
 
     const properties = listings.map((l) => {
