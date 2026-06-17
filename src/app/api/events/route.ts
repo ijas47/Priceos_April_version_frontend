@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB, MarketEvent } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { resolveEventDisplayArea } from "@/lib/research/event-area";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +28,26 @@ export async function GET(req: NextRequest) {
     if (dateTo) query.startDate = { $lte: dateTo };
     if (impactLevel) query.impactLevel = impactLevel;
 
-    const events = await MarketEvent.find(query)
+    const docs = await MarketEvent.find(query)
       .sort({ startDate: 1 })
       .limit(100)
       .lean();
+
+    const events = docs.map((e) => {
+      const desc = String(e.description ?? "");
+      const isNews = e.source === "newsapi" || desc.includes("[news]");
+      return {
+        ...e,
+        area: resolveEventDisplayArea({
+          title: e.name,
+          description: desc,
+          eventType: isNews ? "news" : "event",
+          source: e.source,
+          city: "Dubai",
+          storedArea: e.area,
+        }),
+      };
+    });
 
     return NextResponse.json({ success: true, events });
   } catch (error) {

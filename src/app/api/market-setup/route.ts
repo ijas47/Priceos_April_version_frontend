@@ -197,7 +197,8 @@ Find 10-15 comparable short-term rental properties. Return JSON with rate_distri
         const verifiedSaved = await upsertVerifiedFindings({
             orgId,
             listingId: listingObjectId,
-            area,
+            city,
+            listingArea: area !== city ? area : undefined,
             findings: intel.findings,
         });
         console.log(`📥 Saved ${verifiedSaved} verified market events`);

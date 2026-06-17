@@ -56,7 +56,8 @@ export async function syncOrgMarketEvents(
     totalSaved += await upsertVerifiedFindings({
       orgId,
       listingId,
-      area,
+      city,
+      listingArea: area !== city ? area : undefined,
       findings: intel.findings,
     });
 

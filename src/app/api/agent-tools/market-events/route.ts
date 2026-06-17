@@ -3,6 +3,7 @@ import { connectDB, MarketEvent } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 import { format, addDays } from "date-fns";
 import { scoreMarketEvent, compareEventSignals, confidenceFromSource } from "@/lib/research/event-scoring";
+import { resolveEventDisplayArea } from "@/lib/research/event-area";
 
 export const dynamic = "force-dynamic";
 
@@ -26,8 +27,7 @@ export async function GET(req: NextRequest) {
       .limit(300)
       .lean();
 
-    const events = docs
-      .map((e) => {
+    const mapped = docs.map((e) => {
         const confidence =
           e.confidence != null ? Number(e.confidence) : confidenceFromSource(e.source);
         const scored = scoreMarketEvent({
@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
         });
         const desc = String((e as unknown as Record<string, unknown>).description ?? "");
         const isNews = e.source === "newsapi" || desc.includes("[news]");
+        const storedArea = String((e as unknown as Record<string, unknown>).area ?? "");
         return {
           id: e._id.toString(),
           name: e.name,
@@ -48,14 +49,31 @@ export async function GET(req: NextRequest) {
           upliftPct: e.upliftPct ?? 0,
           description: desc,
           category: isNews ? "News" : "Event",
-          area: (e as unknown as Record<string, unknown>).area ?? "",
+          area: resolveEventDisplayArea({
+            title: e.name,
+            description: desc,
+            eventType: isNews ? "news" : "event",
+            source: e.source,
+            city: "Dubai",
+            storedArea,
+          }),
           source: e.source,
           confidence,
           signalScore: scored.signalScore,
           verified: scored.verified,
         };
-      })
-      .sort(compareEventSignals);
+      });
+
+    const deduped = new Map<string, (typeof mapped)[number]>();
+    for (const ev of mapped) {
+      const key = `${ev.name.toLowerCase().trim()}|${ev.startDate}`;
+      const existing = deduped.get(key);
+      if (!existing || ev.signalScore > existing.signalScore) {
+        deduped.set(key, ev);
+      }
+    }
+
+    const events = Array.from(deduped.values()).sort(compareEventSignals);
 
     const sourceCounts = events.reduce<Record<string, number>>((acc, e) => {
       acc[e.source] = (acc[e.source] || 0) + 1;

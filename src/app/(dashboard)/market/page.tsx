@@ -3,9 +3,6 @@ import { getSession } from "@/lib/auth/server";
 import { cookies } from "next/headers";
 import { format, addDays } from "date-fns";
 import { apiBase } from "@/lib/api/absolute-url";
-import { resolveDtcmEligibility } from "@/lib/research/dtcm-eligibility";
-import mongoose from "mongoose";
-
 
 export default async function MarketPage() {
   const API = await apiBase();
@@ -69,7 +66,7 @@ export default async function MarketPage() {
     suggestedPremiumPct: e.upliftPct ?? 0,
     description: e.description || "",
     category: e.category || "Event",
-    area: e.area || "Dubai",
+    area: e.area || "Dubai (overall)",
     source: e.source,
     confidence: e.confidence ?? 0,
     signalScore: e.signalScore ?? 0,
@@ -77,9 +74,6 @@ export default async function MarketPage() {
   }));
 
   const sourceCounts = eventsData.sourceCounts ?? {};
-  const dtcmEligibility = await resolveDtcmEligibility(
-    new mongoose.Types.ObjectId(session.orgId)
-  );
 
   const formattedListings = (listingsData.listings ?? []).map((l: any) => ({
     id: l.id,
@@ -93,7 +87,6 @@ export default async function MarketPage() {
       orgId={session.orgId}
       events={formattedEvents}
       sourceCounts={sourceCounts}
-      dtcmEligibility={dtcmEligibility}
       occupancyPct={metricsData.avgOccupancyPct || 0}
       avgNightly={metricsData.avgNightlyRate || 0}
       listings={formattedListings}

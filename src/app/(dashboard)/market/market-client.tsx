@@ -31,8 +31,6 @@ import {
 } from "@/components/ui/tooltip";
 import { BenchmarkPanel } from "@/components/market/benchmark-panel";
 import { SourceProvenanceBadge } from "@/components/market/source-provenance-badge";
-import type { DtcmEligibility } from "@/lib/research/dtcm-eligibility";
-
 interface MarketEvent {
   id: string;
   listingId?: string | null;
@@ -55,7 +53,6 @@ interface Props {
   orgId: string;
   events: MarketEvent[];
   sourceCounts?: Record<string, number>;
-  dtcmEligibility?: DtcmEligibility;
   occupancyPct: number;
   avgNightly: number;
   listings: { id: string; name: string; currencyCode: string; area?: string }[];
@@ -100,7 +97,6 @@ export function MarketIntelligenceClient({
   orgId,
   events,
   sourceCounts = {},
-  dtcmEligibility,
   occupancyPct,
   avgNightly,
   listings,
@@ -135,10 +131,8 @@ export function MarketIntelligenceClient({
           .filter(([, n]) => n > 0)
           .map(([k, n]) => `${k}: ${n}`)
           .join(", ");
-        const dtcm = json.data?.dtcm;
-        const dtcmNote = dtcm?.enabled ? " · DTCM on" : "";
         setSyncMsg(
-          `Synced ${listingCount} listings — ${inserted} signals${dtcmNote}${feedParts ? ` (${feedParts})` : ""}`
+          `Synced ${listingCount} listings — ${inserted} signals${feedParts ? ` (${feedParts})` : ""}`
         );
         router.refresh();
       }
@@ -204,31 +198,6 @@ export function MarketIntelligenceClient({
           )}
         </div>
       </div>
-
-      {/* DTCM status — auto-detected for Dubai + PMS */}
-      {dtcmEligibility && (
-        <div
-          className={cn(
-            "rounded-xl border px-4 py-3 flex items-start gap-3 text-sm",
-            dtcmEligibility.enabled
-              ? "border-teal-500/30 bg-teal-500/5 text-teal-900 dark:text-teal-100"
-              : "border-border bg-muted/30 text-muted-foreground"
-          )}
-        >
-          <Globe className="h-4 w-4 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold">
-              {dtcmEligibility.enabled
-                ? "Dubai Gov events active (DTCM + DCUL)"
-                : "Dubai Gov events inactive"}
-            </p>
-            <p className="text-xs mt-0.5 opacity-90">{dtcmEligibility.reason}</p>
-          </div>
-          {dtcmEligibility.enabled && (
-            <SourceProvenanceBadge source="dtcm" showUnverifiedWarning={false} className="ml-auto shrink-0" />
-          )}
-        </div>
-      )}
 
       {/* KPI Cards */}
       <TooltipProvider>

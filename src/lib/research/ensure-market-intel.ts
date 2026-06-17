@@ -10,6 +10,7 @@ import mongoose from "mongoose";
 import { connectDB, MarketEvent, BenchmarkData } from "@/lib/db";
 import { gatherMarketIntelligence, type IntelFinding, type SourceBreakdownEntry } from "./aggregator";
 import { resolveDtcmEligibility } from "./dtcm-eligibility";
+import { resolveEventDisplayArea } from "./event-area";
 
 export const VERIFIED_EVENT_SOURCES = [
     "ticketmaster",
@@ -146,10 +147,11 @@ export interface UpsertIntelResult {
 export async function upsertVerifiedFindings(opts: {
     orgId: mongoose.Types.ObjectId;
     listingId: mongoose.Types.ObjectId;
-    area: string;
+    city: string;
+    listingArea?: string;
     findings: IntelFinding[];
 }): Promise<number> {
-    const { orgId, listingId, area, findings } = opts;
+    const { orgId, listingId, city, listingArea, findings } = opts;
     if (findings.length === 0) return 0;
 
     const docs = findings.map((f) => ({
@@ -158,7 +160,14 @@ export async function upsertVerifiedFindings(opts: {
         name: f.title,
         startDate: f.dateStart,
         endDate: f.dateEnd,
-        area,
+        area: resolveEventDisplayArea({
+            title: f.title,
+            description: f.description,
+            eventType: f.type,
+            source: f.source,
+            city,
+            listingArea,
+        }),
         impactLevel: f.impact,
         upliftPct: f.suggestedPremiumPct,
         confidence: Math.round((f.confidence ?? 0.75) * 100),
@@ -232,7 +241,8 @@ export async function ensureVerifiedMarketIntel(opts: {
     const saved = await upsertVerifiedFindings({
         orgId,
         listingId,
-        area: locationArea,
+        city,
+        listingArea: area && area !== city ? area : undefined,
         findings: intel.findings,
     });
 
