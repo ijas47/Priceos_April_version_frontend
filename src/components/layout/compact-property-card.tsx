@@ -2,6 +2,7 @@
 
 import { Building2, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatRateForLabel } from "@/lib/pricing/display-rate";
 import type { PropertyListing } from "@/types";
 
 interface Props {
@@ -93,11 +94,19 @@ export function CompactPropertyCard({
             </span>
             <span className="text-xs font-black text-foreground tabular-nums tracking-tighter">
               {property.currencyCode}{" "}
-              {Number(
-                (property as { displayRate?: number | string }).displayRate
-                  ?? (property as { basePrice?: number | string }).basePrice
-                  ?? property.price
-                  ?? 0
+              {formatRateForLabel(
+                (property as { rateLabel?: string }).rateLabel,
+                {
+                  listedPrice: Number(
+                    (property as { listedPrice?: number | string }).listedPrice
+                      ?? (property as { basePrice?: number | string }).basePrice
+                      ?? 0
+                  ),
+                  displayRate: Number(
+                    (property as { displayRate?: number | string }).displayRate ?? 0
+                  ),
+                  avgPrice: Number(property.price ?? 0),
+                }
               ).toLocaleString("en-US")}
             </span>
           </div>

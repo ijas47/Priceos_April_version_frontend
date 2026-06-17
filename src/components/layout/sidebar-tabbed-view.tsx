@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { formatRateForLabel } from "@/lib/pricing/display-rate";
 
 interface SimulatedConversation {
     id: string;
@@ -200,7 +201,7 @@ export function SidebarTabbedView() {
                                                 {!calendarMetrics ? (
                                                     <span className="text-3xl font-bold text-muted-foreground/30 animate-pulse">--</span>
                                                 ) : (
-                                                    <><span className="text-3xl font-black tracking-tighter">{(calendarMetrics.displayRate ?? calendarMetrics.avgPrice).toFixed(0)}</span><span className="text-[12px] font-bold text-muted-foreground mb-0.5 ml-1">{propertyCurrency}</span></>
+                                                    <><span className="text-3xl font-black tracking-tighter">{formatRateForLabel(calendarMetrics.rateLabel, calendarMetrics).toFixed(0)}</span><span className="text-[12px] font-bold text-muted-foreground mb-0.5 ml-1">{propertyCurrency}</span></>
                                                 )}
                                             </div>
                                         </div>

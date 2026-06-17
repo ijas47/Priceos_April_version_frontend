@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB, Listing, InventoryMaster } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 import { format, addDays } from "date-fns";
@@ -16,9 +17,10 @@ export async function GET(req: NextRequest) {
     const dateFrom = searchParams.get("dateFrom") ?? format(new Date(), "yyyy-MM-dd");
     const dateTo = searchParams.get("dateTo") ?? format(addDays(new Date(), 29), "yyyy-MM-dd");
 
+    const orgOid = new mongoose.Types.ObjectId(session.orgId);
     const [listingCount, inventory] = await Promise.all([
-      Listing.countDocuments({ orgId: session.orgId }),
-      InventoryMaster.find({ orgId: session.orgId, date: { $gte: dateFrom, $lte: dateTo } })
+      Listing.countDocuments({ orgId: orgOid }),
+      InventoryMaster.find({ orgId: orgOid, date: { $gte: dateFrom, $lte: dateTo } })
         .select("status currentPrice")
         .lean(),
     ]);

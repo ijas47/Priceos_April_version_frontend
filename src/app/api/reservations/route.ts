@@ -10,19 +10,38 @@ export async function GET(req: NextRequest) {
     const session = await getSession();
     await connectDB();
 
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const context = searchParams.get("context");
     const propertyId = searchParams.get("propertyId");
+    const listingId = searchParams.get("listingId");
     const status = searchParams.get("status");
+    const checkIn = searchParams.get("checkIn");
+    const checkOut = searchParams.get("checkOut");
 
-    const query: Record<string, unknown> = {};
-    if (session?.orgId) query.orgId = new mongoose.Types.ObjectId(session.orgId);
-    if (context === "property" && propertyId) query.listingId = propertyId;
+    const query: Record<string, unknown> = {
+      orgId: new mongoose.Types.ObjectId(session.orgId),
+    };
+    if (context === "property" && propertyId) {
+      query.listingId = new mongoose.Types.ObjectId(propertyId);
+    }
+    if (listingId) {
+      query.listingId = new mongoose.Types.ObjectId(listingId);
+    }
     if (status) query.status = status;
+    else query.status = { $ne: "cancelled" };
+
+    if (checkIn && checkOut) {
+      query.checkIn = { $lte: checkOut };
+      query.checkOut = { $gte: checkIn };
+    }
 
     const reservations = await Reservation.find(query)
       .sort({ checkIn: -1 })
-      .limit(500)
+      .limit(5000)
       .lean();
 
     return NextResponse.json({ success: true, reservations });

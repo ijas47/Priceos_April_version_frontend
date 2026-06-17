@@ -3,6 +3,7 @@ import { connectDB, InventoryMaster, Listing, Reservation } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 import { refreshListingCalendarFromHostaway } from "@/lib/engine/calendar-rates";
 import { resolveDisplayRate } from "@/lib/pricing/display-rate";
+import { format } from "date-fns";
 import mongoose from "mongoose";
 
 export async function GET(req: NextRequest) {
@@ -87,10 +88,17 @@ export async function GET(req: NextRequest) {
             price: Number(d.currentPrice),
         }));
 
+        const todayStr = format(new Date(), "yyyy-MM-dd");
+        const calendarListedPrice =
+            calendarDays.find((d) => d.date === todayStr)?.price ??
+            calendarDays.find((d) => d.price > 0)?.price ??
+            0;
+
         const rateDisplay = resolveDisplayRate({
             listedPrice,
             calendarPrices: calendarDays.map((d) => d.price),
             avgCalendarRate,
+            calendarListedPrice,
         });
 
         // Reservations overlapping the range

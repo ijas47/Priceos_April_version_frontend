@@ -36,6 +36,7 @@ interface PropertyMetric {
   occupancy: number;
   avgPrice: number;
   revenue: number;
+  projectedRevenue?: number;
   calendarDays?: {
     date: string;
     status: string;
@@ -192,16 +193,18 @@ export function OverviewClient({
 
   // Dynamic KPIs based on search
   const filteredTotalProperties = filteredProperties.length;
-  const filteredTotalRevenue = filteredProperties.reduce((sum, p) => sum + p.revenue, 0);
+  const filteredTotalRevenue = filteredProperties.reduce(
+    (sum, p) => sum + (p.projectedRevenue ?? p.revenue),
+    0
+  );
 
-  const activePropsForOcc = filteredProperties.filter(p => p.occupancy > 0);
-  const filteredAvgOccupancy = activePropsForOcc.length > 0
-    ? Math.round(activePropsForOcc.reduce((sum, p) => sum + p.occupancy, 0) / activePropsForOcc.length)
+  const filteredAvgOccupancy = filteredProperties.length > 0
+    ? Math.round(filteredProperties.reduce((sum, p) => sum + p.occupancy, 0) / filteredProperties.length)
     : 0;
 
-  const activePropsForPrice = filteredProperties.filter(p => p.avgPrice > 0);
-  const filteredAvgPrice = activePropsForPrice.length > 0
-    ? Math.round(activePropsForPrice.reduce((sum, p) => sum + p.avgPrice, 0) / activePropsForPrice.length)
+  const pricedProps = filteredProperties.filter((p) => p.avgPrice > 0);
+  const filteredAvgPrice = pricedProps.length > 0
+    ? Math.round(pricedProps.reduce((sum, p) => sum + p.avgPrice, 0) / pricedProps.length)
     : 0;
 
   // Generate an array of the next 30 days for the Global Calendar header
@@ -423,6 +426,12 @@ const actionQueue = [...filteredProperties].map(p => {
           </div>
         </div>
       
+      {properties.length === 0 && (
+        <div className="z-10 relative mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+          No properties loaded for your account. Run <strong>Sync Hostaway</strong> on the Sync page, or use the button above to refresh from your database.
+        </div>
+      )}
+
       {/* Focus Mode indicator */}
       {filteredProperties.length === 1 && searchTerm && (
         <div className="z-10 relative mb-6 animate-in fade-in slide-in-from-top-4 duration-500">

@@ -43,8 +43,15 @@ export async function GET() {
       const lid = l._id.toString();
       const inv = inventory.filter((r) => r.listingId?.toString() === lid);
       if (inv.length === 0) return true;
-      const prices = new Set(inv.map((r) => Number(r.currentPrice || 0)));
-      return prices.size <= 1 && prices.has(Number(l.price || 0));
+      const dbPrice = Number(l.price || 0);
+      const calendarPrices = inv
+        .map((r) => Number(r.currentPrice || 0))
+        .filter((p) => p > 0);
+      if (calendarPrices.length === 0) return true;
+      const unique = new Set(calendarPrices.map((p) => Math.round(p)));
+      if (unique.size > 1) return false;
+      const calendarRate = calendarPrices[0];
+      return dbPrice <= 0 || Math.round(calendarRate) !== Math.round(dbPrice);
     });
 
     if (needsRefresh.length > 0) {
@@ -75,6 +82,10 @@ export async function GET() {
       const occupancyPct = inv.length > 0 ? Math.round((booked.length / inv.length) * 100) : 0;
       const listedPrice = Number(l.price ?? 0);
       const calendarPrices = inv.map((r) => Number(r.currentPrice || 0));
+      const todayInv = inv.find((r) => r.date === today);
+      const calendarListedPrice = todayInv
+        ? Number(todayInv.currentPrice || 0)
+        : Number(inv.find((r) => Number(r.currentPrice) > 0)?.currentPrice || 0);
       const avgCalendarRaw =
         inv.length > 0
           ? inv.reduce((s, r) => s + Number(r.currentPrice || 0), 0) / inv.length
@@ -83,6 +94,7 @@ export async function GET() {
         listedPrice,
         calendarPrices,
         avgCalendarRate: avgCalendarRaw,
+        calendarListedPrice,
       });
 
       const res = reservations.filter((r) => r.listingId?.toString() === lid);

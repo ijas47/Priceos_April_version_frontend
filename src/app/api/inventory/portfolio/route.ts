@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
       date: d.date,
       status: d.status,
       price: d.currentPrice,
+      currentPrice: d.currentPrice,
     }));
 
     return NextResponse.json({ inventory });
