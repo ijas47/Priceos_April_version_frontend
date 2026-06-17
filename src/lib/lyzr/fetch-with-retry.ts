@@ -86,6 +86,63 @@ export async function fetchWithRetry(
   throw lastError ?? new Error(`${label} failed`);
 }
 
+/** Fetch + parse JSON; retries the full round-trip on transient read/parse failures. */
+export async function fetchJsonWithRetry<T>(
+  url: string,
+  init: RequestInit,
+  options: {
+    retries?: number;
+    baseDelayMs?: number;
+    timeoutMs?: number;
+    label?: string;
+  } = {}
+): Promise<T> {
+  const retries = options.retries ?? 3;
+  const baseDelayMs = options.baseDelayMs ?? 1200;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const response = await fetchWithRetry(url, init, {
+        ...options,
+        retries: 1,
+        label: options.label,
+      });
+
+      if (!response.ok) {
+        const rawText = await response.text().catch(() => "");
+        throw new Error(
+          rawText.slice(0, 200) || `Upstream returned ${response.status}`
+        );
+      }
+
+      return (await response.json()) as T;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (!isRetryableError(err) || attempt === retries - 1) throw lastError;
+      console.warn(
+        `[${options.label ?? "fetch-json"}] parse/read failed (${lastError.message}), retrying…`
+      );
+      await sleep(baseDelayMs * (attempt + 1));
+    }
+  }
+
+  throw lastError ?? new Error(`${options.label ?? "fetch-json"} failed`);
+}
+
+export function isRetryableAgentError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    isRetryableError(err) ||
+    msg.includes("temporarily unavailable") ||
+    msg.includes("interrupted") ||
+    msg.includes("poll failed") ||
+    msg.includes("502") ||
+    msg.includes("503")
+  );
+}
+
 export function toUserFacingAgentError(err: unknown): string {
   if (!(err instanceof Error)) return "AI agent is temporarily unavailable. Please try again.";
 

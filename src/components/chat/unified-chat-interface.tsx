@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Send, Loader2,
+  Send, Loader2, RotateCcw,
   PanelRightClose, PanelRightOpen, Building2, MessageSquarePlus,
 } from "lucide-react";
 import {
@@ -78,6 +78,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger } from "@/components/ui/toolti
 
 import { toast } from "sonner";
 import { resolveChatResponse } from "@/lib/api/poll-job";
+import { isRetryableAgentError } from "@/lib/lyzr/fetch-with-retry";
 import { normalizeChatAgentOutput, hydrateAssistantMessage } from "@/lib/chat/normalize-agent-response";
 import { buildBaseScopeId, generateThreadSessionId } from "@/lib/chat/agent-session-id";
 import {
@@ -545,117 +546,147 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSubmit = async (e?: React.FormEvent, overrideText?: string) => {
-    e?.preventDefault();
-    const text = (overrideText ?? input).trim();
-    if (!text || isLoading) return;
+  const sendChatRequest = useCallback(
+    async (text: string, opts?: { skipUserBubble?: boolean }) => {
+      if (!text || isLoading) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: text,
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
-
-    // Lazy activation: the first question auto-primes Aria (market scan +
-    // guardrails) instead of requiring a separate "Run Aria" click. Use the
-    // freshly-returned sessionId locally since React state won't have updated
-    // by the time we call /api/chat below.
-    let effectiveSessionId = sessionId;
-    let effectiveActive = isChatActive;
-    if (!isChatActive && dateRange?.from && dateRange?.to) {
-      setStatusText("Priming Aria - pulling market intel…");
-      const primedSessionId = await primeAria({ clearMessages: false });
-      if (primedSessionId) {
-        effectiveSessionId = primedSessionId;
-        effectiveActive = true;
+      if (!opts?.skipUserBubble) {
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          role: "user",
+          content: text,
+        };
+        setMessages((prev) => [...prev, userMessage]);
+        setInput("");
       }
-    }
-    setStatusText("Connecting to PriceOS…");
 
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          orgId,
-          context: {
-            type: contextType,
-            propertyId: propertyId || undefined,
-            propertyName: propertyName || undefined,
-            metrics: calendarMetrics ? {
-              occupancy: calendarMetrics.occupancy,
-              bookedDays: calendarMetrics.bookedDays,
-              availableDays: calendarMetrics.availableDays,
-              blockedDays: calendarMetrics.blockedDays,
-              totalDays: calendarMetrics.totalDays,
-              bookableDays: calendarMetrics.totalDays - calendarMetrics.blockedDays,
-              avgPrice: calendarMetrics.avgPrice,
-            } : undefined
-          },
-          dateRange: dateRange ? {
-            from: format(dateRange.from!, "yyyy-MM-dd"),
-            to: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : format(dateRange.from!, "yyyy-MM-dd"),
-          } : undefined,
-          isChatActive: effectiveActive,
-          sessionId: effectiveSessionId,
-        }),
-      });
+      setIsLoading(true);
+
+      let effectiveSessionId = sessionId;
+      let effectiveActive = isChatActive;
+      if (!isChatActive && dateRange?.from && dateRange?.to) {
+        setStatusText("Priming Aria - pulling market intel…");
+        const primedSessionId = await primeAria({ clearMessages: false });
+        if (primedSessionId) {
+          effectiveSessionId = primedSessionId;
+          effectiveActive = true;
+        }
+      }
 
       const stepAgentMap: Record<string, { tool: string; agent: string }> = {
-        routing:    { tool: "CRO Router",         agent: "CRO Router" },
-        analyzing:  { tool: "Property Analyst",   agent: "Property Analyst" },
-        validating: { tool: "PriceGuard",         agent: "PriceGuard" },
+        routing: { tool: "CRO Router", agent: "CRO Router" },
+        analyzing: { tool: "Property Analyst", agent: "Property Analyst" },
+        validating: { tool: "PriceGuard", agent: "PriceGuard" },
         generating: { tool: "Response Generator", agent: "CRO Router" },
       };
       const stepKeys = Object.keys(stepAgentMap);
+      const maxAttempts = 3;
+      let lastError: unknown = null;
 
-      const data = await resolveChatResponse<{ message: string; metadata?: unknown; proposals?: unknown[] }>(response, {
-        onPoll: (elapsed) => {
-          const idx = Math.min(Math.floor(elapsed / 8000), stepKeys.length - 1);
-          const step = stepKeys[idx];
-          const { agent } = stepAgentMap[step];
-          setStatusText(`${agent} is working…`);
-        },
-      });
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          setStatusText(
+            attempt === 0
+              ? "Connecting to PriceOS…"
+              : `Retrying (${attempt}/${maxAttempts - 1})…`
+          );
 
-      const assistantMsg: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: data.message,
-        metadata: data.metadata,
-        proposals: data.proposals && data.proposals.length > 0 ? data.proposals : undefined,
-        proposalStatus: data.proposals && data.proposals.length > 0 ? "pending" : undefined,
-      };
-      setMessages(prev => [...prev, assistantMsg]);
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: text,
+              orgId,
+              context: {
+                type: contextType,
+                propertyId: propertyId || undefined,
+                propertyName: propertyName || undefined,
+                metrics: calendarMetrics
+                  ? {
+                      occupancy: calendarMetrics.occupancy,
+                      bookedDays: calendarMetrics.bookedDays,
+                      availableDays: calendarMetrics.availableDays,
+                      blockedDays: calendarMetrics.blockedDays,
+                      totalDays: calendarMetrics.totalDays,
+                      bookableDays: calendarMetrics.totalDays - calendarMetrics.blockedDays,
+                      avgPrice: calendarMetrics.avgPrice,
+                    }
+                  : undefined,
+              },
+              dateRange: dateRange
+                ? {
+                    from: format(dateRange.from!, "yyyy-MM-dd"),
+                    to: dateRange.to
+                      ? format(dateRange.to, "yyyy-MM-dd")
+                      : format(dateRange.from!, "yyyy-MM-dd"),
+                  }
+                : undefined,
+              isChatActive: effectiveActive,
+              sessionId: effectiveSessionId,
+            }),
+          });
 
-      if (data.proposals && data.proposals.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mappedProposals = (data.proposals as any[]).map((p) => ({
-          listingId: propertyId,
-          date: p.date,
-          proposedPrice: p.proposed_price ?? p.proposedPrice,
-          changePct: p.change_pct ?? p.changePct,
-          reasoning: typeof p.reasoning === "object"
-            ? Object.values(p.reasoning as Record<string, string>).filter(Boolean).join(" | ")
-            : (p.reasoning ?? ""),
-          status: "pending",
-        }));
-        fetch("/api/proposals/bulk-save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orgId, proposals: mappedProposals }),
-        }).then(res => {
-          if (res.ok) console.log("✅ Auto-saved proposals as pending");
-        }).catch(err => console.error("Auto-save failed", err));
+          const data = await resolveChatResponse<{
+            message: string;
+            metadata?: unknown;
+            proposals?: unknown[];
+          }>(response, {
+            onPoll: (elapsed) => {
+              const idx = Math.min(Math.floor(elapsed / 8000), stepKeys.length - 1);
+              const step = stepKeys[idx];
+              const { agent } = stepAgentMap[step];
+              setStatusText(`${agent} is working…`);
+            },
+          });
+
+          const assistantMsg: Message = {
+            id: Date.now().toString(),
+            role: "assistant",
+            content: data.message,
+            metadata: data.metadata,
+            proposals: data.proposals && data.proposals.length > 0 ? data.proposals : undefined,
+            proposalStatus: data.proposals && data.proposals.length > 0 ? "pending" : undefined,
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+
+          if (data.proposals && data.proposals.length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const mappedProposals = (data.proposals as any[]).map((p) => ({
+              listingId: propertyId,
+              date: p.date,
+              proposedPrice: p.proposed_price ?? p.proposedPrice,
+              changePct: p.change_pct ?? p.changePct,
+              reasoning:
+                typeof p.reasoning === "object"
+                  ? Object.values(p.reasoning as Record<string, string>)
+                      .filter(Boolean)
+                      .join(" | ")
+                  : (p.reasoning ?? ""),
+              status: "pending",
+            }));
+            fetch("/api/proposals/bulk-save", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ orgId, proposals: mappedProposals }),
+            })
+              .then((res) => {
+                if (res.ok) console.log("✅ Auto-saved proposals as pending");
+              })
+              .catch((err) => console.error("Auto-save failed", err));
+          }
+          return;
+        } catch (error) {
+          lastError = error;
+          if (attempt < maxAttempts - 1 && isRetryableAgentError(error)) {
+            await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+            continue;
+          }
+          break;
+        }
       }
-    } catch (error) {
-      console.error(`Chat Error:`, error);
-      const detail = error instanceof Error ? error.message : "Unknown error";
+
+      console.error("Chat Error:", lastError);
+      const detail = lastError instanceof Error ? lastError.message : "Unknown error";
       const isFriendly =
         detail.includes("temporarily unavailable") ||
         detail.includes("timed out") ||
@@ -665,15 +696,56 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: isFriendly
-          ? detail.endsWith(".") ? detail : `${detail}`
+          ? detail.endsWith(".")
+            ? detail
+            : `${detail}`
           : `Sorry, I encountered an error: ${detail}`,
+        metadata: { retryPrompt: text, isError: true },
       };
       setMessages((prev) => [...prev, errorMessage]);
-    } finally {
+    },
+    [
+      isLoading,
+      sessionId,
+      isChatActive,
+      dateRange,
+      orgId,
+      contextType,
+      propertyId,
+      propertyName,
+      calendarMetrics,
+      primeAria,
+    ]
+  );
+
+  const handleSubmit = async (e?: React.FormEvent, overrideText?: string) => {
+    e?.preventDefault();
+    const text = (overrideText ?? input).trim();
+    await sendChatRequest(text);
+    setIsLoading(false);
+    setStatusText("");
+  };
+
+  const retryFailedMessage = useCallback(
+    async (errorMessageId: string) => {
+      const idx = messages.findIndex((m) => m.id === errorMessageId);
+      if (idx < 0) return;
+      const retryText =
+        (messages[idx].metadata?.retryPrompt as string | undefined) ??
+        (() => {
+          for (let i = idx - 1; i >= 0; i--) {
+            if (messages[i].role === "user") return messages[i].content;
+          }
+          return null;
+        })();
+      if (!retryText) return;
+      setMessages((prev) => prev.filter((m) => m.id !== errorMessageId));
+      await sendChatRequest(retryText, { skipUserBubble: true });
       setIsLoading(false);
       setStatusText("");
-    }
-  };
+    },
+    [messages, sendChatRequest]
+  );
 
   // Per-proposal approve/reject - permanent, no toggle. Approve saves immediately.
   const handleProposalDecision = (messageId: string, proposalId: string, decision: "approved" | "rejected") => {
@@ -956,6 +1028,20 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
                   <div className="break-words">
                     <MarkdownMessage content={message.content} isUser={message.role === "user"} />
                   </div>
+                  {message.role === "assistant" &&
+                    (message.metadata?.isError || isRetryableAgentError(new Error(message.content))) && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-3 h-8 gap-1.5 text-xs"
+                        disabled={isLoading}
+                        onClick={() => retryFailedMessage(message.id)}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Retry
+                      </Button>
+                    )}
                   {message.proposals && message.proposals.length > 0 && (() => {
                     // ── helpers ────────────────────────────────────────────────
                     const computeConfidence = (p: typeof message.proposals[0]): number => {

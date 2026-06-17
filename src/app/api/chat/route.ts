@@ -24,7 +24,7 @@ import {
     type MarketEventWindow,
 } from "@/lib/research/source-trust";
 import mongoose from "mongoose";
-import { fetchWithRetry, toUserFacingAgentError } from "@/lib/lyzr/fetch-with-retry";
+import { fetchJsonWithRetry, toUserFacingAgentError } from "@/lib/lyzr/fetch-with-retry";
 
 /**
  * POST /api/chat
@@ -554,23 +554,24 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
         console.log(`  Message:  "${message}"`);
         console.log(`${"─".repeat(60)}`);
 
-        const response = await fetchWithRetry(
-            LYZR_API_URL,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "x-api-key": LYZR_API_KEY },
-                body: JSON.stringify(payload),
-            },
-            { label: "lyzr-chat", retries: 3, timeoutMs: 180_000 }
-        );
-
-        if (!response.ok) {
-            const rawText = await response.text();
-            console.error(`\n❌ LYZR API ERROR - ${response.status}: ${rawText.substring(0, 300)}`);
+        let data: Record<string, unknown>;
+        try {
+            data = await fetchJsonWithRetry<Record<string, unknown>>(
+                LYZR_API_URL,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "x-api-key": LYZR_API_KEY },
+                    body: JSON.stringify(payload),
+                },
+                { label: "lyzr-chat", retries: 4, timeoutMs: 180_000, baseDelayMs: 2000 }
+            );
+        } catch (lyzrErr) {
+            console.error(
+                `\n❌ LYZR API ERROR:`,
+                lyzrErr instanceof Error ? lyzrErr.message : lyzrErr
+            );
             throw new Error("AI agent is temporarily unavailable. Please try again.");
         }
-
-        const data = await response.json();
         const duration = Math.round(performance.now() - startTime);
         const { text: agentReply, parsedJson } = extractAgentMessage(data);
 
