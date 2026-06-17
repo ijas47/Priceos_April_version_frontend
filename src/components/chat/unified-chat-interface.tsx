@@ -656,11 +656,16 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
     } catch (error) {
       console.error(`Chat Error:`, error);
       const detail = error instanceof Error ? error.message : "Unknown error";
+      const isFriendly =
+        detail.includes("temporarily unavailable") ||
+        detail.includes("timed out") ||
+        detail.includes("interrupted") ||
+        detail.includes("try again");
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: detail.includes("temporarily unavailable") || detail.includes("timed out")
-          ? `${detail} Please try again.`
+        content: isFriendly
+          ? detail.endsWith(".") ? detail : `${detail}`
           : `Sorry, I encountered an error: ${detail}`,
       };
       setMessages((prev) => [...prev, errorMessage]);

@@ -24,6 +24,7 @@ import {
     type MarketEventWindow,
 } from "@/lib/research/source-trust";
 import mongoose from "mongoose";
+import { fetchWithRetry, toUserFacingAgentError } from "@/lib/lyzr/fetch-with-retry";
 
 /**
  * POST /api/chat
@@ -115,8 +116,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(result);
     } catch (error) {
         console.error("[chat POST]", error);
-        const message =
-            error instanceof Error ? error.message : "Internal server error";
+        const message = toUserFacingAgentError(error);
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
@@ -177,22 +177,41 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             const listing = await Listing.findById(pidObjectId).lean();
             if (!listing) throw new Error("Property not found");
 
-            const intelRefresh = await ensureVerifiedMarketIntel({
-                orgId,
-                listingId: pidObjectId,
-                city: listing.city || "Dubai",
-                area: listing.area || listing.city || "Dubai",
-                countryCode: listing.countryCode || "AE",
-                dateFrom,
-                dateTo,
-            });
-            if (intelRefresh.refreshed) {
-                console.log(
-                    `✅ [MarketIntel] Refreshed: ${intelRefresh.upsert?.verifiedCount ?? 0} findings ` +
-                        `(${intelRefresh.assessment.reason})`
+            let intelRefresh: Awaited<ReturnType<typeof ensureVerifiedMarketIntel>> = {
+                refreshed: false,
+                assessment: {
+                    needsRefresh: false,
+                    reason: "skipped",
+                    verifiedEventCount: 0,
+                    benchmarkCovers: false,
+                    newestVerifiedAt: null,
+                },
+                upsert: null,
+            };
+
+            try {
+                intelRefresh = await ensureVerifiedMarketIntel({
+                    orgId,
+                    listingId: pidObjectId,
+                    city: listing.city || "Dubai",
+                    area: listing.area || listing.city || "Dubai",
+                    countryCode: listing.countryCode || "AE",
+                    dateFrom,
+                    dateTo,
+                });
+                if (intelRefresh.refreshed) {
+                    console.log(
+                        `✅ [MarketIntel] Refreshed: ${intelRefresh.upsert?.verifiedCount ?? 0} findings ` +
+                            `(${intelRefresh.assessment.reason})`
+                    );
+                } else {
+                    console.log(`✅ [MarketIntel] Cache hit: ${intelRefresh.assessment.reason}`);
+                }
+            } catch (intelErr) {
+                console.warn(
+                    "[MarketIntel] Refresh skipped:",
+                    intelErr instanceof Error ? intelErr.message : intelErr
                 );
-            } else {
-                console.log(`✅ [MarketIntel] Cache hit: ${intelRefresh.assessment.reason}`);
             }
 
             const eventScope = {
@@ -535,11 +554,15 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
         console.log(`  Message:  "${message}"`);
         console.log(`${"─".repeat(60)}`);
 
-        const response = await fetch(LYZR_API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-api-key": LYZR_API_KEY },
-            body: JSON.stringify(payload),
-        });
+        const response = await fetchWithRetry(
+            LYZR_API_URL,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "x-api-key": LYZR_API_KEY },
+                body: JSON.stringify(payload),
+            },
+            { label: "lyzr-chat", retries: 3, timeoutMs: 180_000 }
+        );
 
         if (!response.ok) {
             const rawText = await response.text();
@@ -605,8 +628,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             `\n💥 UNHANDLED ERROR - ${duration}ms:`,
             error instanceof Error ? error.message : error
         );
-        if (error instanceof Error) throw error;
-        throw new Error("Sorry, something went wrong. Please try again.");
+        throw new Error(toUserFacingAgentError(error));
     }
 }
 
