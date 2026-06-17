@@ -10,7 +10,7 @@ import { format, addDays } from "date-fns";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/properties — listings enriched with occupancy/revenue metrics.
+ * GET /api/properties - listings enriched with occupancy/revenue metrics.
  * Consumed by the Properties page and Guest Inbox.
  */
 export async function GET() {

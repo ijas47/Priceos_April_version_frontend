@@ -404,7 +404,7 @@ export function InsightsClient({ initialInsights }: { initialInsights: Insight[]
     });
 
     if (!res.ok) {
-      toast.error("Action failed — please try again.");
+      toast.error("Action failed - please try again.");
       return;
     }
 
@@ -449,7 +449,7 @@ export function InsightsClient({ initialInsights }: { initialInsights: Insight[]
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight mb-1">Insights</h1>
           <p className="text-text-secondary text-sm">
-            AI-generated revenue opportunities — review, approve, or dismiss each recommendation.
+            AI-generated revenue opportunities - review, approve, or dismiss each recommendation.
           </p>
         </div>
         <Button

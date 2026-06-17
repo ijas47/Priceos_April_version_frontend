@@ -5,6 +5,7 @@ import { Layers, Shield, Loader2 } from "lucide-react";
 import { PricingProfilesPanel } from "@/components/pricing/pricing-profiles-panel";
 import { SmartPricingCard } from "@/components/settings/smart-pricing-card";
 import { cn } from "@/lib/utils";
+import { PricingTermHint } from "@/components/pricing/pricing-term-hint";
 
 interface PortfolioStatus {
   totalProperties: number;
@@ -82,24 +83,28 @@ export function PortfolioPricingSettings() {
             {status.guardrails?.maxSingleDayChangePct != null && (
               <PolicyPill
                 label="Max daily change"
+                hint="maxDailyChange"
                 value={`${status.guardrails.maxSingleDayChangePct}%`}
               />
             )}
             {status.guardrails?.autoApproveThreshold != null && (
               <PolicyPill
                 label="Auto-approve under"
+                hint="autoApprove"
                 value={`${status.guardrails.autoApproveThreshold}%`}
               />
             )}
             {status.guardrails?.absoluteFloorMultiplier != null && (
               <PolicyPill
                 label="Floor mult."
+                hint="floorMult"
                 value={`${status.guardrails.absoluteFloorMultiplier}×`}
               />
             )}
             {status.guardrails?.absoluteCeilingMultiplier != null && (
               <PolicyPill
                 label="Ceiling mult."
+                hint="ceilingMult"
                 value={`${status.guardrails.absoluteCeilingMultiplier}×`}
               />
             )}
@@ -122,10 +127,12 @@ function PolicyPill({
   label,
   value,
   highlight,
+  hint,
 }: {
   label: string;
   value: string;
   highlight?: boolean;
+  hint?: "maxDailyChange" | "autoApprove" | "floorMult" | "ceilingMult";
 }) {
   return (
     <div
@@ -136,7 +143,10 @@ function PolicyPill({
           : "border-border-subtle bg-surface-2/40"
       )}
     >
-      <p className="text-[9px] uppercase tracking-wider text-text-tertiary">{label}</p>
+      <p className="text-[9px] uppercase tracking-wider text-text-tertiary flex items-center gap-1">
+        {label}
+        {hint && <PricingTermHint term={hint} />}
+      </p>
       <p
         className={cn(
           "text-body-xs font-semibold",

@@ -7,7 +7,7 @@ import mongoose from "mongoose";
  * POST /api/proposals/[id]/reject
  * Reject a single pending pricing proposal.
  * Clears the proposedPrice and sets proposalStatus to "rejected".
- * No PMS write occurs — only MongoDB update.
+ * No PMS write occurs - only MongoDB update.
  */
 export async function POST(
   req: NextRequest,

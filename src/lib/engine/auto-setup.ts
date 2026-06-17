@@ -1,5 +1,5 @@
 /**
- * Auto-setup engine — generates intelligent pricing defaults for listings
+ * Auto-setup engine - generates intelligent pricing defaults for listings
  * based on Airbtics market data + market template patterns.
  *
  * Called during onboarding (and re-callable any time from settings).
@@ -9,9 +9,20 @@ import { connectDB, Listing, PricingRule, MarketTemplate } from "@/lib/db";
 import { resolveMarketId, getMarketContext } from "@/lib/airbtics/market-context";
 import { runPipeline } from "./pipeline";
 import { applyPricingPackToOrg } from "@/lib/pricing/apply-defaults";
+import {
+  type Strategy,
+  type StrategyPreset,
+  resolveStrategyPreset,
+  portfolioGuardrailsFromStrategy,
+} from "@/lib/pricing/strategy-presets";
 import mongoose from "mongoose";
 
-export type Strategy = "conservative" | "balanced" | "aggressive";
+export type { Strategy } from "@/lib/pricing/strategy-presets";
+export {
+  STRATEGY_PRESETS,
+  resolveStrategyPreset,
+  portfolioGuardrailsFromStrategy,
+} from "@/lib/pricing/strategy-presets";
 
 interface PricingDefaults {
   weekendUpliftPct: number;
@@ -25,6 +36,7 @@ interface AutoSetupInput {
   marketCode: string;
   strategy: Strategy;
   pricingDefaults?: PricingDefaults;
+  presetOverrides?: Partial<StrategyPreset>;
 }
 
 interface ListingSetupResult {
@@ -45,76 +57,6 @@ export interface AutoSetupResult {
   engineRan: boolean;
 }
 
-export const STRATEGY_PRESETS: Record<Strategy, {
-  floorMult: number;
-  ceilingMult: number;
-  lastMinuteDiscountPct: number;
-  lastMinuteDaysOut: number;
-  farOutMarkupPct: number;
-  farOutDaysOut: number;
-  dowUpliftPct: number;
-  gapFillDiscountPct: number;
-  autoApproveThreshold: number;
-  maxSingleDayChangePct: number;
-}> = {
-  conservative: {
-    floorMult: 0.7,
-    ceilingMult: 1.8,
-    lastMinuteDiscountPct: 10,
-    lastMinuteDaysOut: 5,
-    farOutMarkupPct: 5,
-    farOutDaysOut: 120,
-    dowUpliftPct: 10,
-    gapFillDiscountPct: 8,
-    autoApproveThreshold: 3,
-    maxSingleDayChangePct: 10,
-  },
-  balanced: {
-    floorMult: 0.5,
-    ceilingMult: 2.5,
-    lastMinuteDiscountPct: 15,
-    lastMinuteDaysOut: 7,
-    farOutMarkupPct: 10,
-    farOutDaysOut: 90,
-    dowUpliftPct: 15,
-    gapFillDiscountPct: 12,
-    autoApproveThreshold: 5,
-    maxSingleDayChangePct: 15,
-  },
-  aggressive: {
-    floorMult: 0.4,
-    ceilingMult: 3.5,
-    lastMinuteDiscountPct: 25,
-    lastMinuteDaysOut: 10,
-    farOutMarkupPct: 20,
-    farOutDaysOut: 60,
-    dowUpliftPct: 25,
-    gapFillDiscountPct: 18,
-    autoApproveThreshold: 10,
-    maxSingleDayChangePct: 25,
-  },
-};
-
-/**
- * Portfolio-level (org-wide) guardrail defaults derived from a strategy.
- * These map onto Organization.settings.guardrails and act as the fallback
- * envelope when a property has no explicit floor/ceiling of its own.
- */
-export function portfolioGuardrailsFromStrategy(strategy: Strategy): {
-  maxSingleDayChangePct: number;
-  autoApproveThreshold: number;
-  absoluteFloorMultiplier: number;
-  absoluteCeilingMultiplier: number;
-} {
-  const preset = STRATEGY_PRESETS[strategy];
-  return {
-    maxSingleDayChangePct: preset.maxSingleDayChangePct,
-    autoApproveThreshold: preset.autoApproveThreshold,
-    absoluteFloorMultiplier: preset.floorMult,
-    absoluteCeilingMultiplier: preset.ceilingMult,
-  };
-}
-
 export async function runAutoSetup(input: AutoSetupInput): Promise<AutoSetupResult> {
   await connectDB();
 
@@ -123,7 +65,7 @@ export async function runAutoSetup(input: AutoSetupInput): Promise<AutoSetupResu
   if (!input.marketCode || input.marketCode === "UAE_DXB") {
     await applyPricingPackToOrg(input.orgId);
   }
-  const preset = STRATEGY_PRESETS[input.strategy];
+  const preset = resolveStrategyPreset(input.strategy, input.presetOverrides);
   const defaults = input.pricingDefaults;
 
   const template = await MarketTemplate.findOne({ marketCode: input.marketCode }).lean();
@@ -134,7 +76,7 @@ export async function runAutoSetup(input: AutoSetupInput): Promise<AutoSetupResu
     orgId: orgOid,
   }).lean();
 
-  // Try Airbtics for market intelligence — per bedroom count
+  // Try Airbtics for market intelligence - per bedroom count
   const bedroomGroups = new Map<number, typeof listings>();
   for (const l of listings) {
     const br = l.bedroomsNumber || 1;
@@ -232,7 +174,7 @@ export async function runAutoSetup(input: AutoSetupInput): Promise<AutoSetupResu
 async function configureListing(
   listing: any,
   orgOid: mongoose.Types.ObjectId,
-  preset: (typeof STRATEGY_PRESETS)["balanced"],
+  preset: StrategyPreset,
   defaults: PricingDefaults | undefined,
   weekendDays: number[],
   template: any | null,
@@ -383,7 +325,7 @@ async function generateSeasonalRules(
           orgId,
           listingId,
           ruleType: "SEASON",
-          name: `[Auto] ${label} Season — ${getMonthName(monthNum)} ${sy}`,
+          name: `[Auto] ${label} Season - ${getMonthName(monthNum)} ${sy}`,
           enabled: true,
           priority: 10,
           startDate: sd,
@@ -423,7 +365,7 @@ async function generateSeasonalRules(
           orgId,
           listingId,
           ruleType: "SEASON",
-          name: `[Auto] ${label} Season — ${getMonthName(monthNum)} ${y}${pattern.notes ? ` (${pattern.notes})` : ""}`,
+          name: `[Auto] ${label} Season - ${getMonthName(monthNum)} ${y}${pattern.notes ? ` (${pattern.notes})` : ""}`,
           enabled: true,
           priority: 10,
           startDate: sd,

@@ -14,7 +14,7 @@ import { format } from "date-fns";
 
 function readOnlyError(method: string): never {
   throw new Error(
-    `[PriceOS] ${method}() blocked — Hostaway live client is READ-ONLY. ` +
+    `[PriceOS] ${method}() blocked - Hostaway live client is READ-ONLY. ` +
     `Set HOSTAWAY_READ_ONLY=false to enable writes (not recommended).`
   );
 }

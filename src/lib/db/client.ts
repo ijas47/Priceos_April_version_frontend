@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-// NOTE: validated lazily inside connectDB() — not at module load —
+// NOTE: validated lazily inside connectDB() - not at module load -
 // so `next build` succeeds without runtime env vars present.
 
 declare global {

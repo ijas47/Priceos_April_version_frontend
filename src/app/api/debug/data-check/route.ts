@@ -14,7 +14,7 @@ export async function GET() {
     const session = await getSession();
     diagnostics.session = session
       ? { orgId: session.orgId, email: session.email, role: session.role }
-      : "NO SESSION — not logged in";
+      : "NO SESSION - not logged in";
 
     if (!session) {
       return NextResponse.json(diagnostics, { status: 401 });
@@ -68,10 +68,10 @@ export async function GET() {
 
     diagnostics.verdict =
       orgListings > 0
-        ? `OK — ${orgListings} listings found for your org`
+        ? `OK - ${orgListings} listings found for your org`
         : totalListings > 0
-          ? `BUG — ${totalListings} listings exist but none match your orgId (${session.orgId}). Likely orgId mismatch.`
-          : "NO DATA — run Hostaway sync first (Sync page → Import from Hostaway)";
+          ? `BUG - ${totalListings} listings exist but none match your orgId (${session.orgId}). Likely orgId mismatch.`
+          : "NO DATA - run Hostaway sync first (Sync page → Import from Hostaway)";
   } catch (err: unknown) {
     diagnostics.error = (err as Error).message;
     diagnostics.stack = (err as Error).stack?.split("\n").slice(0, 5);

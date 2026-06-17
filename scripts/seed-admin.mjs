@@ -36,7 +36,7 @@ try {
     process.env[key] = process.env[key] ?? val;
   }
 } catch {
-  console.warn("⚠ Could not read .env — using existing environment variables.");
+  console.warn("⚠ Could not read .env - using existing environment variables.");
 }
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -50,7 +50,7 @@ const ADMIN_EMAIL    = "admin@priceos.com";
 const ADMIN_PASSWORD = "Admin@1234";
 const ADMIN_NAME     = "PriceOS Admin";
 
-// ── User schema — must match src/lib/db/models/User.ts ───────────────────────
+// ── User schema - must match src/lib/db/models/User.ts ───────────────────────
 const UserSchema = new mongoose.Schema(
   {
     name:         { type: String, required: true },

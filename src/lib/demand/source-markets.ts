@@ -264,7 +264,7 @@ export const LONDON_SOURCE_MARKETS: SourceMarket[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Registry — look up source markets by destination template key
+// Registry - look up source markets by destination template key
 // ---------------------------------------------------------------------------
 
 export const SOURCE_MARKET_REGISTRY: Record<string, SourceMarket[]> = {
@@ -274,7 +274,7 @@ export const SOURCE_MARKET_REGISTRY: Record<string, SourceMarket[]> = {
 
 /**
  * Look up the source-market list for a destination. Returns an empty list for
- * unknown markets (callers treat that as a neutral, no-bias demand modifier) —
+ * unknown markets (callers treat that as a neutral, no-bias demand modifier) -
  * the product is not tied to any single geography.
  */
 export function getSourceMarkets(marketTemplate: string): SourceMarket[] {

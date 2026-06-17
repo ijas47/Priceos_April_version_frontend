@@ -5,7 +5,7 @@ import { connectDB, ContentProposal, Listing, ListingContentSnapshot } from "@/l
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/listings/[id]/content — snapshot + pending proposals */
+/** GET /api/listings/[id]/content - snapshot + pending proposals */
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

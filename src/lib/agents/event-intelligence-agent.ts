@@ -34,7 +34,7 @@ export interface EventQueryScope {
  * Event Intelligence Agent
  * Reads from the `MarketEvent` collection. Events are populated by
  * fetchAndCacheEvents() from verified feeds (SERP Google Events,
- * Ticketmaster, Eventbrite) — never fabricated.
+ * Ticketmaster, Eventbrite) - never fabricated.
  */
 export class EventIntelligenceAgent {
   async getEvents(startDate: Date, endDate: Date, scope?: EventQueryScope): Promise<EventSignal[]> {
@@ -146,7 +146,7 @@ export class EventIntelligenceAgent {
         return {
           cached: 0,
           sourcesUsed: [],
-          error: "Cannot determine market city — org has no listings with a city set. Pass city explicitly.",
+          error: "Cannot determine market city - org has no listings with a city set. Pass city explicitly.",
         };
       }
 

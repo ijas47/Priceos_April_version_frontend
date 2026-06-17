@@ -1,5 +1,5 @@
 /**
- * Airbtics market context — cached aggregation of summary, metrics,
+ * Airbtics market context - cached aggregation of summary, metrics,
  * and future-pacing data for a given market + bedroom count.
  *
  * In-memory cache with configurable TTLs. Falls back gracefully
@@ -147,7 +147,7 @@ function knownMarketFallback(city: string, countryCode: string): string | null {
 /**
  * Resolve a city/country to an Airbtics market ID.
  * Searches the Airbtics market directory and caches the result permanently.
- * Falls back to AIRBTICS_DUBAI_MARKET_ID (default 2286) for Dubai when search fails —
+ * Falls back to AIRBTICS_DUBAI_MARKET_ID (default 2286) for Dubai when search fails -
  * same fallback used by /api/agent-tools/market-overview.
  */
 export async function resolveMarketId(
@@ -167,7 +167,7 @@ export async function resolveMarketId(
             const fallback = knownMarketFallback(city, countryCode);
             if (fallback) {
                 console.warn(
-                    `[Airbtics] no search results for ${city}/${countryCode} — using market ${fallback}`
+                    `[Airbtics] no search results for ${city}/${countryCode} - using market ${fallback}`
                 );
                 cache.set(key, { data: fallback, expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000 });
                 return fallback;
@@ -181,7 +181,7 @@ export async function resolveMarketId(
         const fallback = knownMarketFallback(city, countryCode);
         if (fallback) {
             console.warn(
-                `[Airbtics] market search failed for ${city}/${countryCode} (${(err as Error).message}) — using ${fallback}`
+                `[Airbtics] market search failed for ${city}/${countryCode} (${(err as Error).message}) - using ${fallback}`
             );
             cache.set(key, { data: fallback, expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000 });
             return fallback;

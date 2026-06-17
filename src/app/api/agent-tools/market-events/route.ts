@@ -7,7 +7,7 @@ import { resolveEventDisplayArea } from "@/lib/research/event-area";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/agent-tools/market-events?dateFrom&dateTo — events in range. */
+/** GET /api/agent-tools/market-events?dateFrom&dateTo - events in range. */
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();

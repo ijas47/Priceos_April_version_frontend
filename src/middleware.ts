@@ -78,7 +78,7 @@ async function verifyToken(token: string): Promise<JwtPayload | null> {
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Static assets — always allow
+  // Static assets - always allow
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
@@ -111,12 +111,12 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // API routes — return 401 JSON instead of redirect
+  // API routes - return 401 JSON instead of redirect
   if (pathname.startsWith("/api/") && !valid) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Page routes — redirect to login if not authenticated
+  // Page routes - redirect to login if not authenticated
   if (!valid) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
@@ -133,7 +133,7 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/onboarding", request.url));
   }
 
-  // Already approved + complete — don't show pending page or login
+  // Already approved + complete - don't show pending page or login
   if (valid && isApproved && pathname === "/pending-approval") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }

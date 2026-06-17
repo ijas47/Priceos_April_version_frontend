@@ -64,7 +64,7 @@ function TrendIcon({ trend }: { trend: string | null }) {
 }
 
 function CurrencyVal({ val, currency }: { val: string | null; currency: string }) {
-    if (!val) return <span className="text-muted-foreground/40">—</span>;
+    if (!val) return <span className="text-muted-foreground/40">-</span>;
     return <span className="font-bold">{currency} {Number(val).toFixed(0)}</span>;
 }
 
@@ -103,7 +103,7 @@ export function BenchmarkWidget({ listingId, dateFrom, dateTo, refreshKey = 0, c
     }, [fetchBenchmark]);
 
     const vc = summary?.verdict ? verdictConfig[summary.verdict] ?? verdictConfig.FAIR : null;
-    // aedGap: derived in JS — no longer stored in DB
+    // aedGap: derived in JS - no longer stored in DB
     const aedGapNum = (summary?.yourPrice && summary?.p50Rate)
         ? Number(summary.yourPrice) - Number(summary.p50Rate)
         : null;
@@ -199,7 +199,7 @@ export function BenchmarkWidget({ listingId, dateFrom, dateTo, refreshKey = 0, c
                                     <div className="flex flex-col items-end">
                                         <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Percentile</span>
                                         <span className="text-[18px] font-black leading-tight" style={{ color: vc.color }}>
-                                            {summary.percentile ?? "—"}
+                                            {summary.percentile ?? "-"}
                                             <span className="text-[10px]">th</span>
                                         </span>
                                     </div>
@@ -229,7 +229,7 @@ export function BenchmarkWidget({ listingId, dateFrom, dateTo, refreshKey = 0, c
                                     ].map(({ label, val }) => (
                                         <div key={label} className="flex flex-col items-center bg-background rounded-md py-1.5 px-1 border border-border/40">
                                             <span className="text-[8px] font-black text-muted-foreground uppercase">{label}</span>
-                                            <span className="text-[11px] font-bold text-foreground mt-0.5">{val ? Number(val).toFixed(0) : "—"}</span>
+                                            <span className="text-[11px] font-bold text-foreground mt-0.5">{val ? Number(val).toFixed(0) : "-"}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -334,7 +334,7 @@ export function BenchmarkWidget({ listingId, dateFrom, dateTo, refreshKey = 0, c
                                                     </div>
                                                     <div className="flex flex-col items-end shrink-0">
                                                         <span className="text-[12px] font-black text-[#f39c12]">
-                                                            {comp.avgRate ? `${currency} ${Math.round(Number(comp.avgRate))}` : "—"}
+                                                            {comp.avgRate ? `${currency} ${Math.round(Number(comp.avgRate))}` : "-"}
                                                         </span>
                                                         <span className="text-[8px] text-muted-foreground uppercase font-medium">avg/night</span>
                                                     </div>

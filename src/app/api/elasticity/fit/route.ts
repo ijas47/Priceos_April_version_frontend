@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
             : [];
       }
     } catch {
-      // Booking history unavailable — model falls back to cold-start defaults
+      // Booking history unavailable - model falls back to cold-start defaults
     }
 
     // -----------------------------------------------------------------------
@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
         if (ctx.p50ADR) airbticAdr = Math.round(ctx.p50ADR);
       }
     } catch {
-      // Non-fatal — model falls back to cold-start defaults
+      // Non-fatal - model falls back to cold-start defaults
     }
 
     // -----------------------------------------------------------------------

@@ -352,7 +352,7 @@ function OperationsClientInternal({ orgId }: { orgId: string }) {
     if (ticket.listingName && ticket.listingName !== "Unknown Property") return ticket.listingName;
     const found = allProperties.find(p => String(p.id) === String(ticket.listingId));
     if (found) return found.name;
-    return ticket.listingName || "—";
+    return ticket.listingName || "-";
   };
 
   const isPanelOpen = !!selectedTicket;
@@ -665,7 +665,7 @@ function OperationsClientInternal({ orgId }: { orgId: string }) {
                         <span className={cn(
                           "text-sm font-medium",
                           !isExpanded && "truncate max-w-[160px]",
-                          (propertyDisplayName(ticket) === "Unknown Property" || propertyDisplayName(ticket) === "—")
+                          (propertyDisplayName(ticket) === "Unknown Property" || propertyDisplayName(ticket) === "-")
                             ? "text-text-tertiary italic"
                             : "text-text-secondary"
                         )}>
@@ -916,7 +916,7 @@ function OperationsClientInternal({ orgId }: { orgId: string }) {
                   </div>
                 </div>
 
-                {/* Guest Info (from thread — GuestThread or Hostaway) */}
+                {/* Guest Info (from thread - GuestThread or Hostaway) */}
                 {!loadingThread && threadData && !threadData.isManual && !threadData.error && (threadData.reservation || threadData.guestName) && (
                   <div className="bg-surface-2/60 rounded-xl p-3.5 border border-border-subtle">
                     <div className="flex items-center gap-1.5 mb-3">
@@ -927,19 +927,19 @@ function OperationsClientInternal({ orgId }: { orgId: string }) {
                       <div>
                         <p className="text-[10px] text-text-tertiary mb-0.5">Guest Name</p>
                         <p className="text-sm font-semibold text-text-primary">
-                          {threadData.guestName || threadData.reservation?.guestName || "—"}
+                          {threadData.guestName || threadData.reservation?.guestName || "-"}
                         </p>
                       </div>
                       <div>
                         <p className="text-[10px] text-text-tertiary mb-0.5">Reservation ID</p>
                         <p className="text-xs font-mono text-text-primary">
-                          {threadData.reservation?.reservationId || selectedTicket.reservationId || "—"}
+                          {threadData.reservation?.reservationId || selectedTicket.reservationId || "-"}
                         </p>
                       </div>
                       <div>
                         <p className="text-[10px] text-text-tertiary mb-0.5">Status</p>
                         <Badge variant="outline" className="text-[9px] uppercase font-bold">
-                          {threadData.reservation?.status || (threadData.source === "hostaway" ? "hostaway" : "—")}
+                          {threadData.reservation?.status || (threadData.source === "hostaway" ? "hostaway" : "-")}
                         </Badge>
                       </div>
                     </div>
@@ -986,7 +986,7 @@ function OperationsClientInternal({ orgId }: { orgId: string }) {
                       <Wrench className="w-6 h-6 text-text-tertiary mb-2" />
                       <p className="text-sm font-medium text-text-primary">Internal Operations Ticket</p>
                       <p className="text-xs text-text-tertiary max-w-[260px] mt-1">
-                        Created by Maya or manually — not linked to an external guest thread.
+                        Created by Maya or manually - not linked to an external guest thread.
                       </p>
                     </div>
                   ) : threadData?.error ? (

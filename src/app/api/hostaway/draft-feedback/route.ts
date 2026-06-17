@@ -7,7 +7,7 @@ import mongoose from "mongoose";
  * POST /api/hostaway/draft-feedback
  *
  * Records thumbs up/down on an AI draft for later agent tuning.
- * Best-effort — the inbox doesn't block on this.
+ * Best-effort - the inbox doesn't block on this.
  *
  * Body: { conversationId, feedback: "good" | "bad", draft }
  */

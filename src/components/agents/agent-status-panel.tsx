@@ -110,7 +110,7 @@ export function AgentStatusPanel() {
         setData(json);
       }
     } catch {
-      // silent — stale data shown
+      // silent - stale data shown
     } finally {
       setLoading(false);
     }
@@ -128,7 +128,7 @@ export function AgentStatusPanel() {
       const res = await fetch("/api/engine/run-all", { method: "POST", body: JSON.stringify({ trigger: "manual" }), headers: { "Content-Type": "application/json" } });
       const json = await res.json();
       if (json.success) {
-        toast.success(`Engine run complete — ${json.summary.succeeded}/${json.summary.totalListings} listings updated`);
+        toast.success(`Engine run complete - ${json.summary.succeeded}/${json.summary.totalListings} listings updated`);
         await fetchStatus();
       } else {
         toast.error(json.error || "Run failed");

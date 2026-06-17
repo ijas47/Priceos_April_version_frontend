@@ -6,7 +6,7 @@ import { signAccessToken } from "@/lib/auth/jwt";
 import { runAutoSetup } from "@/lib/engine/auto-setup";
 import mongoose from "mongoose";
 
-/** POST /api/onboarding — persist onboarding progress on the org. */
+/** POST /api/onboarding - persist onboarding progress on the org. */
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * PATCH /api/onboarding — full wizard save.
+ * PATCH /api/onboarding - full wizard save.
  *
  * Called by the wizard at each step transition. On the final "complete" step
  * it seeds listings to the DB, runs auto-setup, and returns a fresh JWT.
@@ -100,7 +100,7 @@ export async function PATCH(req: NextRequest) {
       );
 
       if (activeListingIds.length > 0 && body.marketCode) {
-        // Fire auto-setup in background — don't block the response
+        // Fire auto-setup in background - don't block the response
         runAutoSetup({
           orgId,
           listingIds: activeListingIds,

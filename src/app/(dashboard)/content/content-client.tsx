@@ -107,7 +107,7 @@ export function ContentManagerClient() {
       const res = await fetch(`/api/listings/${selectedId}/content/sync`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Sync failed");
-      toast.success(`Synced from Hostaway — visibility score ${data.visibilityScore}`);
+      toast.success(`Synced from Hostaway - visibility score ${data.visibilityScore}`);
       await loadContent(selectedId);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Sync failed");
@@ -175,7 +175,7 @@ export function ContentManagerClient() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight mb-1">Content Manager</h1>
         <p className="text-muted-foreground text-sm">
-          Per-OTA listing titles and descriptions — sync from Hostaway, optimize, approve, publish.
+          Per-OTA listing titles and descriptions - sync from Hostaway, optimize, approve, publish.
         </p>
       </div>
 
@@ -219,17 +219,17 @@ export function ContentManagerClient() {
           <ScoreCard label="Visibility" value={`${snapshot.visibilityScore}`} sub="Overall" />
           <ScoreCard
             label="Airbnb"
-            value={`${snapshot.channelScores?.airbnb ?? "—"}`}
+            value={`${snapshot.channelScores?.airbnb ?? "-"}`}
             sub={snapshot.channels.airbnb.title?.slice(0, 40) || "No title"}
           />
           <ScoreCard
             label="Booking.com"
-            value={`${snapshot.channelScores?.booking_com ?? "—"}`}
+            value={`${snapshot.channelScores?.booking_com ?? "-"}`}
             sub={snapshot.channels.booking_com.title?.slice(0, 40) || "No title"}
           />
           <ScoreCard
             label="VRBO"
-            value={`${snapshot.channelScores?.vrbo ?? "—"}`}
+            value={`${snapshot.channelScores?.vrbo ?? "-"}`}
             sub={snapshot.channels.vrbo.headline?.slice(0, 40) || "No headline"}
           />
         </div>

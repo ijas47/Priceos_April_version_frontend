@@ -21,7 +21,7 @@ export function setOrgId(orgId: string): void {
 
 /**
  * Returns the current org's ID from memory, localStorage, or a legacy JWT copy.
- * Prefer resolveOrgId() when null — it hydrates from /api/auth/me (cookie session).
+ * Prefer resolveOrgId() when null - it hydrates from /api/auth/me (cookie session).
  */
 export function getOrgId(): string | null {
   if (cachedOrgId) return cachedOrgId;

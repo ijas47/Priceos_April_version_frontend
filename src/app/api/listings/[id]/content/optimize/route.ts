@@ -6,7 +6,7 @@ import { persistContentProposals } from "@/lib/listing-content/proposals";
 
 export const dynamic = "force-dynamic";
 
-/** POST /api/listings/[id]/content/optimize — generate HITL content proposals */
+/** POST /api/listings/[id]/content/optimize - generate HITL content proposals */
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

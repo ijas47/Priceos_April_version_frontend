@@ -45,10 +45,10 @@ const MARKETS = [
 ];
 
 const ONBOARDING_STEPS: Record<string, { label: string; color: string }> = {
-  connect:  { label: "Step 1 — Connect",  color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
-  select:   { label: "Step 2 — Select",   color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
-  market:   { label: "Step 3 — Market",   color: "bg-primary/10 text-primary border-primary/20" },
-  strategy: { label: "Step 4 — Strategy", color: "bg-destructive/10 text-destructive border-destructive/20" },
+  connect:  { label: "Step 1 - Connect",  color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+  select:   { label: "Step 2 - Select",   color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
+  market:   { label: "Step 3 - Market",   color: "bg-primary/10 text-primary border-primary/20" },
+  strategy: { label: "Step 4 - Strategy", color: "bg-destructive/10 text-destructive border-destructive/20" },
   complete: { label: "✅ Complete",        color: "bg-green-500/10 text-green-400 border-green-500/20" },
 };
 
@@ -240,7 +240,7 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
             </div>
           </>
         ) : (
-          /* Success State — show credentials */
+          /* Success State - show credentials */
           <div className="text-center space-y-6">
             <div className="h-16 w-16 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto">
               <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
@@ -410,10 +410,10 @@ function UserRow({ user, onRefresh }: { user: User; onRefresh: () => void }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="connect">Step 1 — Connect</SelectItem>
-                  <SelectItem value="select">Step 2 — Select Properties</SelectItem>
-                  <SelectItem value="market">Step 3 — Choose Market</SelectItem>
-                  <SelectItem value="strategy">Step 4 — Review Strategy</SelectItem>
+                  <SelectItem value="connect">Step 1 - Connect</SelectItem>
+                  <SelectItem value="select">Step 2 - Select Properties</SelectItem>
+                  <SelectItem value="market">Step 3 - Choose Market</SelectItem>
+                  <SelectItem value="strategy">Step 4 - Review Strategy</SelectItem>
                   <SelectItem value="complete">Complete (Skip Wizard)</SelectItem>
                 </SelectContent>
               </Select>

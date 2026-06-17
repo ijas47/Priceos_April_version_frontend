@@ -216,7 +216,7 @@ Respond in this exact JSON format:
   "sentiment": "Positive" | "Neutral" | "Needs Attention",
   "themes": ["theme1", "theme2", ...up to 5],
   "actionItems": ["action1", "action2", ...up to 5],
-  "bulletPoints": ["guestName: summary — status", ...one per conversation],
+  "bulletPoints": ["guestName: summary - status", ...one per conversation],
   "totalConversations": ${enrichedConversations.length},
   "needsReplyCount": number
 }`;
@@ -258,7 +258,7 @@ Respond in this exact JSON format:
                     const lastAdminMsg = [...c.messages].reverse().find(m => m.sender === "admin");
                     const resolved = lastAdminMsg && lastGuestMsg &&
                         c.messages.indexOf(lastAdminMsg) > c.messages.indexOf(lastGuestMsg);
-                    return `${c.guestName}: "${lastGuestMsg?.text || "No message"}" — ${resolved ? "Resolved" : "NEEDS REPLY"}`;
+                    return `${c.guestName}: "${lastGuestMsg?.text || "No message"}" - ${resolved ? "Resolved" : "NEEDS REPLY"}`;
                 }),
                 totalConversations: enrichedConversations.length,
                 needsReplyCount: needsReply,

@@ -127,10 +127,10 @@ export function OverviewClient({
       if (triggerRes.ok && triggerData.success) {
         log("✓ Hostaway import completed", "success");
       } else {
-        log(triggerData.message ?? "Hostaway import skipped — use Sync page if live mode is not configured", "info");
+        log(triggerData.message ?? "Hostaway import skipped - use Sync page if live mode is not configured", "info");
       }
     } catch {
-      log("Hostaway import unavailable — reading existing database", "info");
+      log("Hostaway import unavailable - reading existing database", "info");
     }
 
     await wait(500);
@@ -166,15 +166,15 @@ export function OverviewClient({
           log(`  └ Last modified: ${new Date(s.inventory_master.lastSyncedAt).toLocaleString("en-US")}`, "info");
         }
       } else {
-        log("Could not read sync status — check backend", "error");
+        log("Could not read sync status - check backend", "error");
       }
     } catch {
-      log("Status check failed — backend may be offline", "error");
+      log("Status check failed - backend may be offline", "error");
     }
 
     await wait(300);
     log("─────────────────────────────────", "info");
-    log("✓ Sync complete — dashboard data is up to date", "success");
+    log("✓ Sync complete - dashboard data is up to date", "success");
 
     // Re-enable button immediately after logs complete
     setIsSyncing(false);
@@ -278,11 +278,11 @@ export function OverviewClient({
     const base = Number(p.price) || 0;
     const gaps = (p.calendarDays ?? []).filter(d => d.status === 'available' || d.status === 'open').length;
     if (p.occupancy >= 85) {
-      aiSignals.push({ id: `star-${p.id}`, property: p.name, signal: 'Star Performer', action: `${p.occupancy}% occupied — raise ADR 8–12%`, impact: `+${Math.round(p.revenue * 0.1).toLocaleString()} ${currency} est.`, type: 'star' });
+      aiSignals.push({ id: `star-${p.id}`, property: p.name, signal: 'Star Performer', action: `${p.occupancy}% occupied - raise ADR 8–12%`, impact: `+${Math.round(p.revenue * 0.1).toLocaleString()} ${currency} est.`, type: 'star' });
     } else if (p.occupancy >= 60 && base > 0 && p.avgPrice < base) {
-      aiSignals.push({ id: `raise-${p.id}`, property: p.name, signal: 'Price Lift Opportunity', action: `ADR below listed rate — lift towards ${base} ${currency}`, impact: `+${Math.round((base - p.avgPrice) * 8).toLocaleString()} ${currency} est.`, type: 'raise' });
+      aiSignals.push({ id: `raise-${p.id}`, property: p.name, signal: 'Price Lift Opportunity', action: `ADR below listed rate - lift towards ${base} ${currency}`, impact: `+${Math.round((base - p.avgPrice) * 8).toLocaleString()} ${currency} est.`, type: 'raise' });
     } else if (p.occupancy < 30) {
-      aiSignals.push({ id: `lower-${p.id}`, property: p.name, signal: 'Underperforming', action: `Only ${p.occupancy}% booked — revisit pricing strategy`, impact: 'Revenue at risk', type: 'lower' });
+      aiSignals.push({ id: `lower-${p.id}`, property: p.name, signal: 'Underperforming', action: `Only ${p.occupancy}% booked - revisit pricing strategy`, impact: 'Revenue at risk', type: 'lower' });
     } else if (gaps >= 5) {
       aiSignals.push({ id: `gap-${p.id}`, property: p.name, signal: `${gaps} Gap Days`, action: 'Apply gap-fill pricing or min-stay flexibility', impact: 'Capture short-stay demand', type: 'gap' });
     }
@@ -301,13 +301,13 @@ const actionQueue = [...filteredProperties].map(p => {
     let upliftNum = 0;
     if (p.occupancy < 25) {
       priority = 'critical';
-      issue = `Only ${p.occupancy}% booked — well below target`;
+      issue = `Only ${p.occupancy}% booked - well below target`;
       action = `Drop price 10-15%, relax min-stay`;
       upliftNum = gaps > 0 ? Math.round(p.avgPrice * 0.85 * Math.min(gaps, 10)) : 0;
-      uplift = upliftNum > 0 ? `+${upliftNum.toLocaleString("en-US")} ${currency} est.` : '—';
+      uplift = upliftNum > 0 ? `+${upliftNum.toLocaleString("en-US")} ${currency} est.` : '-';
     } else if (p.occupancy < 40) {
       priority = 'high';
-      issue = `${p.occupancy}% occ — below market pace`;
+      issue = `${p.occupancy}% occ - below market pace`;
       action = `Review pricing & reduce minimum stay`;
       upliftNum = gaps > 0 ? Math.round(p.avgPrice * Math.min(gaps, 8)) : 0;
       uplift = upliftNum > 0 ? `+${upliftNum.toLocaleString("en-US")} ${currency} est.` : `Fill ${gaps} open days`;
@@ -319,21 +319,21 @@ const actionQueue = [...filteredProperties].map(p => {
       uplift = `+${upliftNum.toLocaleString("en-US")} ${currency} est.`;
     } else if (p.occupancy >= 80) {
       priority = 'opportunity';
-      issue = `${p.occupancy}% occupied — prime window to push rates`;
+      issue = `${p.occupancy}% occupied - prime window to push rates`;
       action = `Test 8-12% rate increase on upcoming dates`;
       upliftNum = Math.round(p.revenue * 0.10);
       uplift = `+${upliftNum.toLocaleString("en-US")} ${currency} est.`;
     } else if (p.occupancy < 65 && gaps >= 5) {
       priority = 'monitor';
-      issue = `${gaps} gap days — short-stay demand available`;
+      issue = `${gaps} gap days - short-stay demand available`;
       action = `Apply gap-fill discount or 2-night min`;
       upliftNum = Math.round(p.avgPrice * 0.9 * Math.min(gaps, 5));
       uplift = upliftNum > 0 ? `+${upliftNum.toLocaleString("en-US")} ${currency} est.` : `Capture short-stay revenue`;
     } else {
       priority = 'optimal';
-      issue = `${p.occupancy}% occ — performing well`;
+      issue = `${p.occupancy}% occ - performing well`;
       action = `Maintain current pricing strategy`;
-      uplift = '—';
+      uplift = '-';
     }
     return { ...p, priority, issue, action, uplift, upliftNum, unitType };
   }).sort((a, b) => {
@@ -848,7 +848,7 @@ const actionQueue = [...filteredProperties].map(p => {
           </span>
         </div>
 
-        {/* Summary Stats Strip — clickable to filter */}
+        {/* Summary Stats Strip - clickable to filter */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {([
             { key: 'critical' as const,    label: 'Critical',      subLabel: 'Needs urgent action',    monitorKey: 'monitor' as const },
@@ -876,13 +876,13 @@ const actionQueue = [...filteredProperties].map(p => {
           })}
         </div>
 
-        {/* Hero Cards — top 3 most urgent, clickable */}
+        {/* Hero Cards - top 3 most urgent, clickable */}
         {heroCards.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
               <h3 className="text-sm font-semibold text-foreground dark:text-white">Needs Immediate Attention</h3>
-              <span className="text-[10px] text-muted-foreground font-normal">— click to focus on property</span>
+              <span className="text-[10px] text-muted-foreground font-normal">- click to focus on property</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {heroCards.map(p => (
@@ -943,7 +943,7 @@ const actionQueue = [...filteredProperties].map(p => {
           </div>
         )}
 
-        {/* Charts Row — Occupancy Distribution + Revenue Uplift */}
+        {/* Charts Row - Occupancy Distribution + Revenue Uplift */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="bg-background/60 backdrop-blur-xl border-border dark:border-white/5 shadow-xl">
             <CardHeader className="pb-2">
@@ -1055,7 +1055,7 @@ const actionQueue = [...filteredProperties].map(p => {
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold text-foreground dark:text-white">AI Revenue Signals</h3>
-              <span className="text-[10px] text-muted-foreground font-normal">— Actionable intelligence from your live portfolio data</span>
+              <span className="text-[10px] text-muted-foreground font-normal">- Actionable intelligence from your live portfolio data</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {displaySignals.map(sig => {
@@ -1082,7 +1082,7 @@ const actionQueue = [...filteredProperties].map(p => {
           </div>
         )}
 
-        {/* Pricing Actions Queue — filtered, max 10, clickable rows */}
+        {/* Pricing Actions Queue - filtered, max 10, clickable rows */}
         <Card className="bg-background/60 backdrop-blur-xl border-border dark:border-white/5 shadow-xl">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1094,7 +1094,7 @@ const actionQueue = [...filteredProperties].map(p => {
                 {filteredIntelQueue.length} shown · click row to focus property
               </span>
             </div>
-            <CardDescription>Ranked by urgency — critical first. Filtered by selections above.</CardDescription>
+            <CardDescription>Ranked by urgency - critical first. Filtered by selections above.</CardDescription>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             {filteredIntelQueue.length === 0 ? (
@@ -1438,7 +1438,7 @@ const actionQueue = [...filteredProperties].map(p => {
         </div>
       )}
 
-      {/* Floating Ask Aria — same interaction pattern as Guest Inbox (toggle + bottom-right) */}
+      {/* Floating Ask Aria - same interaction pattern as Guest Inbox (toggle + bottom-right) */}
       <Button
         type="button"
         onClick={() => setIsChatOpen((v) => !v)}

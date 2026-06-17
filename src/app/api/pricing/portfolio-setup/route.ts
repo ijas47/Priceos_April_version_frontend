@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { getSession } from "@/lib/auth/server";
 import { connectDB, Organization, Listing } from "@/lib/db";
+import { runAutoSetup } from "@/lib/engine/auto-setup";
 import {
-  runAutoSetup,
   portfolioGuardrailsFromStrategy,
   type Strategy,
-} from "@/lib/engine/auto-setup";
+  type StrategyPreset,
+} from "@/lib/pricing/strategy-presets";
 import { applyPricingPackToOrg } from "@/lib/pricing/apply-defaults";
 
 export const dynamic = "force-dynamic";
@@ -54,7 +55,7 @@ export async function GET() {
 /**
  * POST /api/pricing/portfolio-setup
  *
- * Applies smart pricing to ALL existing properties in the org in one shot —
+ * Applies smart pricing to ALL existing properties in the org in one shot -
  * for properties that were connected before the onboarding wizard ran, or to
  * re-baseline the whole portfolio before a demo.
  *
@@ -66,7 +67,10 @@ export async function GET() {
  * Writes only to MongoDB. Never pushes to Hostaway (pricing pushes stay blocked
  * by HOSTAWAY_READ_ONLY regardless).
  *
- * Body: { "strategy": "conservative" | "balanced" | "aggressive" }
+ * Body: {
+ *   "strategy": "conservative" | "balanced" | "aggressive",
+ *   "presetOverrides"?: Partial<StrategyPreset>
+ * }
  */
 export async function POST(req: NextRequest) {
   try {
@@ -77,6 +81,7 @@ export async function POST(req: NextRequest) {
     const strategy: Strategy = STRATEGIES.includes(body?.strategy)
       ? body.strategy
       : "balanced";
+    const presetOverrides = sanitizePresetOverrides(body?.presetOverrides);
 
     await connectDB();
     const orgId = new mongoose.Types.ObjectId(session.orgId);
@@ -93,7 +98,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Portfolio level: guardrails + UAE PriceLabs profile pack.
-    const portfolio = portfolioGuardrailsFromStrategy(strategy);
+    const portfolio = portfolioGuardrailsFromStrategy(strategy, presetOverrides);
     await Organization.findByIdAndUpdate(orgId, {
       $set: {
         pricingStrategy: strategy,
@@ -112,6 +117,7 @@ export async function POST(req: NextRequest) {
       listingIds: listings.map((l) => l._id.toString()),
       marketCode: org.marketCode || "UAE_DXB",
       strategy,
+      presetOverrides,
     });
 
     return NextResponse.json({
@@ -128,4 +134,29 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+const PRESET_KEYS: (keyof StrategyPreset)[] = [
+  "floorMult",
+  "ceilingMult",
+  "lastMinuteDiscountPct",
+  "lastMinuteDaysOut",
+  "farOutMarkupPct",
+  "farOutDaysOut",
+  "dowUpliftPct",
+  "gapFillDiscountPct",
+  "autoApproveThreshold",
+  "maxSingleDayChangePct",
+];
+
+function sanitizePresetOverrides(raw: unknown): Partial<StrategyPreset> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: Partial<StrategyPreset> = {};
+  for (const key of PRESET_KEYS) {
+    const val = (raw as Record<string, unknown>)[key];
+    if (typeof val === "number" && Number.isFinite(val)) {
+      out[key] = val;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }

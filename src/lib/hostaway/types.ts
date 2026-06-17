@@ -35,7 +35,7 @@ export interface HostawayListing {
   }>;
 }
 
-/** Partial listing update — Hostaway accepts only changed fields. */
+/** Partial listing update - Hostaway accepts only changed fields. */
 export interface HostawayListingUpdate {
   airbnbName?: string;
   airbnbSummary?: string;
@@ -52,7 +52,7 @@ export interface HostawayCalendarDay {
   minimumStay?: number;
   maximumStay?: number;
   note?: string;
-  /** Hostaway raw field — 1/0 or boolean */
+  /** Hostaway raw field - 1/0 or boolean */
   isAvailable?: number | boolean;
 }
 

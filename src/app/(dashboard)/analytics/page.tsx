@@ -557,7 +557,7 @@ function PropertiesAnalytics({ properties, tickets }: { properties: Property[]; 
           className="flex-1 h-9 rounded-md border border-border-subtle bg-surface-2 px-3 text-sm text-text-primary"
         >
           <option value={PORTFOLIO_ID}>
-            All properties — portfolio ({activeProps.length})
+            All properties - portfolio ({activeProps.length})
           </option>
           <optgroup label="Individual properties">
             {activeProps.map((p) => (
@@ -765,7 +765,7 @@ function GroupsAnalytics({ groups, properties, tickets }: { groups: PropertyGrou
 
       {selectedGroup && groupStats && memberProperties.length > 0 && (
         <>
-          {/* KPI cards — property metrics */}
+          {/* KPI cards - property metrics */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <KpiCard label="Properties" value={String(memberProperties.length)} accent="violet" />
             <KpiCard label="Total Reservations" value={groupStats.totalReservations.toLocaleString("en-US")} accent="blue" />
@@ -784,7 +784,7 @@ function GroupsAnalytics({ groups, properties, tickets }: { groups: PropertyGrou
 
           {/* Row 1: Revenue Pie + Occupancy Bar */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Revenue share — Pie */}
+            {/* Revenue share - Pie */}
             <ChartCard title="Revenue Share" subtitle="Each property's contribution to group revenue">
               <ResponsiveContainer width="100%" height={240}>
                 <PieChart>
@@ -825,7 +825,7 @@ function GroupsAnalytics({ groups, properties, tickets }: { groups: PropertyGrou
               </div>
             </ChartCard>
 
-            {/* Occupancy — Horizontal bar */}
+            {/* Occupancy - Horizontal bar */}
             <ChartCard title="Occupancy %" subtitle="30-day occupancy rate per property">
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={chartDataWithPct} layout="vertical" margin={{ left: 8, right: 24 }}>
@@ -851,7 +851,7 @@ function GroupsAnalytics({ groups, properties, tickets }: { groups: PropertyGrou
 
           {/* Row 2: Revenue bar + Avg Price bar */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Revenue — vertical bar */}
+            {/* Revenue - vertical bar */}
             <ChartCard title="Revenue by Property" subtitle={`Total revenue in ${currency}`}>
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={chartDataWithPct} margin={{ left: 0, right: 8 }}>
@@ -874,7 +874,7 @@ function GroupsAnalytics({ groups, properties, tickets }: { groups: PropertyGrou
               </ResponsiveContainer>
             </ChartCard>
 
-            {/* Avg Price — vertical bar */}
+            {/* Avg Price - vertical bar */}
             <ChartCard title="Avg Nightly Price" subtitle={`Average price per night in ${currency}`}>
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={chartDataWithPct} margin={{ left: 0, right: 8 }}>
@@ -900,7 +900,7 @@ function GroupsAnalytics({ groups, properties, tickets }: { groups: PropertyGrou
 
           {/* Row 3: Reservations bar + Pending Proposals bar */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Reservations — vertical bar */}
+            {/* Reservations - vertical bar */}
             <ChartCard title="Reservations by Property" subtitle="Total bookings per property">
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={chartDataWithPct} margin={{ left: 0, right: 8 }}>
@@ -923,7 +923,7 @@ function GroupsAnalytics({ groups, properties, tickets }: { groups: PropertyGrou
               </ResponsiveContainer>
             </ChartCard>
 
-            {/* Pending Proposals — vertical bar */}
+            {/* Pending Proposals - vertical bar */}
             <ChartCard title="Pending Proposals" subtitle="AI pricing proposals awaiting review">
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={chartDataWithPct} margin={{ left: 0, right: 8 }}>
@@ -952,7 +952,7 @@ function GroupsAnalytics({ groups, properties, tickets }: { groups: PropertyGrou
             <div className="px-4 py-3 border-b border-border-subtle flex items-center gap-2">
               <Layers className="h-4 w-4 text-amber" />
               <span className="text-xs font-bold text-text-tertiary uppercase tracking-wider">
-                {memberProperties.length} {memberProperties.length === 1 ? "Property" : "Properties"} — Detailed Breakdown
+                {memberProperties.length} {memberProperties.length === 1 ? "Property" : "Properties"} - Detailed Breakdown
               </span>
             </div>
             <div className="divide-y divide-border-subtle">
@@ -966,7 +966,7 @@ function GroupsAnalytics({ groups, properties, tickets }: { groups: PropertyGrou
                       <p className="text-sm font-semibold text-text-primary truncate">{prop.name}</p>
                       <div className="flex items-center gap-2 text-[10px] text-text-tertiary mt-0.5">
                         <MapPin className="h-2.5 w-2.5" />
-                        <span>{prop.area || prop.city || "—"}</span>
+                        <span>{prop.area || prop.city || "-"}</span>
                         <span>·</span>
                         <BedDouble className="h-2.5 w-2.5" />
                         <span>{prop.bedrooms} BR</span>

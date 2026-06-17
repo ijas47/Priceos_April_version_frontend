@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════
- * PriceOS API — In-Memory Rate Limiter (Token Bucket)
+ * PriceOS API - In-Memory Rate Limiter (Token Bucket)
  * 
  * Algorithm: Token Bucket
  * - Each IP starts with `maxTokens` tokens

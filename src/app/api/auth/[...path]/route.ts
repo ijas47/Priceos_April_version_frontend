@@ -1,4 +1,4 @@
-// Neon Auth catch-all — replaced by JWT auth.
+// Neon Auth catch-all - replaced by JWT auth.
 // Kept as a stub to avoid 404s from any residual SDK calls.
 import { NextResponse } from "next/server";
 

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 /**
  * Silently checks the user's approval status on mount.
  * If not approved, redirects to /waitlist.
- * Renders nothing — purely a background guard.
+ * Renders nothing - purely a background guard.
  */
 export function ApprovalGuard() {
     const router = useRouter();

@@ -13,7 +13,7 @@ declare global {
 
 globalThis.syncStatus = globalThis.syncStatus || { status: 'idle', message: '' };
 
-// Sync of 30+ properties takes minutes — allow the function to run long.
+// Sync of 30+ properties takes minutes - allow the function to run long.
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
@@ -118,7 +118,7 @@ async function performBackgroundSync(orgId: string) {
         try {
             const eventSync = await syncOrgMarketEvents(orgOid, 90);
             console.log(
-                `✅ Step 5: Market events — ${eventSync.totalSaved} saved. DTCM: ${eventSync.dtcm.enabled ? eventSync.dtcm.reason : "skipped"}`
+                `✅ Step 5: Market events - ${eventSync.totalSaved} saved. DTCM: ${eventSync.dtcm.enabled ? eventSync.dtcm.reason : "skipped"}`
             );
         } catch (evtErr) {
             console.warn(`⚠️ Step 5: Market event refresh failed (non-fatal):`, (evtErr as Error).message);

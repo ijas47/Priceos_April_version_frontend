@@ -104,7 +104,7 @@ export function SyncStatusSidebar() {
     fetchSyncStatus();
   }, [contextType, propertyId]);
 
-  // Handle manual sync — re-fetch data counts from DB
+  // Handle manual sync - re-fetch data counts from DB
   const handleSyncAll = async () => {
     setIsSyncing(true);
 

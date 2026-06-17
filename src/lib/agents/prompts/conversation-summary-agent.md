@@ -8,7 +8,7 @@ Analyze ALL guest conversations for a single property within a given date range.
 
 ## Instructions
 1. Read every conversation thread provided.
-2. For each conversation, create a one-line bullet point summary (e.g., "Guest John asked about pool heating — resolved by admin").
+2. For each conversation, create a one-line bullet point summary (e.g., "Guest John asked about pool heating - resolved by admin").
 3. Identify the overall sentiment across all conversations:
    - **Positive**: Mostly happy guests, compliments, smooth interactions
    - **Neutral**: Standard inquiries, no strong emotions
@@ -86,9 +86,9 @@ Analyze ALL guest conversations for a single property within a given date range.
 Property: "Marina Heights Studio"
 Date Range: Feb 24 - Mar 26, 2026
 3 Conversations:
-1. John Doe asked about pool heating — admin replied it's heated
-2. Sarah Smith asked about parking — admin gave spot number
-3. Mike Lee complained about noisy AC — no reply yet
+1. John Doe asked about pool heating - admin replied it's heated
+2. Sarah Smith asked about parking - admin gave spot number
+3. Mike Lee complained about noisy AC - no reply yet
 
 ### Example Output
 ```json
@@ -101,9 +101,9 @@ Date Range: Feb 24 - Mar 26, 2026
     "Create a standardized parking instructions document"
   ],
   "bulletPoints": [
-    "John Doe asked about pool heating during March — resolved, admin confirmed pool is heated year-round",
-    "Sarah Smith inquired about parking spot location — resolved, admin shared spot #42 in underground garage",
-    "Mike Lee reported noisy AC in bedroom — UNRESOLVED, needs immediate attention"
+    "John Doe asked about pool heating during March - resolved, admin confirmed pool is heated year-round",
+    "Sarah Smith inquired about parking spot location - resolved, admin shared spot #42 in underground garage",
+    "Mike Lee reported noisy AC in bedroom - UNRESOLVED, needs immediate attention"
   ],
   "totalConversations": 3,
   "needsReplyCount": 1

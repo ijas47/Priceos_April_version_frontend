@@ -24,7 +24,7 @@ export interface TokenPayload {
 }
 
 /**
- * Sign an Access Token — stored in httpOnly cookie "priceos-session".
+ * Sign an Access Token - stored in httpOnly cookie "priceos-session".
  * Expiry: 7 days (long-lived for convenience in single-user orgs).
  */
 export function signAccessToken(payload: TokenPayload): string {
@@ -32,7 +32,7 @@ export function signAccessToken(payload: TokenPayload): string {
 }
 
 /**
- * Sign a Refresh Token — stored in httpOnly cookie "priceos-refresh".
+ * Sign a Refresh Token - stored in httpOnly cookie "priceos-refresh".
  */
 export function signRefreshToken(userId: string): string {
   return jwt.sign({ userId }, getSecret("JWT_REFRESH_SECRET"), { expiresIn: "30d" });

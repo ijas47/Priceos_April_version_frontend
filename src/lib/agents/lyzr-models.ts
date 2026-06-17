@@ -12,7 +12,7 @@ export interface LyzrModelSpec {
   lyzrAgentId: string;
   /** Human-readable name */
   name: string;
-  /** Role tier — drives model selection */
+  /** Role tier - drives model selection */
   tier: AgentModelTier;
   /** Lyzr model string (provider/model) */
   model: string;
@@ -22,9 +22,9 @@ export interface LyzrModelSpec {
   rationale: string;
 }
 
-/** Fast structured analysis — calendar, bookings, portfolio math */
+/** Fast structured analysis - calendar, bookings, portfolio math */
 export const GEMINI_FLASH = "gemini/gemini-3-flash-preview";
-/** Ultra-fast read-only tasks — summaries, light extraction */
+/** Ultra-fast read-only tasks - summaries, light extraction */
 export const GEMINI_FLASH_LITE = "gemini/gemini-3.1-flash-lite";
 /** Best reasoning for user-facing orchestration and complex synthesis */
 export const CLAUDE_SONNET = "anthropic/claude-sonnet-4-6";
@@ -74,7 +74,7 @@ export function getProviderBinding(modelKey: string): LyzrProviderBinding | unde
 }
 
 /**
- * Live Lyzr agent registry — env overrides supported for each agent ID.
+ * Live Lyzr agent registry - env overrides supported for each agent ID.
  * Models tuned for demo week: accurate dates/events, fast workers, strict safety.
  */
 export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
@@ -112,7 +112,7 @@ export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
     model: GEMINI_FLASH,
     temperature: 0.1,
     maxTokens: 3000,
-    rationale: "Parse-only on verified SERP/News/DB intel — no live Sonar hallucinations",
+    rationale: "Parse-only on verified SERP/News/DB intel - no live Sonar hallucinations",
   },
   {
     lyzrAgentId: process.env.LYZR_PRICE_GUARD_AGENT_ID || "6999933b83d9dff0252dd86f",
@@ -121,7 +121,7 @@ export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
     model: GPT_41,
     temperature: 0.0,
     maxTokens: 2500,
-    rationale: "Deterministic pricing validation — zero creativity",
+    rationale: "Deterministic pricing validation - zero creativity",
   },
   {
     lyzrAgentId: process.env.Marketing_Agent_ID || "699993adb8bd4d3aac102a81",
@@ -130,7 +130,7 @@ export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
     model: GEMINI_FLASH_LITE,
     temperature: 0.1,
     maxTokens: 2000,
-    rationale: "Legacy agent — holidays now from static calendar; kept for Studio parity",
+    rationale: "Legacy agent - holidays now from static calendar; kept for Studio parity",
   },
   ...(process.env.LYZR_LISTING_OPTIMIZER_AGENT_ID
     ? [
@@ -141,7 +141,7 @@ export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
           model: GEMINI_FLASH_LITE,
           temperature: 0.2,
           maxTokens: 3000,
-          rationale: "OTA listing copy SEO — Airbnb/Booking/VRBO titles and descriptions",
+          rationale: "OTA listing copy SEO - Airbnb/Booking/VRBO titles and descriptions",
         },
       ]
     : []),

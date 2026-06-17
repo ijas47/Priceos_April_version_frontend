@@ -77,7 +77,7 @@ async function main() {
   }
 
   const { specs, bindings } = loadSpecs();
-  console.log(`${DRY_RUN ? "🔍 DRY RUN" : "🚀 SYNC"} — ${specs.length} agents\n`);
+  console.log(`${DRY_RUN ? "🔍 DRY RUN" : "🚀 SYNC"} - ${specs.length} agents\n`);
 
   let updated = 0;
   let skipped = 0;
@@ -104,7 +104,7 @@ async function main() {
         (binding && current.provider_id !== binding.provider_id);
 
       if (!needsUpdate) {
-        console.log(`✅ ${spec.name} (${id.slice(-6)}) — already ${targetModel} @ ${spec.temperature}`);
+        console.log(`✅ ${spec.name} (${id.slice(-6)}) - already ${targetModel} @ ${spec.temperature}`);
         skipped++;
         continue;
       }

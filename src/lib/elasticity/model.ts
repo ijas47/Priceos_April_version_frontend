@@ -1,5 +1,5 @@
 /**
- * Elasticity Model v0 — Logistic Booking Probability
+ * Elasticity Model v0 - Logistic Booking Probability
  *
  * Model:
  *   P(book | price) = 1 / (1 + exp(beta0 + beta1 * (price / adr)))
@@ -128,13 +128,13 @@ export function optimalPrice(
 }
 
 // ---------------------------------------------------------------------------
-// Model fitting — IRLS logistic regression
+// Model fitting - IRLS logistic regression
 // ---------------------------------------------------------------------------
 
 /**
  * Fit the logistic model to booking observations.
  *
- * Uses Iteratively Reweighted Least Squares (IRLS) — the standard algorithm
+ * Uses Iteratively Reweighted Least Squares (IRLS) - the standard algorithm
  * for maximum-likelihood estimation of logistic regression coefficients.
  *
  * Each observation is a (price, booked) pair.  The single feature is
@@ -215,7 +215,7 @@ export function fitElasticityModel(
 
     // Invert 2x2 matrix.
     const inv = invert2x2(XtWX);
-    if (!inv) break; // singular — stop early
+    if (!inv) break; // singular - stop early
 
     // Newton step.
     const delta = [

@@ -49,7 +49,7 @@ export interface ListingConfig {
     farOutMinStay: number | null;
 
     dowPricingEnabled: boolean;
-    dowDays: number[]; // e.g. [5,6] — 0=Mon..6=Sun
+    dowDays: number[]; // e.g. [5,6] - 0=Mon..6=Sun
     dowPriceAdjPct: number;
     dowMinStay: number | null;
 
@@ -100,7 +100,7 @@ export interface BookingContext {
 
 /**
  * Per-date market signal derived from Airbtics or other comp-set sources.
- * All fields optional — if not provided, the Market Anchor pass is a no-op.
+ * All fields optional - if not provided, the Market Anchor pass is a no-op.
  */
 export interface MarketSignal {
     /** Comp-set median ADR (Airbtics bounds or benchmark comps) */
@@ -111,7 +111,7 @@ export interface MarketSignal {
     monthAnchorAdr?: number;
     /** Annual p50 ADR for the property's market */
     annualAnchorAdr?: number;
-    /** Forward occupancy (0..1) for this date — drives demand multiplier */
+    /** Forward occupancy (0..1) for this date - drives demand multiplier */
     forwardOccupancy?: number;
     /** Market ADR for this exact date from future-pacing */
     pacingAdr?: number;
@@ -172,7 +172,7 @@ export function computeDay(
     const dow = getDow(date);
     const leadTime = daysBetween(today, date);
 
-    // ── Pass 0 — Market Anchor (comp-set + pacing; listed price = reference only) ─
+    // ── Pass 0 - Market Anchor (comp-set + pacing; listed price = reference only) ─
     const listedReference = config.basePrice;
     const anchor = resolveMarketAnchorBase(listedReference, marketSignal);
     let basePrice = anchor.price;
@@ -223,7 +223,7 @@ export function computeDay(
             );
         }
 
-        // Pacing is included in the weighted anchor blend — no second blend here.
+        // Pacing is included in the weighted anchor blend - no second blend here.
 
         // Booking pace vs STLY (nights-on-books pickup)
         if (typeof marketSignal.bookingPaceRatio === "number") {
@@ -236,7 +236,7 @@ export function computeDay(
         }
     }
 
-    // ── Pass 1 — Foundation ────────────────────────────────────────────────────
+    // ── Pass 1 - Foundation ────────────────────────────────────────────────────
 
     let price = basePrice;
     let minimumStay = config.defaultMinStay;
@@ -328,7 +328,7 @@ export function computeDay(
         notes.push("[BOOKED] Day is booked");
     }
 
-    // ── Pass 2 — Strategy ─────────────────────────────────────────────────────
+    // ── Pass 2 - Strategy ─────────────────────────────────────────────────────
 
     // Last-minute discount (gradual ramp: max at day 0 → min at rampDays)
     if (
@@ -462,7 +462,7 @@ export function computeDay(
         notes.push(`[LOS_DISCOUNT] Available: ${losNotes.join(", ")}`);
     }
 
-    // ── Pass 3 — Inventory (Gap Logic) ────────────────────────────────────────
+    // ── Pass 3 - Inventory (Gap Logic) ────────────────────────────────────────
 
     if (
         bookingCtx.gapLength !== null &&
@@ -518,7 +518,7 @@ export function computeDay(
         }
     }
 
-    // ── Pass 4 — Integrity ────────────────────────────────────────────────────
+    // ── Pass 4 - Integrity ────────────────────────────────────────────────────
 
     const effectiveMinPrice = ruleMinPrice ?? config.absoluteMinPrice;
     const effectiveMaxPrice = ruleMaxPrice ?? config.absoluteMaxPrice;

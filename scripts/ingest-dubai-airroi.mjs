@@ -36,7 +36,7 @@ try {
     process.env[key] = process.env[key] ?? val;
   }
 } catch {
-  console.warn("Could not read .env — using existing environment variables.");
+  console.warn("Could not read .env - using existing environment variables.");
 }
 
 const SOURCE_VERSION = "jasonairroi/airbnb-short-term-rental-data-dubai:v3";

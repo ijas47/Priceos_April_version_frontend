@@ -4,7 +4,7 @@ import { connectDB, InventoryMaster } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 import { changePctFromPrices } from "@/lib/pricing/bulk-adjust";
 
-/** POST /api/proposals/bulk-modify — set absolute price or % shift on pending proposals. */
+/** POST /api/proposals/bulk-modify - set absolute price or % shift on pending proposals. */
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();

@@ -27,14 +27,14 @@ export function getJwtSecrets() {
 }
 
 // Lyzr API calls are handled exclusively by the FastAPI backend.
-// The frontend never calls Lyzr directly — do not add Lyzr env vars here.
+// The frontend never calls Lyzr directly - do not add Lyzr env vars here.
 
 export function requireHostawayApiBaseUrl() {
-  // Public constant — only override for testing against a sandbox.
+  // Public constant - only override for testing against a sandbox.
   return getEnv("HOSTAWAY_API_BASE_URL") ?? "https://api.hostaway.com/v1";
 }
 
-/** Hostaway access token — supports both env names in circulation. */
+/** Hostaway access token - supports both env names in circulation. */
 export function getHostawayApiKey() {
   return getEnv("HOSTAWAY_API_KEY", "Hostaway_Authorization_token");
 }

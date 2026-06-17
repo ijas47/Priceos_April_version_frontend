@@ -1,5 +1,5 @@
 /**
- * Deterministic public holidays — no Lyzr/Perplexity required.
+ * Deterministic public holidays - no Lyzr/Perplexity required.
  * Islamic calendar dates use getRamadanDates() where hardcoded per year.
  */
 
@@ -32,7 +32,7 @@ const UAE_FIXED_HOLIDAYS: Array<{
     day: 1,
     impact: "medium",
     premium: 8,
-    description: "UAE public holiday — leisure travel demand uplift.",
+    description: "UAE public holiday - leisure travel demand uplift.",
   },
   {
     title: "Commemoration Day",
@@ -49,7 +49,7 @@ const UAE_FIXED_HOLIDAYS: Array<{
     endDay: 3,
     impact: "high",
     premium: 20,
-    description: "UAE National Day long weekend — strong domestic and inbound demand.",
+    description: "UAE National Day long weekend - strong domestic and inbound demand.",
   },
 ];
 
@@ -97,7 +97,7 @@ function holidaysForCountry(
           dateEnd: end,
           impact: "medium",
           description:
-            "Ramadan period — demand mix shifts (fewer tourists, more domestic). Pricing should reflect pacing, not generic event premiums.",
+            "Ramadan period - demand mix shifts (fewer tourists, more domestic). Pricing should reflect pacing, not generic event premiums.",
           suggestedPremiumPct: 0,
           source: "public_holiday_calendar",
         });

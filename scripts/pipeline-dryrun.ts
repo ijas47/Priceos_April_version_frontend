@@ -1,5 +1,5 @@
 /**
- * Pipeline dry-run — executes the REAL pricing engine code (waterfall.ts)
+ * Pipeline dry-run - executes the REAL pricing engine code (waterfall.ts)
  * over a full 365-day year, with the same step structure as
  * src/lib/engine/pipeline.ts, and validates engine invariants.
  *
@@ -124,11 +124,11 @@ for (let offset = 0; offset < 365; offset++) {
 
 const failures: string[] = [];
 const check = (name: string, ok: boolean, detail?: string) => {
-    console.log(`  ${ok ? "✅" : "❌"} ${name}${detail ? ` — ${detail}` : ""}`);
+    console.log(`  ${ok ? "✅" : "❌"} ${name}${detail ? ` - ${detail}` : ""}`);
     if (!ok) failures.push(name);
 };
 
-console.log("\n══════════ PIPELINE DRY-RUN — 365-day waterfall execution ══════════\n");
+console.log("\n══════════ PIPELINE DRY-RUN - 365-day waterfall execution ══════════\n");
 console.log(`Base ${config.basePrice} | floor ${config.absoluteMinPrice} | ceiling ${config.absoluteMaxPrice} | today ${iso(today)}\n`);
 
 console.log("── Sample day traces (each waterfall pass visible in note) ──");
@@ -187,7 +187,7 @@ check("Booked days marked unavailable",
 const dowApplied = results.filter((r) => r.result.note.includes("[DOW]"));
 check("DOW weekend pricing fires", dowApplied.length > 90, `${dowApplied.length} weekend days adjusted`);
 
-// Ceiling stress: far-out + season + weekend stacks — must clamp, not exceed
+// Ceiling stress: far-out + season + weekend stacks - must clamp, not exceed
 const stacked = results.filter((r) => r.result.note.includes("FAR_OUT") && r.result.note.includes("Peak Season") && r.result.note.includes("[DOW]"));
 check("Stacked multipliers clamp at ceiling (never exceed)",
     stacked.every((r) => r.result.price <= config.absoluteMaxPrice),

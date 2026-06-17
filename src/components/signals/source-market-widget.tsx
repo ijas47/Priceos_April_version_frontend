@@ -154,7 +154,7 @@ export function SourceMarketWidget({
 
   const isPending = loading || isMarketAnalysisRunning;
 
-  // Prepare chart data — sorted by contribution descending
+  // Prepare chart data - sorted by contribution descending
   const chartData = useMemo(() => {
     if (!data) return [];
     return data.breakdown.map((b) => ({

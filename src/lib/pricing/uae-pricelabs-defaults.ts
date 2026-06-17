@@ -1,5 +1,5 @@
 /**
- * UAE default pricing pack — transcribed from PriceLabs production config (Jun 2026).
+ * UAE default pricing pack - transcribed from PriceLabs production config (Jun 2026).
  * Applied as portfolio baseline for marketCode UAE_DXB; group and listing may override.
  */
 import type { MarketPricingPack, OccupancyMatrix, PricingProfile } from "./types";
@@ -16,7 +16,7 @@ const RANGES_0_5_15_30: OccupancyMatrix["dayRanges"] = [
   { startDay: 16, endDay: 30, label: "16–30 days" },
 ];
 
-/** Super Aggressive Discounting — Low Season (Summer) profile */
+/** Super Aggressive Discounting - Low Season (Summer) profile */
 const SUPER_AGGRESSIVE_MATRIX: OccupancyMatrix = {
   dayRanges: RANGES_0_15_30_60,
   rows: [
@@ -32,7 +32,7 @@ const SUPER_AGGRESSIVE_MATRIX: OccupancyMatrix = {
   ],
 };
 
-/** Aggressive — Shoulder Season profile */
+/** Aggressive - Shoulder Season profile */
 const AGGRESSIVE_MATRIX: OccupancyMatrix = {
   dayRanges: RANGES_0_15_30_60,
   rows: [
@@ -48,7 +48,7 @@ const AGGRESSIVE_MATRIX: OccupancyMatrix = {
   ],
 };
 
-/** Custom — High Season profile (discounts near-term, premiums far-out at high occupancy) */
+/** Custom - High Season profile (discounts near-term, premiums far-out at high occupancy) */
 const HIGH_SEASON_CUSTOM_MATRIX: OccupancyMatrix = {
   dayRanges: RANGES_0_5_15_30,
   rows: [

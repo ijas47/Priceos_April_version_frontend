@@ -1,5 +1,5 @@
 /**
- * lyzr-context-sync.ts — FRONTEND STUB
+ * lyzr-context-sync.ts - FRONTEND STUB
  *
  * Lyzr context management has been moved to the FastAPI backend.
  * This module proxies sync requests to /api/lyzr/* endpoints.

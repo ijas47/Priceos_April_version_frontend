@@ -36,14 +36,14 @@ export const SUGGESTED_PROMPTS = [
 
 export const MANAGER_AGENT_ID = "69998743f4d61186679a9515";
 
-// Live Lyzr agent IDs (from Lyzr Studio) — used by API routes
+// Live Lyzr agent IDs (from Lyzr Studio) - used by API routes
 export const CRO_ROUTER_AGENT_ID = process.env.LYZR_CRO_ROUTER_AGENT_ID || "69998743f4d61186679a9515";
 export const PROPERTY_ANALYST_ID = process.env.LYZR_PROPERTY_ANALYST_AGENT_ID || "699987c35dbb137e7b66052e";
 export const BOOKING_INTELLIGENCE_ID = process.env.LYZR_BOOKING_INTELLIGENCE_AGENT_ID || "699988262654671e44099318";
 export const MARKET_RESEARCH_ID = process.env.LYZR_MARKET_RESEARCH_AGENT_ID || "699991985dbb137e7b660594";
 export const PRICE_GUARD_ID = process.env.LYZR_PRICE_GUARD_AGENT_ID || "6999933b83d9dff0252dd86f";
 export const MARKETING_AGENT_ID = process.env.Marketing_Agent_ID || "699993adb8bd4d3aac102a81";
-/** Dedicated OTA listing copy agent — empty until LYZR_LISTING_OPTIMIZER_AGENT_ID is set */
+/** Dedicated OTA listing copy agent - empty until LYZR_LISTING_OPTIMIZER_AGENT_ID is set */
 export const LISTING_OPTIMIZER_AGENT_ID = process.env.LYZR_LISTING_OPTIMIZER_AGENT_ID || "";
 
 // Worker agents (used by UI panels and agent orchestration)

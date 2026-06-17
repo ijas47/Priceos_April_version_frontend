@@ -143,7 +143,7 @@ export function applyCrisisAdjustment(
       const adjusted = Math.round(Math.min(price * 0.92, softCap));
       return {
         price: adjusted,
-        note: `[CRISIS T2] Capped toward market p50 (${Math.round(softCap)}) — regional risk`,
+        note: `[CRISIS T2] Capped toward market p50 (${Math.round(softCap)}) - regional risk`,
       };
     }
     case 3: {

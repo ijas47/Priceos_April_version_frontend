@@ -18,7 +18,7 @@ export interface DisplayRateResult {
 
 /**
  * Choose an honest label for the rate chip in pricing / agent chat.
- * Listed Rate always comes from synced Hostaway calendar when available —
+ * Listed Rate always comes from synced Hostaway calendar when available -
  * never from stale Listing.price alone.
  */
 export function resolveDisplayRate({

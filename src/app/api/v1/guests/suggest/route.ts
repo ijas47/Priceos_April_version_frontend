@@ -8,7 +8,7 @@ import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
  * Uses the Lyzr Chat Response Agent to generate an AI-drafted reply
  * for a guest message. Falls back to a template if Lyzr is unavailable.
  * 
- * Rate Limit: AI tier (20 req/min) — this endpoint calls external AI.
+ * Rate Limit: AI tier (20 req/min) - this endpoint calls external AI.
  * 
  * Request Body:
  *   { message: string, guestName?: string, propertyName?: string }
@@ -100,7 +100,7 @@ Generate a professional, warm, and concise reply as the property manager. Addres
                     }
                 }
             } catch {
-                // Not JSON — use as-is (plain text reply is fine)
+                // Not JSON - use as-is (plain text reply is fine)
             }
 
             // Strip any remaining markdown code fences

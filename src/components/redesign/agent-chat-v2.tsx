@@ -86,7 +86,7 @@ const INITIAL_MESSAGES: Message[] = [
     id: "m1",
     role: "assistant",
     content:
-      "Good morning. I've scanned your portfolio and spotted 3 revenue opportunities for this weekend. JBR unit occupancy is trending 22% above last weekend — I'd recommend a Friday rate increase across those listings.",
+      "Good morning. I've scanned your portfolio and spotted 3 revenue opportunities for this weekend. JBR unit occupancy is trending 22% above last weekend - I'd recommend a Friday rate increase across those listings.",
     time: "09:14",
     actions: [
       { label: "Review proposals", variant: "primary" },

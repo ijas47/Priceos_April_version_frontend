@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         if (!listing) return;
         const listingIdStr = listing._id.toString();
         try {
-          const run = await runPipeline(listingIdStr, `${trigger} — engine/run-all`);
+          const run = await runPipeline(listingIdStr, `${trigger} - engine/run-all`);
           results.push({
             listingId: listingIdStr,
             name: listing.name || listingIdStr,

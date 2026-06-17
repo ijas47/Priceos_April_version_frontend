@@ -10,7 +10,7 @@ import { apiBase } from "@/lib/api/absolute-url";
 
 export const metadata = {
   title: "Aria | PriceOS Intelligence",
-  description: "AI Revenue Manager — powered by Aria CRO.",
+  description: "AI Revenue Manager - powered by Aria CRO.",
 };
 
 export default async function AgentChatPage() {

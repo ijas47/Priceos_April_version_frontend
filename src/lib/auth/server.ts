@@ -53,7 +53,7 @@ export async function requireSession(): Promise<SessionPayload> {
   return session;
 }
 
-/** @deprecated Legacy export — kept so old code using `auth.getSession()` doesn't crash */
+/** @deprecated Legacy export - kept so old code using `auth.getSession()` doesn't crash */
 export const auth = {
   getSession: async () => {
     const session = await getSession();

@@ -92,8 +92,8 @@ export async function GET(req: NextRequest) {
         success: true,
         mode: "fallback_available",
         reason: msg === "auth_failed"
-          ? "Invalid credentials — showing demo properties instead"
-          : "Could not reach Hostaway API — showing demo properties instead",
+          ? "Invalid credentials - showing demo properties instead"
+          : "Could not reach Hostaway API - showing demo properties instead",
         listings: DEMO_LISTINGS,
         total: DEMO_LISTINGS.length,
       });

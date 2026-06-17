@@ -17,7 +17,7 @@ export interface IInventoryMaster extends Document {
   changePct?: number;
   reasoning?: string;
   batchId?: string;
-  // Revenue optimization (shadow / live) — elasticity + demand layer
+  // Revenue optimization (shadow / live) - elasticity + demand layer
   elasticityPrice?: number;
   elasticityWeight?: number;
   pBook?: number;

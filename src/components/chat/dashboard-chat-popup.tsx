@@ -170,7 +170,7 @@ export function DashboardChatPopup({ isOpen, onOpenChange }: DashboardChatPopupP
       role="dialog"
       aria-label="Portfolio assistant chat"
     >
-      {/* Header — same structure as Guest Inbox Aria panel */}
+      {/* Header - same structure as Guest Inbox Aria panel */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <div className="h-7 w-7 rounded-lg bg-amber/10 border border-amber/20 flex items-center justify-center shrink-0">
@@ -217,7 +217,7 @@ export function DashboardChatPopup({ isOpen, onOpenChange }: DashboardChatPopupP
         </p>
       </div>
 
-      {/* Live Execution Graph — collapses when hidden */}
+      {/* Live Execution Graph - collapses when hidden */}
       {showGraph && graphQueryId && (
         <div className="shrink-0 border-b border-border-subtle/50 bg-muted/10" style={{ height: 220 }}>
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-border-subtle/30">

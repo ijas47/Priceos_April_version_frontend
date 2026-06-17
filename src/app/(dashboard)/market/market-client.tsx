@@ -132,12 +132,12 @@ export function MarketIntelligenceClient({
           .map(([k, n]) => `${k}: ${n}`)
           .join(", ");
         setSyncMsg(
-          `Synced ${listingCount} listings — ${inserted} signals${feedParts ? ` (${feedParts})` : ""}`
+          `Synced ${listingCount} listings - ${inserted} signals${feedParts ? ` (${feedParts})` : ""}`
         );
         router.refresh();
       }
     } catch {
-      setSyncMsg("Network error — check connection");
+      setSyncMsg("Network error - check connection");
     } finally {
       setSyncing(false);
     }
@@ -181,7 +181,7 @@ export function MarketIntelligenceClient({
           <h1 className="text-3xl font-bold text-white tracking-tight mb-1">Market Intelligence</h1>
           <p className="text-text-secondary text-sm flex items-center gap-1.5">
             <Globe className="h-3.5 w-3.5" />
-            Your market — live events, demand signals, and comp positioning
+            Your market - live events, demand signals, and comp positioning
           </p>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
@@ -213,7 +213,7 @@ export function MarketIntelligenceClient({
             },
             {
               label: "Avg Nightly Rate",
-              value: avgNightly > 0 ? `${listings[0]?.currencyCode ?? "AED"} ${avgNightly.toLocaleString("en-US")}` : "—",
+              value: avgNightly > 0 ? `${listings[0]?.currencyCode ?? "AED"} ${avgNightly.toLocaleString("en-US")}` : "-",
               sub: "Portfolio average",
               icon: TrendingUp,
               color: "text-blue-400",
@@ -257,7 +257,7 @@ export function MarketIntelligenceClient({
         </div>
       </TooltipProvider>
 
-      {/* Event Calendar — table + high-contrast filters (light + dark) */}
+      {/* Event Calendar - table + high-contrast filters (light + dark) */}
       <div className="rounded-xl border border-border bg-card text-card-foreground overflow-hidden shadow-sm dark:border-white/10 dark:bg-white/[0.02]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border dark:border-white/10">
           <div>
@@ -495,7 +495,7 @@ export function MarketIntelligenceClient({
                           {event.suggestedPremiumPct}%
                         </span>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
                     <TableCell className="hidden md:table-cell align-top py-3">
@@ -507,7 +507,7 @@ export function MarketIntelligenceClient({
                           {event.area}
                         </span>
                       ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
+                        <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
                   </TableRow>

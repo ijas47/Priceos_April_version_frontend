@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       proposalStatus: "pending",
     });
 
-    // Count auto-approved (within auto-approve threshold — change_pct ≤ 5%)
+    // Count auto-approved (within auto-approve threshold - change_pct ≤ 5%)
     const autoApproved = await InventoryMaster.countDocuments({
       orgId,
       proposalStatus: "approved",
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
     const agents = [
       {
         id: "cro",
-        name: "CRO — Aria",
+        name: "CRO - Aria",
         role: "Manager / Orchestrator",
         status: "active",
         description: "User-facing AI Revenue Manager. Orchestrates all sub-agents.",
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
       {
         id: "event_intelligence",
         name: "Event Intelligence Agent",
-        role: "Worker — Market Events",
+        role: "Worker - Market Events",
         status: isStale ? "warning" : "active",
         description: "Scans internet for events, holidays, news affecting demand.",
         lastRunAt: lastRunAt?.toISOString() || null,
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
       {
         id: "pricing_optimizer",
         name: "Pricing Optimizer",
-        role: "Worker — Pricing Engine",
+        role: "Worker - Pricing Engine",
         status:
           lastRunStatus === "FAILED"
             ? "error"
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
       {
         id: "competitor_scanner",
         name: "Competitor Scanner",
-        role: "Worker — Benchmark",
+        role: "Worker - Benchmark",
         status: isStale ? "warning" : "active",
         description: "Scrapes comp set rates from OTAs. Feeds P25/P50/P75.",
         lastRunAt: lastRunAt?.toISOString() || null,
@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
       {
         id: "data_aggregator",
         name: "Data Aggregator",
-        role: "Worker — PMS Sync",
+        role: "Worker - PMS Sync",
         status: isStale ? "warning" : "active",
         description: "Pulls reservations, inventory, and rates from PMS.",
         lastRunAt: lastRunAt?.toISOString() || null,
@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
       {
         id: "adjustment_reviewer",
         name: "Adjustment Reviewer (PriceGuard)",
-        role: "Worker — Guardrails",
+        role: "Worker - Guardrails",
         status: criticalInsights > 0 ? "warning" : "active",
         description: "Validates price proposals against market-calibrated guardrails.",
         lastRunAt: lastRunAt?.toISOString() || null,
@@ -125,7 +125,7 @@ export async function GET(req: NextRequest) {
       {
         id: "channel_sync",
         name: "Channel Sync Agent",
-        role: "Worker — PMS Write",
+        role: "Worker - PMS Write",
         status:
           lastRunStatus === "FAILED"
             ? "error"
@@ -140,7 +140,7 @@ export async function GET(req: NextRequest) {
       {
         id: "anomaly_detector",
         name: "Anomaly Detector",
-        role: "Worker — Monitoring",
+        role: "Worker - Monitoring",
         status: criticalInsights > 0 ? "warning" : "active",
         description: "Post-execution monitoring. Triggers rollback on anomaly score > 0.8.",
         lastRunAt: lastRunAt?.toISOString() || null,
@@ -150,7 +150,7 @@ export async function GET(req: NextRequest) {
       {
         id: "reservation_agent",
         name: "Reservation Agent",
-        role: "Worker — Guest Comms",
+        role: "Worker - Guest Comms",
         status: "active",
         description: "Handles guest inbox. Escalates regulatory questions to host.",
         lastRunAt: null,

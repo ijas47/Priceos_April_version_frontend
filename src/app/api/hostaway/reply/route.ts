@@ -10,7 +10,7 @@ import mongoose from "mongoose";
  *
  * Stages a host reply on a guest conversation. The reply is ALWAYS saved to
  * MongoDB. It is delivered to the guest via Hostaway ONLY when
- * HOSTAWAY_ALLOW_GUEST_SEND=true — otherwise it stays local-only.
+ * HOSTAWAY_ALLOW_GUEST_SEND=true - otherwise it stays local-only.
  *
  * Body: { conversationId, text }
  */
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     await connectDB();
     const orgId = new mongoose.Types.ObjectId(session.orgId);
 
-    // Persist the reply locally — scoped to this org's conversation.
+    // Persist the reply locally - scoped to this org's conversation.
     const conv = await HostawayConversation.findOneAndUpdate(
       { orgId, hostawayConversationId: conversationId },
       {
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       success: true,
       delivered,
       deliveryError,
-      message: delivered ? "Reply sent to guest" : "Reply saved (local only — not delivered to guest)",
+      message: delivered ? "Reply sent to guest" : "Reply saved (local only - not delivered to guest)",
     });
   } catch (error: any) {
     console.error("[hostaway/reply]", error);

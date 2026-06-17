@@ -19,7 +19,7 @@ function params(sampleSize: number): ElasticityParams {
 const FLOOR = 300;
 const CEIL = 1200;
 
-describe("computeOptimizedPrice — guardrail safety", () => {
+describe("computeOptimizedPrice - guardrail safety", () => {
   it("never escapes the floor/ceiling band", () => {
     for (const rb of [100, 300, 500, 900, 1200, 5000]) {
       for (const n of [0, 5, 30, 200]) {

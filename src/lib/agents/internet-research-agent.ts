@@ -3,12 +3,12 @@
  *
  * Multi-source market research with a strict trust ladder:
  *
- *   1. STRUCTURED SOURCES (preferred — verifiable data)
+ *   1. STRUCTURED SOURCES (preferred - verifiable data)
  *      SERP API (Google Events / News / Search), Ticketmaster, Eventbrite,
- *      NewsAPI — via src/lib/research/aggregator.ts
+ *      NewsAPI - via src/lib/research/aggregator.ts
  *   2. PERPLEXITY SONAR (fallback synthesis only)
  *      Used only when structured sources return nothing. Findings are
- *      capped at confidence 0.5 and labeled "perplexity (unverified)" —
+ *      capped at confidence 0.5 and labeled "perplexity (unverified)" -
  *      Perplexity states wrong facts confidently and must never be the
  *      sole basis for a pricing decision.
  *   3. SEASONAL SNAPSHOT (last resort)
@@ -70,7 +70,7 @@ Always respond in EXACT JSON (no markdown):
   "summary": "2-3 sentences"
 }
 
-Rules: cite real sources; use YYYY-MM-DD dates; if you cannot find reliable info, return empty findings — NEVER fabricate.`;
+Rules: cite real sources; use YYYY-MM-DD dates; if you cannot find reliable info, return empty findings - NEVER fabricate.`;
 
 export class InternetResearchAgent {
     private perplexityKey: string | undefined;
@@ -80,7 +80,7 @@ export class InternetResearchAgent {
         this.perplexityKey = apiKey || process.env.PERPLEXITY_API_KEY;
     }
 
-    /** Events affecting rental demand — structured sources first. */
+    /** Events affecting rental demand - structured sources first. */
     async searchEvents(
         area: string,
         startDate: Date,
@@ -118,8 +118,8 @@ export class InternetResearchAgent {
                     source: f.source,
                     pricing_relevance:
                         f.suggestedPremiumPct >= 0
-                            ? `Demand uplift — consider +${f.suggestedPremiumPct}% on overlapping nights.`
-                            : `Demand risk — consider ${f.suggestedPremiumPct}% and flexible cancellation.`,
+                            ? `Demand uplift - consider +${f.suggestedPremiumPct}% on overlapping nights.`
+                            : `Demand risk - consider ${f.suggestedPremiumPct}% and flexible cancellation.`,
                 })),
                 market_snapshot: this.seasonalSnapshot(targetCity, startDate),
                 summary: `${intel.findings.length} verified findings for ${intel.location} from ${intel.sourcesUsed.join(", ")}.`,
@@ -132,7 +132,7 @@ export class InternetResearchAgent {
             const query = `Upcoming events in ${targetCity}${area && area !== targetCity ? ` (especially the ${area} area)` : ""} between ${from} and ${to} that affect short-term rental demand: concerts, festivals, conferences, sports, public holidays, school holidays.`;
             result = await this.perplexityQuery(query, "events", intel.location, startDate, endDate);
             if (intel.sourceErrors.length > 0) {
-                result.summary += ` [Structured sources unavailable: ${intel.sourceErrors.map((e) => e.source).join(", ")} — configure SERP_API_KEY / TICKETMASTER_API_KEY for verified data.]`;
+                result.summary += ` [Structured sources unavailable: ${intel.sourceErrors.map((e) => e.source).join(", ")} - configure SERP_API_KEY / TICKETMASTER_API_KEY for verified data.]`;
             }
         }
 
@@ -140,7 +140,7 @@ export class InternetResearchAgent {
         return result;
     }
 
-    /** Market nightly rates — SERP search snippets first, Perplexity synthesis fallback. */
+    /** Market nightly rates - SERP search snippets first, Perplexity synthesis fallback. */
     async searchMarketRates(
         area: string,
         bedrooms: number,
@@ -190,14 +190,14 @@ export class InternetResearchAgent {
         return result;
     }
 
-    /** Area outlook — events + news for the next 30 days. */
+    /** Area outlook - events + news for the next 30 days. */
     async searchAreaIntelligence(area: string, city?: string): Promise<ResearchResult> {
         const now = new Date();
         const thirty = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
         return this.searchEvents(area, now, thirty, city);
     }
 
-    /** Tourism trends — news-driven. */
+    /** Tourism trends - news-driven. */
     async searchTourismTrends(
         startDate: Date,
         endDate: Date,
@@ -206,7 +206,7 @@ export class InternetResearchAgent {
         return this.searchEvents(city, startDate, endDate, city);
     }
 
-    /** Free-form question — Perplexity with structured-source context when available. */
+    /** Free-form question - Perplexity with structured-source context when available. */
     async generalQuery(userQuery: string, area: string = "Dubai", city?: string): Promise<ResearchResult> {
         const targetCity = city || this.cityFromArea(area);
         const now = new Date();
@@ -215,7 +215,7 @@ export class InternetResearchAgent {
         return this.perplexityQuery(query, "events", `${area}, ${targetCity}`, now, thirty);
     }
 
-    // ── Perplexity (fallback only — capped confidence) ──────────────────────────
+    // ── Perplexity (fallback only - capped confidence) ──────────────────────────
 
     private async perplexityQuery(
         userQuery: string,
@@ -239,7 +239,7 @@ export class InternetResearchAgent {
         if (!this.perplexityKey) {
             return empty(
                 "No verified findings. Structured sources returned nothing and PERPLEXITY_API_KEY is not set. " +
-                "Seasonal snapshot only — no events were fabricated."
+                "Seasonal snapshot only - no events were fabricated."
             );
         }
 
@@ -264,7 +264,7 @@ export class InternetResearchAgent {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error(`[InternetResearchAgent] Perplexity error ${response.status}: ${errorText.slice(0, 200)}`);
-                return empty(`Perplexity unavailable (${response.status}). No findings — nothing fabricated.`);
+                return empty(`Perplexity unavailable (${response.status}). No findings - nothing fabricated.`);
             }
 
             const data = await response.json();
@@ -296,20 +296,20 @@ export class InternetResearchAgent {
                     demand_level: parsed.market_snapshot?.demand_level ?? null,
                     notable_factors: parsed.market_snapshot?.notable_factors || [],
                 },
-                summary: `[UNVERIFIED — Perplexity fallback, verify before pricing on this] ${parsed.summary || ""}`,
+                summary: `[UNVERIFIED - Perplexity fallback, verify before pricing on this] ${parsed.summary || ""}`,
                 cached: false,
                 timestamp: new Date().toISOString(),
                 sources_used: ["perplexity"],
             };
         } catch (error) {
             console.error("[InternetResearchAgent] Perplexity call failed:", error);
-            return empty("Research providers unreachable. No findings — nothing fabricated.");
+            return empty("Research providers unreachable. No findings - nothing fabricated.");
         }
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
 
-    /** Seasonal demand snapshot — deterministic, city-aware, no fabricated events. */
+    /** Seasonal demand snapshot - deterministic, city-aware, no fabricated events. */
     private seasonalSnapshot(cityOrLocation: string, startDate: Date): MarketSnapshot {
         const month = startDate.getMonth(); // 0-based
         const city = cityOrLocation.toLowerCase();

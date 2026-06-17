@@ -5,7 +5,7 @@ import { format, addDays } from "date-fns";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/agent-tools/revenue-snapshot?dateFrom&dateTo — booking revenue totals. */
+/** GET /api/agent-tools/revenue-snapshot?dateFrom&dateTo - booking revenue totals. */
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();

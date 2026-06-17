@@ -46,7 +46,7 @@ interface ElasticityCurveCardProps {
   ceiling?: number;
   /** Currency code for display (default "AED"). */
   currency?: string;
-  /** Optional: pre-computed params — skip the /fit API call. */
+  /** Optional: pre-computed params - skip the /fit API call. */
   preloadedParams?: ElasticityParams;
   /** Optional: pre-computed curve data. */
   preloadedCurve?: CurvePoint[];

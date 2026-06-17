@@ -215,7 +215,7 @@ export async function runPipeline(
             await refreshListingCalendarFromHostaway(lid, today, endDate);
         } catch (err) {
             console.warn(
-                "[runPipeline] calendar refresh failed — using cached inventory:",
+                "[runPipeline] calendar refresh failed - using cached inventory:",
                 (err as Error).message
             );
         }
@@ -604,7 +604,7 @@ async function buildMarketSignals(
     return mergeMarketSignals(dubaiMap, airbticsMap);
 }
 
-/** Airbtics-backed signals — used as fallback when Dubai open data is missing fields. */
+/** Airbtics-backed signals - used as fallback when Dubai open data is missing fields. */
 async function buildAirbticsMarketSignals(
     listing: ListingMarketInput,
     city: string,

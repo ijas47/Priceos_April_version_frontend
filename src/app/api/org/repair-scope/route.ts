@@ -4,7 +4,7 @@ import { repairOrgListingScope } from "@/lib/db/org-scope";
 
 export const dynamic = "force-dynamic";
 
-/** POST /api/org/repair-scope — claim orphan listings for the logged-in org. */
+/** POST /api/org/repair-scope - claim orphan listings for the logged-in org. */
 export async function POST() {
   try {
     const session = await getSession();

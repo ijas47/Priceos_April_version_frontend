@@ -35,6 +35,7 @@ import type { MarketPricingPack, PricingProfile, MinStayProfile } from "@/lib/pr
 import { OccupancyMatrixEditor } from "./occupancy-matrix-editor";
 import { MinStayProfileEditor } from "./minstay-profile-editor";
 import { SeasonalCalendarView } from "./seasonal-calendar-view";
+import { InlinePricingTerm, PricingTermHint } from "./pricing-term-hint";
 
 export function PricingProfilesPanel({ embedded = false }: { embedded?: boolean }) {
   const [pack, setPack] = useState<MarketPricingPack | null>(null);
@@ -149,7 +150,8 @@ export function PricingProfilesPanel({ embedded = false }: { embedded?: boolean 
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
             {embedded
               ? "High / Low / Shoulder pricing profiles, seasonal calendar, and minimum-stay packs for your portfolio."
-              : "Edit pricing and min-stay profiles at portfolio level. Groups and units override these."}
+              : "Edit pricing and min-stay profiles at portfolio level. Groups and units override these."}{" "}
+            <PricingTermHint term="strategyVsProfiles" className="align-middle" />
           </p>
           <div className="flex gap-2 mt-2">
             {version && <Badge variant="secondary" className="text-[10px]">v{version}</Badge>}
@@ -199,10 +201,21 @@ export function PricingProfilesPanel({ embedded = false }: { embedded?: boolean 
                     <Pencil className="h-3 w-3" /> Edit
                   </Button>
                 </div>
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>LM: {profile.lastMinute.maxDiscountPct}% / {profile.lastMinute.withinDays}d gradual</li>
-                  <li>Occupancy: {profile.occupancyPreset.replace(/_/g, " ")}</li>
-                  <li>{profile.occupancyMatrix.rows.length} occ tiers × {profile.occupancyMatrix.dayRanges.length} windows</li>
+                <ul className="text-xs text-muted-foreground space-y-1.5">
+                  <li className="flex items-center gap-1 flex-wrap">
+                    <InlinePricingTerm term="lm">Last minute</InlinePricingTerm>
+                    <span>
+                      : {profile.lastMinute.maxDiscountPct}% max · {profile.lastMinute.withinDays}d{" "}
+                      <InlinePricingTerm term="gradual">gradual</InlinePricingTerm>
+                    </span>
+                  </li>
+                  <li>Occupancy preset: {profile.occupancyPreset.replace(/_/g, " ")}</li>
+                  <li className="flex items-center gap-1 flex-wrap">
+                    <InlinePricingTerm term="occTiers">
+                      {profile.occupancyMatrix.rows.length} occupancy tiers
+                    </InlinePricingTerm>
+                    <span>× {profile.occupancyMatrix.dayRanges.length} day-out windows</span>
+                  </li>
                 </ul>
               </div>
             ))}
@@ -227,10 +240,19 @@ export function PricingProfilesPanel({ embedded = false }: { embedded?: boolean 
                     <Pencil className="h-3 w-3" /> Edit
                   </Button>
                 </div>
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>Default: {profile.default.weekdayMinStay}wd / {profile.default.weekendMinStay}we nights</li>
-                  <li>Far-out tiers: {profile.farOut?.length ?? 0}</li>
-                  <li>Adjacent tiers: {profile.adjacentBeforeUnavailable?.length ?? 0}</li>
+                <ul className="text-xs text-muted-foreground space-y-1.5">
+                  <li className="flex items-center gap-1 flex-wrap">
+                    Default{" "}
+                    <InlinePricingTerm term="mlos">MLOS</InlinePricingTerm>
+                    <span>
+                      : {profile.default.weekdayMinStay}{" "}
+                      <InlinePricingTerm term="wd">wd</InlinePricingTerm> /{" "}
+                      {profile.default.weekendMinStay}{" "}
+                      <InlinePricingTerm term="we">we</InlinePricingTerm> nights
+                    </span>
+                  </li>
+                  <li>Far-out lead-time tiers: {profile.farOut?.length ?? 0}</li>
+                  <li>Adjacent-to-blocked tiers: {profile.adjacentBeforeUnavailable?.length ?? 0}</li>
                 </ul>
               </div>
             ))}
@@ -249,7 +271,7 @@ export function PricingProfilesPanel({ embedded = false }: { embedded?: boolean 
       <Dialog open={!!editPricingId} onOpenChange={(o) => !o && setEditPricingId(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit pricing profile — {editingPricing?.name}</DialogTitle>
+            <DialogTitle>Edit pricing profile: {editingPricing?.name}</DialogTitle>
           </DialogHeader>
           {editingPricing && (
             <div className="space-y-5 py-2">
@@ -289,7 +311,10 @@ export function PricingProfilesPanel({ embedded = false }: { embedded?: boolean 
 
               <div className="rounded-lg border p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold">Last-minute (gradual)</Label>
+                  <Label className="text-xs font-semibold flex items-center gap-1">
+                    <InlinePricingTerm term="lm">Last-minute</InlinePricingTerm> (
+                    <InlinePricingTerm term="gradual">gradual</InlinePricingTerm>)
+                  </Label>
                   <Switch
                     checked={editingPricing.lastMinute.enabled}
                     onCheckedChange={(v) =>
@@ -373,7 +398,10 @@ export function PricingProfilesPanel({ embedded = false }: { embedded?: boolean 
       <Dialog open={!!editMinStayId} onOpenChange={(o) => !o && setEditMinStayId(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit minstay profile — {editingMinStay?.name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-1">
+              Edit minstay profile: {editingMinStay?.name}
+              <PricingTermHint term="mlos" />
+            </DialogTitle>
           </DialogHeader>
           {editingMinStay && (
             <MinStayProfileEditor

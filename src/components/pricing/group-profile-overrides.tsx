@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import type { MarketPricingPack, MinStayProfile } from "@/lib/pricing/types";
 import { MinStayProfileEditor } from "./minstay-profile-editor";
+import { PricingTermHint } from "./pricing-term-hint";
 
 export interface GroupProfileFields {
   _id: string;
@@ -184,10 +185,13 @@ export function GroupProfileOverrides({ group, onUpdated }: Props) {
           <div>
             <div className="flex items-center gap-2">
               <CalendarRange className="h-3.5 w-3.5 text-amber" />
-              <Label className="text-xs font-semibold">Minstay profile (MLOS)</Label>
+              <Label className="text-xs font-semibold flex items-center gap-1">
+                Minstay profile (MLOS)
+                <PricingTermHint term="mlos" />
+              </Label>
             </div>
             <p className="text-[10px] text-text-tertiary mt-1">
-              Overrides seasonal MLOS for all properties in this group — far-out and adjacent tiers apply in the engine.
+              Overrides seasonal MLOS for all properties in this group. Far-out and adjacent tiers apply in the engine.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">

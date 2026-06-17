@@ -20,7 +20,7 @@ export async function POST(
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { threadId } = await params;
-    // threadId = "{propertyId}-{hostawayConversationId}" — split on first dash.
+    // threadId = "{propertyId}-{hostawayConversationId}" - split on first dash.
     const dashIdx = threadId.indexOf("-");
     const hostawayConversationId = dashIdx >= 0 ? threadId.slice(dashIdx + 1) : threadId;
 

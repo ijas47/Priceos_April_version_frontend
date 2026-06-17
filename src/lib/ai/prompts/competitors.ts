@@ -39,7 +39,7 @@ export const COMPETITOR_OUTPUT_SCHEMA = {
       },
       medianRate: {
         type: "number",
-        description: "Median nightly rate — more robust to outliers",
+        description: "Median nightly rate - more robust to outliers",
       },
       minRate: {
         type: "number",
@@ -114,7 +114,7 @@ All monetary values in **${currency}**.
 
 ---
 
-## CONTEXT — SEGMENT BEING ANALYZED
+## CONTEXT - SEGMENT BEING ANALYZED
 
 | Field | Value |
 |---|---|
@@ -158,7 +158,7 @@ ${listingList}
 
 ## EXAMPLES
 
-### Example 1 — Peak season, above-market positioning
+### Example 1 - Peak season, above-market positioning
 
 **Segment:** Dubai Marina, 1BR, Nov 15, 2026
 
@@ -171,11 +171,11 @@ ${listingList}
   "sampleSize": 24,
   "occupancyPct": 88,
   "positioning": "above_market",
-  "insights": "Dubai Marina 1BR segment is in peak season with 88% estimated occupancy — demand is strong. Our rate of ${currency} 650 sits 8.7% above the market median of ${currency} 598. At this occupancy level the premium is defensible, but properties priced over ${currency} 700 are seeing longer booking windows. Recommend maintaining current rates and monitoring daily."
+  "insights": "Dubai Marina 1BR segment is in peak season with 88% estimated occupancy - demand is strong. Our rate of ${currency} 650 sits 8.7% above the market median of ${currency} 598. At this occupancy level the premium is defensible, but properties priced over ${currency} 700 are seeing longer booking windows. Recommend maintaining current rates and monitoring daily."
 }
 \`\`\`
 
-### Example 2 — Low season, below-market positioning
+### Example 2 - Low season, below-market positioning
 
 **Segment:** JVC, Studio, Aug 1, 2026
 
@@ -188,11 +188,11 @@ ${listingList}
   "sampleSize": 18,
   "occupancyPct": 54,
   "positioning": "below_market",
-  "insights": "JVC studio market is in the summer trough with only 54% occupancy. Competitors are heavily promoting — minRate has dropped to ${currency} 195 from ${currency} 240 last month. Our rate of ${currency} 275 is 5.2% below the median, which should help competitiveness, but even discounted properties are seeing slow fill rates. Recommend reducing min-stay to 1 night and adding a last-minute 10% discount for dates within 7 days."
+  "insights": "JVC studio market is in the summer trough with only 54% occupancy. Competitors are heavily promoting - minRate has dropped to ${currency} 195 from ${currency} 240 last month. Our rate of ${currency} 275 is 5.2% below the median, which should help competitiveness, but even discounted properties are seeing slow fill rates. Recommend reducing min-stay to 1 night and adding a last-minute 10% discount for dates within 7 days."
 }
 \`\`\`
 
-### Example 3 — Insufficient data
+### Example 3 - Insufficient data
 
 If no reliable estimate is possible for the segment, return your best estimate with
 a lower sampleSize (< 5) and note uncertainty in the insights field. Never return 0

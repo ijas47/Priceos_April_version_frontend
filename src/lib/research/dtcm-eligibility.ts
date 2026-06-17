@@ -110,12 +110,12 @@ export async function resolveDtcmEligibility(
     reason = "not a Dubai-market org (no UAE/Dubai listings)";
     enabled = false;
   } else if (!pmsConnected) {
-    reason = "PMS not connected — connect Hostaway to enable DTCM calendar";
+    reason = "PMS not connected - connect Hostaway to enable DTCM calendar";
     enabled = false;
   } else if (hasApiKey) {
-    reason = "Dubai + PMS connected — live DTCM + DCUL feeds enabled";
+    reason = "Dubai + PMS connected - live DTCM + DCUL feeds enabled";
   } else {
-    reason = "Dubai + PMS connected — curated DTCM calendar (set DUBAI_GOV_API_KEY for live API)";
+    reason = "Dubai + PMS connected - curated DTCM calendar (set DUBAI_GOV_API_KEY for live API)";
   }
 
   return {

@@ -8,7 +8,7 @@ import { requireScopedSession, handleToolError } from "@/lib/agent-tools/utils";
  * POST /api/v1/guests/reply
  *
  * Appends an admin reply to the conversation messages array.
- * This does NOT send to Hostaway — stored locally for AI context.
+ * This does NOT send to Hostaway - stored locally for AI context.
  */
 export async function POST(request: Request) {
     const ip = getClientIp(request);

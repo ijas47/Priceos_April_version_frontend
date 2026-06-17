@@ -181,7 +181,7 @@ export class ChannelSyncAgent {
             category: "PMS_SYNC",
             severity: "high",
             status: "pending",
-            title: `Hostaway sync mismatch — ${label}`,
+            title: `Hostaway sync mismatch - ${label}`,
             summary: `${params.date}: pushed ${params.expectedPrice} AED but Hostaway shows ${actual}${params.mismatchAed != null ? ` (Δ ${params.mismatchAed} AED)` : ""}. Review calendar manually.`,
             confidence: 95,
             detectorKey: "sync_mismatch",

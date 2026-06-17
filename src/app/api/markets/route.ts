@@ -3,7 +3,7 @@ import { connectDB, MarketTemplate } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/markets — available market templates (public list for onboarding). */
+/** GET /api/markets - available market templates (public list for onboarding). */
 export async function GET() {
   try {
     await connectDB();

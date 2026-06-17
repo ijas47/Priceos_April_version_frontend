@@ -14,7 +14,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-// Custom markdown renderer — handles tables, headings, lists, code without @tailwindcss/typography
+// Custom markdown renderer - handles tables, headings, lists, code without @tailwindcss/typography
 function MarkdownMessage({ content, isUser }: { content: string; isUser: boolean }) {
   const mutedText = isUser ? "text-primary-foreground/70" : "text-muted-foreground";
   const baseText = isUser ? "text-primary-foreground" : "text-foreground/90";
@@ -155,7 +155,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
   }, [propertyId, dateRange]);
 
 
-  /** After "Run Aria" succeeds, history may still be empty — async /api/chat/history must not flip chat back to OFFLINE. */
+  /** After "Run Aria" succeeds, history may still be empty - async /api/chat/history must not flip chat back to OFFLINE. */
   const ariaReadyScopeRef = useRef<string | null>(null);
   const scopeKeyRef = useRef<{ propertyId?: string; from?: number; to?: number }>({});
 
@@ -417,7 +417,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
    *
    * This used to be gated behind an explicit "Run Aria" button. It now runs
    * lazily on the user's first message (see handleSubmit) so the operator can
-   * just ask a question and get an answer — no separate activation step.
+   * just ask a question and get an answer - no separate activation step.
    *
    * @param opts.clearMessages  Reset the visible thread (used by "New chat").
    */
@@ -505,7 +505,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
         data.sqlTrace.forEach((t: any) => console.log(`  → ${t.name}: ${t.sql.substring(0, 80)}...`));
       }
 
-      // Start with a clean chat — no trace messages
+      // Start with a clean chat - no trace messages
       if (clearMessages) setMessages([]);
 
       toast.success("Aria is Ready", {
@@ -524,7 +524,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
 
       triggerMarketRefresh();
       // Data injection now happens automatically on the user's first real message
-      // in route.ts — no need for a separate grounding call.
+      // in route.ts - no need for a separate grounding call.
 
       return newSessionId;
     } catch (error) {
@@ -567,7 +567,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
     let effectiveSessionId = sessionId;
     let effectiveActive = isChatActive;
     if (!isChatActive && dateRange?.from && dateRange?.to) {
-      setStatusText("Priming Aria — pulling market intel…");
+      setStatusText("Priming Aria - pulling market intel…");
       const primedSessionId = await primeAria({ clearMessages: false });
       if (primedSessionId) {
         effectiveSessionId = primedSessionId;
@@ -670,13 +670,13 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
     }
   };
 
-  // Per-proposal approve/reject — permanent, no toggle. Approve saves immediately.
+  // Per-proposal approve/reject - permanent, no toggle. Approve saves immediately.
   const handleProposalDecision = (messageId: string, proposalId: string, decision: "approved" | "rejected") => {
     const msg = messages.find(m => m.id === messageId);
     // Once decided, don't allow changes
     if (msg?.proposalDecisions?.[proposalId]) return;
 
-    // Update UI — mark this proposal as decided
+    // Update UI - mark this proposal as decided
     setMessages((prev) =>
       prev.map((m) =>
         m.id !== messageId
@@ -788,7 +788,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
       ...prev.filter((s) => s.sessionId !== newId),
     ]);
     toast.success("New chat started", {
-      description: "Same property and dates — a fresh thread. Older chats stay in history.",
+      description: "Same property and dates - a fresh thread. Older chats stay in history.",
     });
   }, [contextType, propertyId, dateRange, writeThreadPref, isAriaReadyForScope]);
 
@@ -1168,7 +1168,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
                               {isFlagged && !isDecided && (
                                 <div className="px-4 py-2.5 bg-primary/5 border-b border-primary/20 flex items-start gap-2">
                                   <span className="text-sm mt-0.5">⚠</span>
-                                  <p className="text-[11px] text-primary/90 leading-snug">PriceGuard flagged this — outside normal range but not hard-blocked. Approve with caution.</p>
+                                  <p className="text-[11px] text-primary/90 leading-snug">PriceGuard flagged this - outside normal range but not hard-blocked. Approve with caution.</p>
                                 </div>
                               )}
 
@@ -1213,7 +1213,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
                       {message.proposalStatus === "saved" && (
                         <div className="px-4 py-3 border-t border-border/40 bg-emerald-500/5 flex items-center gap-2">
                           <span className="text-[11px] text-emerald-600 font-black">✓ Saved to Pricing</span>
-                          <span className="text-[10px] text-muted-foreground">— review and push to Hostaway from the Pricing page</span>
+                          <span className="text-[10px] text-muted-foreground">- review and push to Hostaway from the Pricing page</span>
                         </div>
                       )}
                       {message.proposalStatus === "rejected" && (
@@ -1240,7 +1240,7 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
                       <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder={isSettingUp ? "Priming Aria — pulling market intel…" : "Ask about pricing, events, market rates..."}
+                        placeholder={isSettingUp ? "Priming Aria - pulling market intel…" : "Ask about pricing, events, market rates..."}
                         disabled={isLoading}
                         className="w-full"
                       />

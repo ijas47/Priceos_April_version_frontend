@@ -46,17 +46,17 @@ export function SeasonalCalendarView({ pack, calendarId, className }: SeasonalCa
                 {seg.startMd} → {seg.endMd}
               </td>
               <td className="py-2.5 pr-4">
-                {pack.pricingProfiles.find((p) => p.id === seg.pricingProfileId)?.name ?? "—"}
+                {pack.pricingProfiles.find((p) => p.id === seg.pricingProfileId)?.name ?? "-"}
               </td>
               <td className="py-2.5 pr-4">
-                {pack.minStayProfiles.find((p) => p.id === seg.minStayProfileId)?.name ?? "—"}
+                {pack.minStayProfiles.find((p) => p.id === seg.minStayProfileId)?.name ?? "-"}
               </td>
               <td className="py-2.5 tabular-nums">
                 {seg.baseAdjPct != null
                   ? `${seg.baseAdjPct > 0 ? "+" : ""}${seg.baseAdjPct}%`
                   : seg.minAdjPct != null
                     ? `${seg.minAdjPct > 0 ? "+" : ""}${seg.minAdjPct}%`
-                    : "—"}
+                    : "-"}
               </td>
             </tr>
           ))}

@@ -161,31 +161,31 @@ export function resolvePaceDemandMultiplier(
   if (paceRatio < 0.75) {
     return {
       multiplier: 0.9,
-      note: `[PACE] ${(paceRatio * 100).toFixed(0)}% of STLY pickup — strong discount`,
+      note: `[PACE] ${(paceRatio * 100).toFixed(0)}% of STLY pickup - strong discount`,
     };
   }
   if (paceRatio < 0.85) {
     return {
       multiplier: 0.94,
-      note: `[PACE] ${(paceRatio * 100).toFixed(0)}% of STLY pickup — behind pace`,
+      note: `[PACE] ${(paceRatio * 100).toFixed(0)}% of STLY pickup - behind pace`,
     };
   }
   if (paceRatio < 0.95) {
     return {
       multiplier: 0.97,
-      note: `[PACE] ${(paceRatio * 100).toFixed(0)}% of STLY pickup — slightly behind`,
+      note: `[PACE] ${(paceRatio * 100).toFixed(0)}% of STLY pickup - slightly behind`,
     };
   }
   if (paceRatio > 1.25) {
     return {
       multiplier: 1.08,
-      note: `[PACE] ${(paceRatio * 100).toFixed(0)}% of STLY pickup — strong demand`,
+      note: `[PACE] ${(paceRatio * 100).toFixed(0)}% of STLY pickup - strong demand`,
     };
   }
   if (paceRatio > 1.1) {
     return {
       multiplier: 1.04,
-      note: `[PACE] ${(paceRatio * 100).toFixed(0)}% of STLY pickup — ahead of pace`,
+      note: `[PACE] ${(paceRatio * 100).toFixed(0)}% of STLY pickup - ahead of pace`,
     };
   }
 

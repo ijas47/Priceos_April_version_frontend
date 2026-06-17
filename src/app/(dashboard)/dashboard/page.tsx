@@ -1,5 +1,5 @@
 /**
- * dashboard/page.tsx — Server Component
+ * dashboard/page.tsx - Server Component
  *
  * Loads portfolio metrics directly from MongoDB (no self-fetch to /api).
  */

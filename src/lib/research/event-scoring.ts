@@ -1,5 +1,5 @@
 /**
- * Composite signal score for market events — drives UI sort order.
+ * Composite signal score for market events - drives UI sort order.
  * Verified ticketed/API feeds rank above news signals; AI-detected sinks to bottom.
  */
 

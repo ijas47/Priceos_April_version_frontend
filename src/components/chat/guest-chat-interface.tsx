@@ -255,7 +255,7 @@ export function GuestChatInterface({
                 }),
             });
             if (ticketRes.ok) {
-                toast.warning("🚨 Escalation ticket created — human PM review required", { duration: 6000, id: "escalate-ticket" });
+                toast.warning("🚨 Escalation ticket created - human PM review required", { duration: 6000, id: "escalate-ticket" });
             } else {
                 console.warn("[ESCALATION] Ticket creation failed:", await ticketRes.text());
             }
@@ -266,14 +266,14 @@ export function GuestChatInterface({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     threadId: conversationId,
-                    reason: `${triage.guest_intent || "Complex situation"} — sentiment: ${triage.sentiment || "unknown"}`,
+                    reason: `${triage.guest_intent || "Complex situation"} - sentiment: ${triage.sentiment || "unknown"}`,
                     urgency: escalationUrgency,
                     contextSummary: parsed?.chat_response || triage.guest_intent || "Requires human review",
                     draftReply: parsed?.suggested_reply?.content,
                 }),
             });
             if (!escalateRes.ok) {
-                // Thread may be a Hostaway ID, not a GuestThread ID — silently skip
+                // Thread may be a Hostaway ID, not a GuestThread ID - silently skip
                 console.warn("[ESCALATION] Thread escalation skipped (no matching GuestThread)");
             }
         } catch (e) {
@@ -330,7 +330,7 @@ export function GuestChatInterface({
             if (res.ok) {
                 const data = await res.json();
                 toast.success(
-                    `🔧 Ops ticket created (${data.slaHours}h SLA) — view in Operations`,
+                    `🔧 Ops ticket created (${data.slaHours}h SLA) - view in Operations`,
                     { duration: 5000, id: "ops-ticket" }
                 );
             } else {
@@ -650,7 +650,7 @@ export function GuestChatInterface({
                 realThreadId = threadData.threadId;
             }
         } catch {
-            // Fall back to synthetic ID — send_reply handles it gracefully
+            // Fall back to synthetic ID - send_reply handles it gracefully
         }
 
         const mockConversation: SimulatedConversation = {
@@ -763,7 +763,7 @@ export function GuestChatInterface({
                                     setAutoReplyEnabled(v);
                                     if (v) {
                                         autoRepliedIds.current.clear();
-                                        toast.success("Auto-Reply enabled — AI will reply to new messages automatically", { duration: 3000 });
+                                        toast.success("Auto-Reply enabled - AI will reply to new messages automatically", { duration: 3000 });
                                     } else {
                                         toast.info("Auto-Reply disabled");
                                     }
@@ -829,7 +829,7 @@ export function GuestChatInterface({
             </div>
 
             <div className="flex-1 flex overflow-hidden min-w-0">
-                {/* Guest Inbox Sidebar — collapsible */}
+                {/* Guest Inbox Sidebar - collapsible */}
                 <div className={`border-r bg-muted/10 flex flex-col border-border/50 transition-all duration-200 shrink-0 ${isInboxCollapsed ? 'w-0 overflow-hidden border-r-0' : activeConversationId ? 'hidden md:flex w-[320px] lg:w-[360px]' : 'flex w-[320px] lg:w-[360px]'}`}>
                     <div className="p-4 border-b bg-background border-border/50 flex items-center justify-between">
                         <h3 className="font-black uppercase tracking-widest text-xs text-muted-foreground">Guest Inbox</h3>
@@ -1027,7 +1027,7 @@ export function GuestChatInterface({
                                     </div>
                                     <div>
                                         <h4 className="text-sm font-black text-blue-900 tracking-tight">Agent Test Mode</h4>
-                                        <p className="text-[10px] font-bold text-blue-600/70 uppercase tracking-wider">Type any guest query — the AI agent will respond as if it's a real guest message</p>
+                                        <p className="text-[10px] font-bold text-blue-600/70 uppercase tracking-wider">Type any guest query - the AI agent will respond as if it's a real guest message</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
@@ -1104,7 +1104,7 @@ export function GuestChatInterface({
                                     </Button>
                                 </div>
                                 <p className="text-[9px] text-center text-blue-500/50 mt-2 font-bold uppercase tracking-widest">
-                                    Simulated Guest Query — Testing AI Agent Responses
+                                    Simulated Guest Query - Testing AI Agent Responses
                                 </p>
                             </div>
                         </div>
@@ -1166,7 +1166,7 @@ export function GuestChatInterface({
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div className="rounded-lg border border-border/50 p-2">
                                                     <p className="text-[9px] uppercase text-muted-foreground">Sentiment</p>
-                                                    <p className="text-[11px] font-semibold mt-1">{structuredSummary.sentiment || "—"}</p>
+                                                    <p className="text-[11px] font-semibold mt-1">{structuredSummary.sentiment || "-"}</p>
                                                 </div>
                                                 <div className="rounded-lg border border-border/50 p-2">
                                                     <p className="text-[9px] uppercase text-muted-foreground">Needs Reply</p>

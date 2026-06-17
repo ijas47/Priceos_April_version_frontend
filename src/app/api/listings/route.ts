@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/listings — all listings for the session org. */
+/** GET /api/listings - all listings for the session org. */
 export async function GET() {
   try {
     const session = await getSession();

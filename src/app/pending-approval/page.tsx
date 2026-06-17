@@ -32,13 +32,13 @@ export default function PendingApprovalPage() {
                 if (data.email && !email) setEmail(data.email);
 
                 if (data.approved) {
-                    // Cookie was already refreshed by the API — navigate to dashboard
+                    // Cookie was already refreshed by the API - navigate to dashboard
                     router.push("/dashboard");
                     router.refresh();
                     return;
                 }
             } catch {
-                // network error — will retry
+                // network error - will retry
             } finally {
                 if (!cancelled) setChecking(false);
             }

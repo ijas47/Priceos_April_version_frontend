@@ -1,5 +1,5 @@
 /**
- * Sample listings seed data — 5 Dubai properties.
+ * Sample listings seed data - 5 Dubai properties.
  * These are used for testing when no real Hostaway import has been done.
  * orgId is filled in at seed-time from the first Organization document.
  */

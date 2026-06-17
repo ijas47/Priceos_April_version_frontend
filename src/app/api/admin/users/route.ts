@@ -6,7 +6,7 @@ import { getSession } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/admin/users — list all accounts (owner/admin only). */
+/** GET /api/admin/users - list all accounts (owner/admin only). */
 export async function GET() {
   try {
     const session = await getSession();
@@ -41,7 +41,7 @@ export async function GET() {
   }
 }
 
-/** POST /api/admin/users — create a user with a temporary password. */
+/** POST /api/admin/users - create a user with a temporary password. */
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();

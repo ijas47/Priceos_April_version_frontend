@@ -46,7 +46,7 @@ export async function pollJob<T = Record<string, unknown>>(
     onPoll?.(Date.now() - (deadline - timeoutMs));
   }
 
-  throw new Error("Agent timed out — please try again");
+  throw new Error("Agent timed out - please try again");
 }
 
 /** Handles sync `{ message }` or legacy async `{ jobId }` chat API responses. */

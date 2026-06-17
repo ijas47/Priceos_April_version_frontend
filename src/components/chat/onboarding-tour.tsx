@@ -28,7 +28,7 @@ const TOUR_STEPS: TourStep[] = [
     targetId: "tour-guardrails",
     title: "Set Your Price Guardrails",
     instruction: "👆 Click 'Set Guardrails' to define your min/max price",
-    explanation: "Guardrails protect your property — the AI will never suggest a price below your floor or above your ceiling.",
+    explanation: "Guardrails protect your property - the AI will never suggest a price below your floor or above your ceiling.",
     icon: "🛡️",
     position: "bottom",
     advanceOn: "click",
@@ -46,7 +46,7 @@ const TOUR_STEPS: TourStep[] = [
     targetId: "tour-chat-input",
     title: "Chat with Aria",
     instruction: "💬 Type 'Full analysis' and press Enter",
-    explanation: "Just ask — Aria automatically primes itself (scanning market events and competitor rates) on your first question. Try 'Booking velocity', 'What should I price?', or 'Full analysis'.",
+    explanation: "Just ask - Aria automatically primes itself (scanning market events and competitor rates) on your first question. Try 'Booking velocity', 'What should I price?', or 'Full analysis'.",
     icon: "💬",
     position: "top",
     advanceOn: "click",
@@ -54,8 +54,8 @@ const TOUR_STEPS: TourStep[] = [
   {
     targetId: "tour-sidebar",
     title: "Market Intelligence",
-    instruction: "📊 Explore the sidebar tabs — Summary, Signals, Calendar",
-    explanation: "Real-time data: performance metrics, benchmark comparisons, market events calendar — all synced to your selected date range.",
+    instruction: "📊 Explore the sidebar tabs - Summary, Signals, Calendar",
+    explanation: "Real-time data: performance metrics, benchmark comparisons, market events calendar - all synced to your selected date range.",
     icon: "📊",
     position: "left",
     advanceOn: "click",
@@ -203,7 +203,7 @@ export function OnboardingTour() {
               marginBottom: 32,
             }}>
               Let me walk you through the interface step-by-step.<br />
-              You'll <strong style={{ color: "#94a3b8" }}>click each element</strong> as I guide you — it only takes 30 seconds.
+              You'll <strong style={{ color: "#94a3b8" }}>click each element</strong> as I guide you - it only takes 30 seconds.
             </p>
 
             {/* Buttons */}
@@ -261,7 +261,7 @@ export function OnboardingTour() {
   // Calculate tooltip position
   const tooltipPos = getTooltipPosition(step.position, targetRect);
 
-  // Four-panel overlay calculations — creates 4 dark rectangles AROUND the target,
+  // Four-panel overlay calculations - creates 4 dark rectangles AROUND the target,
   // leaving a real clickable hole where the actual UI elements are
   const pad = 8;
   const hole = {
@@ -273,7 +273,7 @@ export function OnboardingTour() {
 
   return (
     <>
-      {/* 4-panel overlay — leaves a REAL HOLE so clicks pass through to actual elements */}
+      {/* 4-panel overlay - leaves a REAL HOLE so clicks pass through to actual elements */}
       {/* Top panel */}
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0,
@@ -385,7 +385,7 @@ export function OnboardingTour() {
             marginBottom: 10, letterSpacing: "-0.3px",
           }}>{step.title}</h3>
 
-          {/* Instruction — highlighted call to action */}
+          {/* Instruction - highlighted call to action */}
           <div style={{
             padding: "10px 14px", borderRadius: 10,
             background: "rgba(243,156,18,0.08)",

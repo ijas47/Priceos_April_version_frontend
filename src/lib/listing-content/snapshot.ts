@@ -58,7 +58,7 @@ export async function syncListingContentFromHostaway(opts: {
     .lean();
   if (!listing) throw new Error("Listing not found");
   if (!listing.hostawayId?.trim()) {
-    throw new Error("Listing has no Hostaway ID — import from PMS first");
+    throw new Error("Listing has no Hostaway ID - import from PMS first");
   }
 
   const apiKey = await resolveHostawayApiKey(orgId);

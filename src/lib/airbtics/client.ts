@@ -1,5 +1,5 @@
 /**
- * Airbtics API client — all HTTP calls go through here.
+ * Airbtics API client - all HTTP calls go through here.
  *
  * Auth: x-api-key header.
  * Base URL: https://crap0y5bx5.execute-api.us-east-2.amazonaws.com/prod
@@ -30,7 +30,7 @@ async function get<T>(path: string, params: Record<string, string> = {}): Promis
         });
         if (!res.ok) {
             const body = await res.text().catch(() => "");
-            throw new Error(`Airbtics ${res.status}: ${path} — ${body.slice(0, 200)}`);
+            throw new Error(`Airbtics ${res.status}: ${path} - ${body.slice(0, 200)}`);
         }
         return (await res.json()) as T;
     } finally {
@@ -56,7 +56,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
         });
         if (!res.ok) {
             const text = await res.text().catch(() => "");
-            throw new Error(`Airbtics ${res.status}: ${path} — ${text.slice(0, 200)}`);
+            throw new Error(`Airbtics ${res.status}: ${path} - ${text.slice(0, 200)}`);
         }
         return (await res.json()) as T;
     } finally {

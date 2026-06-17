@@ -7,7 +7,7 @@ import mongoose from "mongoose";
  * GET /api/hostaway/conversations/cached
  *
  * Returns previously synced conversations from MongoDB.
- * No Hostaway API calls — purely reads from our cache.
+ * No Hostaway API calls - purely reads from our cache.
  *
  * Query params: listingId, from, to
  */

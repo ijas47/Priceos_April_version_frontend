@@ -4,7 +4,7 @@
  * Sits on top of the deterministic pricing waterfall. Given the rulebook
  * price for a day, it nudges toward the elasticity revenue-optimal price
  * (learned from this listing's own booking history) and applies a bounded
- * source-market demand modifier — always clamped inside the listing's
+ * source-market demand modifier - always clamped inside the listing's
  * floor/ceiling guardrails, and never moving more than ±maxShiftPct from the
  * rulebook price in a single run.
  *
@@ -44,7 +44,7 @@ function clamp(v: number, lo: number, hi: number): number {
 
 /**
  * Combine the rulebook price with the elasticity-optimal price and a demand
- * modifier. Pure & deterministic — safe to unit test.
+ * modifier. Pure & deterministic - safe to unit test.
  */
 export function computeOptimizedPrice(args: {
   rulebookPrice: number;
@@ -104,7 +104,7 @@ export function computeOptimizedPrice(args: {
 /**
  * Whether the optimization layer DRIVES the proposed price (true, the default)
  * or merely records a shadow value alongside the rulebook price (false).
- * Enabled by default — set ELASTICITY_PRICING=off to revert to shadow mode.
+ * Enabled by default - set ELASTICITY_PRICING=off to revert to shadow mode.
  * Guardrails still apply: prices are clamped to floor/ceiling and capped to
  * ±25% of the rulebook price, and with no booking history the optimized price
  * collapses back to the rulebook price anyway.

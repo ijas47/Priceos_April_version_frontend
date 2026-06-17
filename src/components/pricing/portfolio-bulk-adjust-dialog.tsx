@@ -167,7 +167,7 @@ export function PortfolioBulkAdjustDialog({ listings, onApplied }: Props) {
         <DialogHeader>
           <DialogTitle>Portfolio % adjust</DialogTitle>
           <DialogDescription>
-            Shift available-night rates across properties — like a tactical PriceLabs bulk
+            Shift available-night rates across properties - like a tactical PriceLabs bulk
             update. Respects each property&apos;s floor and ceiling.
           </DialogDescription>
         </DialogHeader>

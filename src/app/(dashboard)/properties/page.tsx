@@ -399,7 +399,7 @@ function PropertyCard({
           </h3>
           <div className="flex items-center gap-1.5 text-text-tertiary">
             <MapPin className="h-3 w-3 shrink-0" />
-            <span className="text-[10px] truncate">{p.area || p.city || "—"}</span>
+            <span className="text-[10px] truncate">{p.area || p.city || "-"}</span>
           </div>
         </div>
         {p.isActivated ? (
@@ -565,7 +565,7 @@ function PropertyDetailDrawer({
           setPendingProposals(data.proposals ?? data ?? []);
         }
       } catch {
-        // silently fail — card count is still shown
+        // silently fail - card count is still shown
       } finally {
         setProposalsLoading(false);
       }
@@ -627,8 +627,8 @@ function PropertyDetailDrawer({
                   <DetailRow label="Bathrooms" value={`${p.bathrooms}`} icon={Bath} />
                   {p.capacity && <DetailRow label="Capacity" value={`${p.capacity} guests`} icon={Users} />}
                   <DetailRow label="Base Price" value={`${p.currency} ${p.basePrice.toLocaleString("en-US")}`} icon={DollarSign} />
-                  <DetailRow label="City" value={p.city || "—"} icon={MapPin} />
-                  <DetailRow label="Area" value={p.area || "—"} icon={MapPin} />
+                  <DetailRow label="City" value={p.city || "-"} icon={MapPin} />
+                  <DetailRow label="Area" value={p.area || "-"} icon={MapPin} />
                 </div>
               </div>
 
@@ -798,7 +798,7 @@ function PropertyDetailDrawer({
                   {p.isActivated && (
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
-                      <span>Activated — AI pricing engine running</span>
+                      <span>Activated - AI pricing engine running</span>
                     </div>
                   )}
                 </div>

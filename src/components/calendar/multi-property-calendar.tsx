@@ -101,7 +101,7 @@ export function MultiPropertyCalendar({ properties, calendars }: MultiPropertyCa
                                 {formattedPrice ? (
                                   <p>Price: {formattedPrice} {property.currencyCode ?? "AED"}</p>
                                 ) : (
-                                  <p>Price: —</p>
+                                  <p>Price: -</p>
                                 )}
                                 {isAvailable && <p>Min stay: {day.minimumStay} nights</p>}
                                 {day.blockReason && <p>Reason: {day.blockReason.replace("_", " ")}</p>}

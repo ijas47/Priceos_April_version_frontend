@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 2b. Gather VERIFIED market intelligence (SERP / Ticketmaster /
-        //     Eventbrite / news). This is structured ground truth — the Lyzr
+        //     Eventbrite / news). This is structured ground truth - the Lyzr
         //     agents receive it as input instead of being asked to invent
         //     events from memory.
         const dtcmStatus = await resolveDtcmEligibility(orgId);
@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
         }
         if (intel.findings.length === 0) {
             console.warn(
-                `⚠️ No verified findings — check SERP_API_KEY / NEWS_API_KEY on Vercel. ` +
+                `⚠️ No verified findings - check SERP_API_KEY / NEWS_API_KEY on Vercel. ` +
                 `Agent will rely on Lyzr/Perplexity synthesis (higher hallucination risk).`
             );
         }
@@ -188,7 +188,7 @@ Find 10-15 comparable short-term rental properties. Return JSON with rate_distri
             agentBench = (benchmarkRes.parsedJson || {}) as Record<string, unknown>;
             console.log(`📉 Benchmark fallback: Lyzr agent (Airbtics unavailable)`);
         } else {
-            console.log(`📉 Benchmark: Airbtics-first (p50=${airbticsMktCtx?.p50ADR}) — skipping Lyzr benchmark`);
+            console.log(`📉 Benchmark: Airbtics-first (p50=${airbticsMktCtx?.p50ADR}) - skipping Lyzr benchmark`);
         }
 
         console.log(`✅ Research complete. Verified: ${intel.findings.length}, Static holidays: ${staticHolidays.length}`);
@@ -203,7 +203,7 @@ Find 10-15 comparable short-term rental properties. Return JSON with rate_distri
         });
         console.log(`📥 Saved ${verifiedSaved} verified market events`);
 
-        // 4b. Static public holidays — deterministic calendar, no agent invention
+        // 4b. Static public holidays - deterministic calendar, no agent invention
         const verifiedNames = new Set(intel.findings.map((f) => f.title.toLowerCase().trim()));
         let holidaysSaved = 0;
 
@@ -240,7 +240,7 @@ Find 10-15 comparable short-term rental properties. Return JSON with rate_distri
         const allFindingsCount = verifiedSaved + holidaysSaved;
 
         // 4. Save Benchmark Data (upsert by listingId+dateFrom+dateTo)
-        //    Airbtics monthly metrics provide real ADR percentiles — prefer them
+        //    Airbtics monthly metrics provide real ADR percentiles - prefer them
         //    over LLM-estimated rates when available.
         const rateDist = agentBench?.rate_distribution as Record<string, number> | undefined;
         const pricingVerdict = agentBench?.pricing_verdict as Record<string, unknown> | undefined;

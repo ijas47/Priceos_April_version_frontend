@@ -20,7 +20,7 @@ function mapCalendarStatus(
 
 /**
  * Pull latest per-day rates from Hostaway into InventoryMaster.
- * Uses org/env API key directly — does not require HOSTAWAY_MODE=live.
+ * Uses org/env API key directly - does not require HOSTAWAY_MODE=live.
  */
 export async function refreshListingCalendarFromHostaway(
   listingId: mongoose.Types.ObjectId | string,
@@ -40,7 +40,7 @@ export async function refreshListingCalendarFromHostaway(
     (listing.orgId ? await resolveHostawayApiKey(listing.orgId) : null) ||
     getHostawayApiKey();
   if (!apiKey) {
-    console.warn("[calendar-rates] no Hostaway API key — skipping calendar refresh");
+    console.warn("[calendar-rates] no Hostaway API key - skipping calendar refresh");
     return 0;
   }
 
@@ -123,7 +123,7 @@ export function buildCalendarPriceMap(
 
 /**
  * Per-day listed/calendar reference for change-% display and Pass 0 listed-ref weight (10%).
- * Not the primary pricing anchor — Pass 0 uses comp-set + pacing when available.
+ * Not the primary pricing anchor - Pass 0 uses comp-set + pacing when available.
  */
 export function resolveDayCalendarPrice(
   date: string,

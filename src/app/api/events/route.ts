@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     const dateTo = searchParams.get("dateTo");
     const impactLevel = searchParams.get("impactLevel");
 
-    // Build query — scope by org if authenticated, else allow portfolio view
+    // Build query - scope by org if authenticated, else allow portfolio view
     const query: Record<string, unknown> = {};
     if (session?.orgId) {
       query.orgId = session.orgId;

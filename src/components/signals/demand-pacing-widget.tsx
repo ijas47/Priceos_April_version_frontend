@@ -98,11 +98,11 @@ export function DemandPacingWidget({ dateFrom, dateTo, marketId = "2286", curren
                                     <div className="flex gap-3 text-right">
                                         <div className="flex flex-col">
                                             <span className="text-[8px] text-muted-foreground uppercase">Score</span>
-                                            <span className="text-[11px] font-bold">{day.demandScore ?? "—"}</span>
+                                            <span className="text-[11px] font-bold">{day.demandScore ?? "-"}</span>
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-[8px] text-muted-foreground uppercase">Market Avg</span>
-                                            <span className="text-[11px] font-bold">{day.avgPrice ? `${currency} ${Math.round(day.avgPrice)}` : "—"}</span>
+                                            <span className="text-[11px] font-bold">{day.avgPrice ? `${currency} ${Math.round(day.avgPrice)}` : "-"}</span>
                                         </div>
                                     </div>
                                 </div>

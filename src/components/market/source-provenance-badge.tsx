@@ -75,7 +75,7 @@ export function SourceProvenanceBadge({ source, className, showUnverifiedWarning
     <Badge
       variant="outline"
       className={cn("text-[9px] font-semibold tracking-wide gap-1 border", style, className)}
-      title={meta.verified ? "Verified feed" : "Unverified — use with caution"}
+      title={meta.verified ? "Verified feed" : "Unverified - use with caution"}
     >
       <SourceIcon source={key} />
       {meta.label}

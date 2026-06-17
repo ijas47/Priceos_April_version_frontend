@@ -62,7 +62,7 @@ export function FinanceDashboard({ listings, portfolio, proposals }: Props) {
       return {
         id: String(r._id ?? r.id ?? ""),
         name: String(r.name ?? "Property"),
-        area: String(r.area ?? r.neighborhood ?? "—"),
+        area: String(r.area ?? r.neighborhood ?? "-"),
         price: Number(r.price ?? r.basePrice ?? 0),
         floor: Number(r.priceFloor ?? 0),
         ceiling: Number(r.priceCeiling ?? 0),
@@ -78,7 +78,7 @@ export function FinanceDashboard({ listings, portfolio, proposals }: Props) {
       <div>
         <h1 className="text-3xl font-bold tracking-tight mb-1">Revenue Overview</h1>
         <p className="text-muted-foreground text-sm">
-          Portfolio financial summary — pricing impact and property rate positioning.
+          Portfolio financial summary - pricing impact and property rate positioning.
         </p>
       </div>
 
@@ -86,7 +86,7 @@ export function FinanceDashboard({ listings, portfolio, proposals }: Props) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {kpiCard(
           "Avg Nightly Rate",
-          avgNightly > 0 ? `${currency} ${avgNightly.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—",
+          avgNightly > 0 ? `${currency} ${avgNightly.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "-",
           "Portfolio average",
           DollarSign,
           "text-primary"
@@ -155,10 +155,10 @@ export function FinanceDashboard({ listings, portfolio, proposals }: Props) {
                       {row.currency} {row.price.toLocaleString("en-US")}
                     </td>
                     <td className="px-5 py-3 text-right text-muted-foreground tabular-nums">
-                      {row.floor > 0 ? `${row.currency} ${row.floor.toLocaleString("en-US")}` : "—"}
+                      {row.floor > 0 ? `${row.currency} ${row.floor.toLocaleString("en-US")}` : "-"}
                     </td>
                     <td className="px-5 py-3 text-right text-muted-foreground tabular-nums">
-                      {row.ceiling > 0 ? `${row.currency} ${row.ceiling.toLocaleString("en-US")}` : "—"}
+                      {row.ceiling > 0 ? `${row.currency} ${row.ceiling.toLocaleString("en-US")}` : "-"}
                     </td>
                     <td className="px-5 py-3 text-right">
                       {headroomPct !== null ? (
@@ -170,7 +170,7 @@ export function FinanceDashboard({ listings, portfolio, proposals }: Props) {
                           {headroomPct}%
                         </span>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </td>
                   </tr>
@@ -207,7 +207,7 @@ export function FinanceDashboard({ listings, portfolio, proposals }: Props) {
                 return (
                   <tr key={String(p._id ?? i)} className="hover:bg-muted/30 dark:hover:bg-white/[0.02] transition-colors">
                     <td className="px-5 py-3 text-muted-foreground tabular-nums">
-                      {String(p.targetDate ?? p.date ?? "—")}
+                      {String(p.targetDate ?? p.date ?? "-")}
                     </td>
                     <td className="px-5 py-3 text-right tabular-nums">
                       {currency} {current.toLocaleString("en-US")}
@@ -221,7 +221,7 @@ export function FinanceDashboard({ listings, portfolio, proposals }: Props) {
                       </span>
                     </td>
                     <td className="px-5 py-3 text-xs text-muted-foreground hidden sm:table-cell max-w-[240px] truncate">
-                      {String(p.reasoning ?? p.reason ?? "—")}
+                      {String(p.reasoning ?? p.reason ?? "-")}
                     </td>
                   </tr>
                 );

@@ -145,7 +145,7 @@ function buildRulesProposals(
   const airbnbSummaryCurrent = channels.airbnb.summary || "";
   if (airbnbSummaryCurrent.length < 120) {
     const summary = [
-      `Stay in ${area} — ${beds}-bedroom home with ${amenityBit}.`,
+      `Stay in ${area} - ${beds}-bedroom home with ${amenityBit}.`,
       `Ideal for Dubai visitors who want walkable dining and quick access to the beach or metro.`,
       `Book direct for flexible check-in and responsive host support.`,
     ].join(" ");
@@ -154,14 +154,14 @@ function buildRulesProposals(
       field: "summary",
       current: airbnbSummaryCurrent,
       proposed: summary.slice(0, 500),
-      reasoning: "Airbnb summary under 120 chars — expand with hook, amenities, and guest benefit.",
+      reasoning: "Airbnb summary under 120 chars - expand with hook, amenities, and guest benefit.",
       visibilityDelta: 10,
       risk: "medium",
     });
   }
 
   const bookingTitleCurrent = channels.booking_com.title || listing.name;
-  const bookingTitle = `${beds}BR ${area} Apartment — ${amenities[0] || "Central Location"}`.slice(
+  const bookingTitle = `${beds}BR ${area} Apartment - ${amenities[0] || "Central Location"}`.slice(
     0,
     80
   );
@@ -213,7 +213,7 @@ export async function runListingOptimizer(opts: {
 
   if (!listing) throw new Error("Listing not found");
   if (!snapshot) {
-    throw new Error("No content snapshot — sync from Hostaway first");
+    throw new Error("No content snapshot - sync from Hostaway first");
   }
 
   const scores = scoreListingVisibility(snapshot.channels, snapshot.shared);

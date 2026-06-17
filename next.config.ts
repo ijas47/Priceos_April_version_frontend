@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-// Default to self-hosted Next.js API routes — never proxy to localhost in production.
+// Default to self-hosted Next.js API routes - never proxy to localhost in production.
 const backendUrl = process.env.NEXT_PUBLIC_API_URL || "/api";
 const backendOrigin = backendUrl.replace(/\/api\/?$/, "") || backendUrl;
 
@@ -52,7 +52,7 @@ const nextConfig: NextConfig = {
   // Strip React source maps in production to avoid leaking component names
   productionBrowserSourceMaps: false,
 
-  // Fail build on TypeScript errors — never ship broken code
+  // Fail build on TypeScript errors - never ship broken code
   typescript: { ignoreBuildErrors: false },
 
   // Server-side packages that must not be bundled into client chunks

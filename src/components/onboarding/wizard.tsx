@@ -72,7 +72,7 @@ const MARKETS: MarketTemplate[] = [
   { code: "AUS_SYD", name: "Sydney", country: "Australia", currency: "AUD", flag: "🇦🇺", weekend: "Fri–Sat", maxChangePct: 15 },
 ];
 
-// ── Demo Listings (for client demos — no API key needed) ───────────────────────
+// ── Demo Listings (for client demos - no API key needed) ───────────────────────
 
 const DEMO_LISTINGS: Listing[] = [
   { id: "demo-1", name: "Luxury Marina View Suite",         bedrooms: 2, city: "Dubai Marina",      type: "apartment",  thumbnail: null },
@@ -165,7 +165,7 @@ function StepConnect({ onNext }: { onNext: (listings: Listing[]) => void }) {
     setDemoLoading(true);
     // Simulate a brief "loading" for realism
     await new Promise(r => setTimeout(r, 900));
-    toast.success("🎮 Demo mode — 8 sample properties loaded");
+    toast.success("🎮 Demo mode - 8 sample properties loaded");
     onNext(DEMO_LISTINGS);
     setDemoLoading(false);
   };
@@ -183,7 +183,7 @@ function StepConnect({ onNext }: { onNext: (listings: Listing[]) => void }) {
           </div>
           <div>
             <p className="text-sm font-bold text-white">Try Demo Mode</p>
-            <p className="text-xs text-zinc-500">8 sample properties — no API key needed</p>
+            <p className="text-xs text-zinc-500">8 sample properties - no API key needed</p>
           </div>
         </div>
         <button
@@ -209,7 +209,7 @@ function StepConnect({ onNext }: { onNext: (listings: Listing[]) => void }) {
         <div>
           <h3 className="text-sm font-bold text-white mb-0.5">Connect Hostaway</h3>
           <p className="text-xs text-zinc-500 leading-relaxed">
-            PriceOS fetches <strong className="text-zinc-300">only your property names</strong> — no pricing, no reservations yet.
+            PriceOS fetches <strong className="text-zinc-300">only your property names</strong> - no pricing, no reservations yet.
           </p>
         </div>
       </div>
@@ -400,7 +400,7 @@ function StepMarket({ initialMarket, onNext }: { initialMarket: string; onNext: 
       <div className="space-y-1">
         <p className="text-sm text-zinc-300 font-medium">Select your primary operating market</p>
         <p className="text-xs text-zinc-500 leading-relaxed">
-          This pre-loads a <strong className="text-zinc-300">city-specific pricing rulebook</strong> — public holidays, 
+          This pre-loads a <strong className="text-zinc-300">city-specific pricing rulebook</strong> - public holidays, 
           peak seasons, local events, weekend pattern, and daily price-change guardrails.
           You can customise any rule after setup.
         </p>
@@ -978,7 +978,7 @@ function StepStrategy({
         className="w-full h-12 bg-primary hover:bg-primary disabled:opacity-60 text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-all text-sm"
       >
         {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-        {loading ? "Activating Pricing Engine…" : `Go Live — ${selected.label} Strategy`}
+        {loading ? "Activating Pricing Engine…" : `Go Live - ${selected.label} Strategy`}
       </button>
 
       {loading && (
@@ -1102,7 +1102,7 @@ export function OnboardingWizard({ initialStep = "connect" }: { initialStep?: Wi
     goToStep("strategy");
   }, [goToStep]);
 
-  // Step 4 → 5: Activation — sends ALL listings (so all are seeded to DB) +
+  // Step 4 → 5: Activation - sends ALL listings (so all are seeded to DB) +
   // activatedListingIds (so backend knows which ones to mark active)
   const handleActivate = useCallback(async () => {
     // Trigger calendar sync (non-blocking)

@@ -53,7 +53,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await connectDB();
     const body = await req.json();
 
-    // PATCH is for partial updates — typically price guardrails
+    // PATCH is for partial updates - typically price guardrails
     const { priceFloor, priceCeiling, ...rest } = body;
     const updates: Record<string, unknown> = { ...rest };
     if (priceFloor !== undefined) updates.priceFloor = Number(priceFloor);

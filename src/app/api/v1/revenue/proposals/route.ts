@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/v1/revenue/proposals
  *
- * Returns pricing proposals from InventoryMaster — the same collection
+ * Returns pricing proposals from InventoryMaster - the same collection
  * the pricing engine writes to. Supports filtering by status and listingId.
  *
  * Query params:
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const rateCheck = checkRateLimit(`revenue-proposals-get:${ip}`, RATE_LIMITS.standard);
     if (!rateCheck.allowed) {
         return NextResponse.json(
-            { error: `Rate limited — try again in ${Math.ceil(rateCheck.resetMs / 1000)}s` },
+            { error: `Rate limited - try again in ${Math.ceil(rateCheck.resetMs / 1000)}s` },
             { status: 429 },
         );
     }
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
         filter.status = { $ne: "booked" };
         filter.changePct = { $ne: 0 };
 
-        // Fetch proposals — most recent dates first, capped at 500
+        // Fetch proposals - most recent dates first, capped at 500
         const rows = await InventoryMaster.find(filter)
             .sort({ date: 1 })
             .limit(500)
@@ -106,14 +106,14 @@ export async function GET(request: Request) {
 }
 
 /**
- * POST /api/v1/revenue/proposals — bulk approve / reject proposals.
+ * POST /api/v1/revenue/proposals - bulk approve / reject proposals.
  */
 export async function POST(request: Request) {
     const ip = getClientIp(request);
     const rateCheck = checkRateLimit(`revenue-proposals-bulk:${ip}`, RATE_LIMITS.standard);
     if (!rateCheck.allowed) {
         return NextResponse.json(
-            { error: `Rate limited — try again in ${Math.ceil(rateCheck.resetMs / 1000)}s` },
+            { error: `Rate limited - try again in ${Math.ceil(rateCheck.resetMs / 1000)}s` },
             { status: 429 },
         );
     }

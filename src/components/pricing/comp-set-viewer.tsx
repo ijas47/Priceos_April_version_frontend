@@ -63,7 +63,7 @@ export function CompSetViewer({ listings }: { listings: Listing[] }) {
       setOverview(flat);
     } catch (err) {
       const msg = (err as Error).name === "AbortError"
-        ? "Request timed out — check Airbtics API key"
+        ? "Request timed out - check Airbtics API key"
         : (err as Error).message;
       setError(msg);
     } finally {
@@ -143,7 +143,7 @@ export function CompSetViewer({ listings }: { listings: Listing[] }) {
             <KpiCard
               icon={Star}
               label="Active Listings"
-              value={overview.activeListings?.toLocaleString("en-US") ?? "—"}
+              value={overview.activeListings?.toLocaleString("en-US") ?? "-"}
               color="purple"
             />
           </div>
@@ -206,7 +206,7 @@ export function CompSetViewer({ listings }: { listings: Listing[] }) {
                         {currency} {Math.round(p50).toLocaleString("en-US")}
                       </span>
                       <span className="w-10 text-right">
-                        {m.occupancy !== undefined ? `${Math.round(m.occupancy * 100)}%` : "—"}
+                        {m.occupancy !== undefined ? `${Math.round(m.occupancy * 100)}%` : "-"}
                       </span>
                     </div>
                   );
@@ -324,7 +324,7 @@ function computePosition(
 
   // We don't have the listing's actual price on the client; use market P50 as reference
   // The actual position will be computed from the calendar's proposed prices
-  const listingPrice = p50; // placeholder — real position uses listing.price from server
+  const listingPrice = p50; // placeholder - real position uses listing.price from server
   const ratio = listingPrice / p50;
 
   let verdict: ListingPosition["verdict"] = "fair";

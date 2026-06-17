@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     // Approve: copy proposedPrice → currentPrice, mark approved
-    // IMPORTANT: Never POST to Hostaway — only update local DB
+    // IMPORTANT: Never POST to Hostaway - only update local DB
     const result = await InventoryMaster.updateMany(
       { _id: { $in: proposalIds }, orgId: session.orgId, proposalStatus: "pending" },
       [

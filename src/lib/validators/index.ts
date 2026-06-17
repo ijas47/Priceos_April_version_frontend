@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * ═══════════════════════════════════════════════════════════
- * PriceOS API — Zod Validation Schemas
+ * PriceOS API - Zod Validation Schemas
  * 
  * Every request body is validated BEFORE any DB or AI calls.
  * If validation fails, a 400 error with field-level details is returned.
@@ -26,14 +26,14 @@ const positiveInt = z.number().int().positive();
 // Guest Inbox Schemas
 // ─────────────────────────────────────────────────────────
 
-/** GET /v1/guests/conversations — query params */
+/** GET /v1/guests/conversations - query params */
 export const getConversationsSchema = z.object({
     listingId: z.string().min(1, "listingId is required"),
     from: isoDateString,
     to: isoDateString,
 });
 
-/** POST /v1/guests/reply — save shadow reply */
+/** POST /v1/guests/reply - save shadow reply */
 export const guestReplySchema = z.object({
     conversationId: z.string().min(1, "conversationId is required"),
     text: z.string()
@@ -41,24 +41,24 @@ export const guestReplySchema = z.object({
         .max(5000, "Reply text cannot exceed 5000 characters"),
 });
 
-/** POST /v1/guests/suggest — AI-generated draft reply */
+/** POST /v1/guests/suggest - AI-generated draft reply */
 export const suggestReplySchema = z.object({
     message: z.string()
         .min(1, "Guest message is required")
         .max(5000, "Message cannot exceed 5000 characters"),
     guestName: z.string().optional().default("Guest"),
     propertyName: z.string().optional().default("Our Property"),
-    listingId: z.string().optional(), // MongoDB ObjectId string — used to fetch property policies
+    listingId: z.string().optional(), // MongoDB ObjectId string - used to fetch property policies
 });
 
-/** GET /v1/guests/summary — query params */
+/** GET /v1/guests/summary - query params */
 export const getSummarySchema = z.object({
     listingId: z.string().min(1, "listingId is required"),
     from: isoDateString,
     to: isoDateString,
 });
 
-/** POST /v1/guests/summary — generate AI summary */
+/** POST /v1/guests/summary - generate AI summary */
 export const generateSummarySchema = z.object({
     listingId: z.number().int().positive("listingId must be a positive integer"),
     dateFrom: isoDateString,

@@ -22,7 +22,7 @@ interface BulkAdjustBody {
   dryRun?: boolean;
 }
 
-/** POST /api/inventory/bulk-adjust — portfolio % shift on calendar or proposals. */
+/** POST /api/inventory/bulk-adjust - portfolio % shift on calendar or proposals. */
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();

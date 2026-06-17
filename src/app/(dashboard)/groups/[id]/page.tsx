@@ -335,7 +335,7 @@ function RuleRow({
       ? "Fixed price"
       : rule.isBlocked
       ? "Blocked"
-      : "—";
+      : "-";
 
   const categoryLabel =
     RULE_CATEGORY_LABELS[(rule.ruleCategory || fallbackCategoryFromRuleType(rule.ruleType)) as keyof typeof RULE_CATEGORY_LABELS];
@@ -853,7 +853,7 @@ export default function GroupDetailPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-text-primary truncate">{l.name}</p>
                   <p className="text-xs text-text-tertiary">
-                    {l.area ?? "—"}{l.bedroomsNumber != null ? ` · ${l.bedroomsNumber}BR` : ""}
+                    {l.area ?? "-"}{l.bedroomsNumber != null ? ` · ${l.bedroomsNumber}BR` : ""}
                   </p>
                 </div>
               </div>

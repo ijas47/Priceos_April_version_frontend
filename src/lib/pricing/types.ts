@@ -1,6 +1,6 @@
 /**
  * PriceLabs-parity pricing configuration types.
- * Scoped at portfolio (org), group, or listing — resolved listing > group > portfolio.
+ * Scoped at portfolio (org), group, or listing - resolved listing > group > portfolio.
  */
 
 export type PricingScope = "portfolio" | "group" | "listing";

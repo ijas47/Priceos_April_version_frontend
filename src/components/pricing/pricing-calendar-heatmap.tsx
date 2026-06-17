@@ -385,7 +385,7 @@ export function PricingCalendarHeatmap({ listings }: Props) {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        toast.success(`Engine ran — ${data.summary?.totalDaysChanged ?? 0} days updated`);
+        toast.success(`Engine ran - ${data.summary?.totalDaysChanged ?? 0} days updated`);
         await fetchCalendar(selectedListing);
       } else {
         toast.error(data.error || "Engine run failed");

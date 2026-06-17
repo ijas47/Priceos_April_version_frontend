@@ -1,5 +1,5 @@
 /**
- * Events Source Prompt — AI Fallback
+ * Events Source Prompt - AI Fallback
  *
  * Structure: ROLE → GOAL → CONTEXT → INSTRUCTIONS → EXAMPLES → OUTPUT SCHEMA
  *
@@ -81,7 +81,7 @@ export function buildEventsPrompt(
   return `## ROLE
 
 You are an events intelligence analyst for short-term rental revenue management.
-You identify upcoming events that create demand spikes for temporary accommodation —
+You identify upcoming events that create demand spikes for temporary accommodation -
 conferences, sports events, festivals, holidays, concerts, and exhibitions.
 You are precise about dates, realistic about attendance, and conservative about
 confidence scores (only claim high confidence for annual/recurring events).
@@ -129,10 +129,10 @@ The detector runs per property group, matching on area + date range.
    whether an event is in this specific window, either omit it or use confidence ≤ 0.50
    and note the uncertainty in \`description\`.
 
-4. **Focus on events that drive overnight demand** — avoid day-trip events that
+4. **Focus on events that drive overnight demand** - avoid day-trip events that
    primarily attract locals who would not need accommodation.
 
-5. **Date precision matters** — use the best known dates. For multi-day events,
+5. **Date precision matters** - use the best known dates. For multi-day events,
    use the full span. For single days, set \`endDate\` = \`startDate\`.
 
 6. **Return only events within the date window** (${today} to ${endDate}).
@@ -142,7 +142,7 @@ The detector runs per property group, matching on area + date range.
 
 ## EXAMPLES
 
-### Example 1 — High-confidence recurring annual event
+### Example 1 - High-confidence recurring annual event
 
 \`\`\`json
 {
@@ -153,12 +153,12 @@ The detector runs per property group, matching on area + date range.
   "expectedImpact": "high",
   "estimatedAttendance": 180000,
   "description": "One of the world's largest technology conferences held annually at Dubai World Trade Centre. Drives 80–90% occupancy spikes in Business Bay and DIFC areas as 180,000+ international tech professionals attend.",
-  "source": "Annual calendar — GITEX Global confirmed dates",
+  "source": "Annual calendar - GITEX Global confirmed dates",
   "confidence": 0.92
 }
 \`\`\`
 
-### Example 2 — Medium-confidence scheduled event
+### Example 2 - Medium-confidence scheduled event
 
 \`\`\`json
 {
@@ -169,12 +169,12 @@ The detector runs per property group, matching on area + date range.
   "expectedImpact": "medium",
   "estimatedAttendance": 35000,
   "description": "Annual contemporary art fair at Madinat Jumeirah attracting gallery owners, collectors and art tourists from 50+ countries. Niche luxury audience concentrated in DIFC and Downtown Dubai.",
-  "source": "Art Dubai official calendar — annually held in March",
+  "source": "Art Dubai official calendar - annually held in March",
   "confidence": 0.80
 }
 \`\`\`
 
-### Example 3 — Public holiday (high confidence, variable attendance)
+### Example 3 - Public holiday (high confidence, variable attendance)
 
 \`\`\`json
 {
@@ -190,7 +190,7 @@ The detector runs per property group, matching on area + date range.
 }
 \`\`\`
 
-### Example 4 — Low confidence event (do NOT fabricate as high confidence)
+### Example 4 - Low confidence event (do NOT fabricate as high confidence)
 
 \`\`\`json
 {
@@ -200,8 +200,8 @@ The detector runs per property group, matching on area + date range.
   "endDate": "2026-12-16",
   "expectedImpact": "low",
   "estimatedAttendance": 12000,
-  "description": "Annual film festival if it resumes — the event was paused in 2018 and its return schedule is uncertain. Include with low confidence given scheduling uncertainty.",
-  "source": "Historical calendar — uncertain if 2026 edition confirmed",
+  "description": "Annual film festival if it resumes - the event was paused in 2018 and its return schedule is uncertain. Include with low confidence given scheduling uncertainty.",
+  "source": "Historical calendar - uncertain if 2026 edition confirmed",
   "confidence": 0.35
 }
 \`\`\`

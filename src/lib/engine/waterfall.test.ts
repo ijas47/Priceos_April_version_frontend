@@ -9,8 +9,8 @@ import {
 
 /**
  * Characterization tests for the pricing waterfall. These pin the most
- * important correctness property — the final price ALWAYS lands inside the
- * floor/ceiling band — plus a few core behaviors, so the 295-line computeDay
+ * important correctness property - the final price ALWAYS lands inside the
+ * floor/ceiling band - plus a few core behaviors, so the 295-line computeDay
  * can be refactored safely later.
  */
 
@@ -57,7 +57,7 @@ const noBooking: BookingContext = {
 const today = new Date("2026-06-14T00:00:00.000Z");
 const date = new Date("2026-08-01T00:00:00.000Z"); // ~48 days out
 
-describe("computeDay — floor/ceiling invariant", () => {
+describe("computeDay - floor/ceiling invariant", () => {
   it("keeps the base case at base price within the band", () => {
     const res = computeDay(date, today, makeConfig(), [], noBooking);
     expect(res.price).toBe(500);
@@ -156,7 +156,7 @@ describe("computeDay — floor/ceiling invariant", () => {
   });
 });
 
-describe("computeDay — rule effects", () => {
+describe("computeDay - rule effects", () => {
   it("marks the day unavailable for an ADMIN_BLOCK rule", () => {
     const block: Rule = {
       id: 4,
@@ -189,7 +189,7 @@ describe("computeDay — rule effects", () => {
   });
 });
 
-describe("computeDay — Pass 0 market anchor", () => {
+describe("computeDay - Pass 0 market anchor", () => {
   it("de-anchors from listed price toward comp-set and pacing blend", () => {
     const signal: MarketSignal = { compSetP50: 620, pacingAdr: 600, monthAnchorAdr: 580 };
     const res = computeDay(date, today, makeConfig({ basePrice: 165 }), [], noBooking, signal);
@@ -226,7 +226,7 @@ describe("computeDay — Pass 0 market anchor", () => {
   });
 });
 
-describe("computeDay — booking recency", () => {
+describe("computeDay - booking recency", () => {
   const recencyConfig = {
     enabled: true,
     minDiscountPct: 5,
@@ -268,7 +268,7 @@ describe("computeDay — booking recency", () => {
   });
 });
 
-describe("computeDay — crisis regime", () => {
+describe("computeDay - crisis regime", () => {
   it("caps price at comp p25 on tier 4 crisis", () => {
     const signal: MarketSignal = { compSetP25: 420, compSetP50: 480 };
     const res = computeDay(

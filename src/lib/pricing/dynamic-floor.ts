@@ -5,7 +5,7 @@ export interface DynamicFloorInput {
   leadTimeDays: number;
   stlyRate: number | null;
   safetyConfig?: SafetyMinimumPriceConfig | null;
-  /** Market comp p25 — soft near-term floor guard */
+  /** Market comp p25 - soft near-term floor guard */
   compSetP25?: number | null;
   /** Apply comp p25 guard within this lead time (days). 0 = disabled. */
   nearTermCompGuardDays?: number;

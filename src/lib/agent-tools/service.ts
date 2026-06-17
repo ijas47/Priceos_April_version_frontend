@@ -1,5 +1,5 @@
 /**
- * agent-tools/service.ts — FRONTEND PROXY
+ * agent-tools/service.ts - FRONTEND PROXY
  *
  * All business logic has been moved to priceos-backend.
  * This module is a thin HTTP client that proxies calls to the FastAPI

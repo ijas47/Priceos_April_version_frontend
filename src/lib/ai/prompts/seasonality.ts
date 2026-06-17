@@ -5,7 +5,7 @@
  *
  * The Seasonality Source calls this prompt once per area per year.
  * It asks the AI to produce a 12-month demand profile for the given
- * market area — used by the seasonality detector to compute demand
+ * market area - used by the seasonality detector to compute demand
  * index multipliers and flag low/high season signals.
  *
  * Market-neutral: currency and market injected at call time from org.settings.
@@ -101,7 +101,7 @@ to set baseline demand multipliers, flag high/low season windows, and calibrate
 nightly rate recommendations throughout the year.
 
 You are accurate about known seasonal patterns (weather, holidays, events, tourism
-flows) and conservative when estimating growth — you base year-over-year projections
+flows) and conservative when estimating growth - you base year-over-year projections
 on observable market trends, not optimistic assumptions.
 
 ---
@@ -143,7 +143,7 @@ All monetary values in **${currency}**.
 
 ## INSTRUCTIONS
 
-1. **Return exactly 12 entries** — one per calendar month (month 1–12), all for year ${year}.
+1. **Return exactly 12 entries** - one per calendar month (month 1–12), all for year ${year}.
 
 2. **Base demand on observable factors:**
    - Weather / climate patterns for the area
@@ -155,13 +155,13 @@ All monetary values in **${currency}**.
 3. **ADR estimation:**
    - Use realistic market rates for the specific area and bedroom mix
    - Scale ADR proportionally with demandIndex (peak months should show higher ADR)
-   - Avoid round numbers — use realistic precision (e.g. 547, not 500)
+   - Avoid round numbers - use realistic precision (e.g. 547, not 500)
 
 4. **peakDays and troughDays:**
    - List specific dates within the month (YYYY-MM-DD format)
    - peakDays: public holidays, long weekends, event dates, event eve nights
    - troughDays: typically mid-week in low season; specific slow periods
-   - Limit to 5 dates each — only list dates you are reasonably confident about
+   - Limit to 5 dates each - only list dates you are reasonably confident about
 
 5. **yoyChange:** Estimate based on market growth trend. Typical STR markets
    show 3–8% YoY ADR growth in healthy conditions; negative during macro downturns.
@@ -173,7 +173,7 @@ All monetary values in **${currency}**.
 
 ## EXAMPLES
 
-### Example 1 — Peak month (high season)
+### Example 1 - Peak month (high season)
 
 \`\`\`json
 {
@@ -189,7 +189,7 @@ All monetary values in **${currency}**.
 }
 \`\`\`
 
-### Example 2 — Low season trough month
+### Example 2 - Low season trough month
 
 \`\`\`json
 {
@@ -201,11 +201,11 @@ All monetary values in **${currency}**.
   "yoyChange": 2.1,
   "peakDays": ["2026-08-14", "2026-08-15"],
   "troughDays": ["2026-08-03", "2026-08-04", "2026-08-10", "2026-08-11", "2026-08-18"],
-  "notes": "August is the deepest trough of the year — extreme heat (45°C+) eliminates outdoor tourism. Mid-week days in the first three weeks are consistently the slowest; any lift comes from short-haul GCC residents seeking mall-based staycations on weekends."
+  "notes": "August is the deepest trough of the year - extreme heat (45°C+) eliminates outdoor tourism. Mid-week days in the first three weeks are consistently the slowest; any lift comes from short-haul GCC residents seeking mall-based staycations on weekends."
 }
 \`\`\`
 
-### Example 3 — Shoulder month with embedded event spike
+### Example 3 - Shoulder month with embedded event spike
 
 \`\`\`json
 {
@@ -221,7 +221,7 @@ All monetary values in **${currency}**.
 }
 \`\`\`
 
-### Example 4 — Ramadan month (variable, event-driven)
+### Example 4 - Ramadan month (variable, event-driven)
 
 \`\`\`json
 {
@@ -241,7 +241,7 @@ All monetary values in **${currency}**.
 
 ## OUTPUT SCHEMA
 
-Return a **JSON array of exactly 12 objects** — one per month, ordered month 1 through 12.
+Return a **JSON array of exactly 12 objects** - one per month, ordered month 1 through 12.
 
 Return ONLY valid JSON array. No markdown fences. No explanatory text. Array must have exactly 12 elements.`;
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 /**
  * ═══════════════════════════════════════════════════════════
- * PriceOS API — Standardized Response Helpers
+ * PriceOS API - Standardized Response Helpers
  * Every v1 endpoint uses these to ensure consistent JSON format.
  * ═══════════════════════════════════════════════════════════
  */
@@ -14,7 +14,7 @@ interface ApiMeta {
 }
 
 /**
- * Success response — 2xx
+ * Success response - 2xx
  * 
  * @example
  * return apiSuccess({ listings: [...] });
@@ -34,7 +34,7 @@ export function apiSuccess(data: unknown, meta?: Record<string, unknown>, status
 }
 
 /**
- * Error response — 4xx / 5xx
+ * Error response - 4xx / 5xx
  * 
  * @example
  * return apiError("VALIDATION_ERROR", "Message is required", 400);

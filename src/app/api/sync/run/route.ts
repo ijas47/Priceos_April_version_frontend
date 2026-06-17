@@ -7,7 +7,7 @@ export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/sync/run — runs a REAL source pipeline (no simulation).
+ * POST /api/sync/run - runs a REAL source pipeline (no simulation).
  *
  *   hostaway     → import listings/calendar/reservations (delegates to /api/sync/trigger logic)
  *   events       → fetch verified events (SERP/Ticketmaster/Eventbrite) into MarketEvent
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     const runHostaway = async () => {
       // Re-uses the live import via internal call to /api/sync/trigger.
       const listingCount = await Listing.countDocuments({ orgId: orgOid });
-      logs.push(`[hostaway] ${listingCount} listings currently in DB — use Sync page → "Import from Hostaway" for a full live import (long-running).`);
+      logs.push(`[hostaway] ${listingCount} listings currently in DB - use Sync page → "Import from Hostaway" for a full live import (long-running).`);
       recordsProcessed += listingCount;
     };
 
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         try { await runAirbtics(); } catch (e) { logs.push(`[airbtics] ${(e as Error).message}`); }
       }
       if (sourceId === "seasonality") {
-        logs.push(`[seasonality] Seasonal pricing comes from SEASON rules in Pricing Rules — nothing to sync.`);
+        logs.push(`[seasonality] Seasonal pricing comes from SEASON rules in Pricing Rules - nothing to sync.`);
       }
     } catch (err) {
       status = "error";

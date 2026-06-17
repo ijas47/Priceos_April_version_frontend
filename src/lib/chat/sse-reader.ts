@@ -75,7 +75,7 @@ export async function readSSEStream(
                         onError(evt.message || "Unknown error");
                         break;
 
-                    // output_generated, agent_event, etc. — already forwarded via onEvent above
+                    // output_generated, agent_event, etc. - already forwarded via onEvent above
                 }
             } catch {
                 // ── RAW TEXT CHUNK (Lyzr streams raw JSON fragments) ──────────

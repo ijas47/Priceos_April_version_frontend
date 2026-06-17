@@ -57,7 +57,7 @@ export function MarketEventsTable() {
                 const params = new URLSearchParams();
                 const orgId = getOrgId() ?? (await resolveOrgId());
                 if (!orgId) {
-                    setError("Not signed in — org context missing");
+                    setError("Not signed in - org context missing");
                     setLoading(false);
                     return;
                 }
@@ -315,7 +315,7 @@ export function MarketEventsTable() {
                                                     </span>
                                                 </div>
                                             ) : (
-                                                <span className="text-xs text-muted-foreground/50 italic">—</span>
+                                                <span className="text-xs text-muted-foreground/50 italic">-</span>
                                             )}
                                         </TableCell>
                                     </TableRow>

@@ -6,7 +6,7 @@ import { format, addDays } from "date-fns";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/agent-tools/portfolio-overview?dateFrom&dateTo — occupancy & rate summary. */
+/** GET /api/agent-tools/portfolio-overview?dateFrom&dateTo - occupancy & rate summary. */
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();

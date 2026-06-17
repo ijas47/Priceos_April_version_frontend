@@ -1,16 +1,16 @@
 /**
- * Structured research sources — SERP API (Google Events / News / Search),
+ * Structured research sources - SERP API (Google Events / News / Search),
  * Ticketmaster Discovery, Eventbrite, NewsAPI.
  *
  * These return VERIFIABLE, structured data. They are always preferred over
  * LLM-based research (Perplexity), which is only used as a last-resort
  * synthesizer and is capped at low confidence.
  *
- * Env keys (all optional — each source skips cleanly when unset):
+ * Env keys (all optional - each source skips cleanly when unset):
  *   SERP_API_KEY          serpapi.com
  *   TICKETMASTER_API_KEY  developer.ticketmaster.com (Discovery v2)
  *   EVENTBRITE_API_KEY    eventbrite.com (private token)
- *   DUBAI_GOV_API_KEY     Dubai Gov portal (DTCM + DCUL events) — alias: DTCM_API_KEY
+ *   DUBAI_GOV_API_KEY     Dubai Gov portal (DTCM + DCUL events) - alias: DTCM_API_KEY
  *   NEWS_API_KEY          newsapi.org
  */
 
@@ -82,7 +82,7 @@ function parseSerpEventDate(d: { start_date?: string; when?: string } | undefine
 
 // ── SERP API ────────────────────────────────────────────────────────────────────
 
-/** Google Events via SerpAPI — structured event listings for a location. */
+/** Google Events via SerpAPI - structured event listings for a location. */
 export async function serpGoogleEvents(
     location: string,
     opts: { dateFrom?: string; dateTo?: string } = {}
@@ -129,7 +129,7 @@ export async function serpGoogleEvents(
     }
 }
 
-/** Google News via SerpAPI — recent news affecting travel demand for a location. */
+/** Google News via SerpAPI - recent news affecting travel demand for a location. */
 export async function serpGoogleNews(
     query: string
 ): Promise<{ news: SourceNews[]; error?: SourceError }> {
@@ -157,7 +157,7 @@ export async function serpGoogleNews(
     }
 }
 
-/** Plain Google search via SerpAPI — for market-rate / competitor research. */
+/** Plain Google search via SerpAPI - for market-rate / competitor research. */
 export async function serpGoogleSearch(
     query: string
 ): Promise<{ results: Array<{ title: string; snippet: string; url?: string }>; error?: SourceError }> {
@@ -215,7 +215,7 @@ export async function ticketmasterEvents(
     }
 }
 
-// ── Eventbrite (best-effort — public search API is deprecated) ──────────────────
+// ── Eventbrite (best-effort - public search API is deprecated) ──────────────────
 
 export async function eventbriteEvents(
     city: string,
@@ -247,7 +247,7 @@ export async function eventbriteEvents(
         }));
         return { events };
     } catch (err) {
-        // Eventbrite's public search endpoint was retired for new apps — tolerate 404s.
+        // Eventbrite's public search endpoint was retired for new apps - tolerate 404s.
         return { events: [], error: { source: "eventbrite", error: (err as Error).message } };
     }
 }

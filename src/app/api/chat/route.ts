@@ -69,7 +69,7 @@ export interface ChatResponsePayload {
 
 export const maxDuration = 300;
 
-/** Poll async agent job status — GET /api/chat?jobId=... */
+/** Poll async agent job status - GET /api/chat?jobId=... */
 export async function GET(req: NextRequest) {
     try {
         const jobId = req.nextUrl.searchParams.get("jobId");
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Run synchronously — Vercel serverless does not reliably finish
+        // Run synchronously - Vercel serverless does not reliably finish
         // background work scheduled via after(), which left jobs stuck "running".
         const result = await runChat(body, session.orgId);
         return NextResponse.json(result);
@@ -129,7 +129,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
         const { message, context, sessionId, dateRange } = body;
 
         console.log(`\n${"═".repeat(60)}`);
-        console.log(`📩 CHAT REQUEST — ${requestTimestamp}`);
+        console.log(`📩 CHAT REQUEST - ${requestTimestamp}`);
         console.log(`${"═".repeat(60)}`);
         console.log(`  Context:  ${context.type} | Property: ${context.propertyName || "(portfolio)"}`);
         console.log(`  Range:    ${dateRange ? `${dateRange.from} → ${dateRange.to}` : "(none)"}`);
@@ -452,7 +452,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     },
                     per_day: compactStlyDays(stlySummary),
                     usage_note:
-                        "STLY is actual prior-year calendar/reservation data — NOT benchmark.p50 or listing.price. Weight ~20% in narrative; engine rules ~20%; comps/pacing dominate.",
+                        "STLY is actual prior-year calendar/reservation data - NOT benchmark.p50 or listing.price. Weight ~20% in narrative; engine rules ~20%; comps/pacing dominate.",
                 },
                 engine_proposals: engineProposals,
                 pricing_rules: pricingRules,
@@ -498,12 +498,12 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
         const windowFrom = dateRange?.from ?? today;
         const windowTo = dateRange?.to ?? windowFrom;
         const temporalRules = [
-            `[TEMPORAL GROUNDING — MANDATORY]`,
+            `[TEMPORAL GROUNDING - MANDATORY]`,
             `Today's date: ${today}`,
             `Analysis window: ${windowFrom} → ${windowTo}`,
             `Only cite events from market_events whose start_date/end_date overlap this window.`,
             `Never mention seasonal events (e.g. Ramadan, Eid, F1) unless they fall inside the analysis window per the injected data.`,
-            `If no overlapping event exists in market_events, write "No major events in this period" — do not invent events.`,
+            `If no overlapping event exists in market_events, write "No major events in this period" - do not invent events.`,
         ].join("\n");
 
         let anchoredMessage = message;
@@ -543,7 +543,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
 
         if (!response.ok) {
             const rawText = await response.text();
-            console.error(`\n❌ LYZR API ERROR — ${response.status}: ${rawText.substring(0, 300)}`);
+            console.error(`\n❌ LYZR API ERROR - ${response.status}: ${rawText.substring(0, 300)}`);
             throw new Error("AI agent is temporarily unavailable. Please try again.");
         }
 
@@ -589,7 +589,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                             : { type: "portfolio" },
                     metadata: { context, dateRange, proposals: enforcedProposals },
                 });
-                console.log(`\n✅ AGENT REPLY SAVED — ${duration}ms`);
+                console.log(`\n✅ AGENT REPLY SAVED - ${duration}ms`);
             }
         } catch (err) {
             console.error("Failed to save assistant reply to DB:", err);
@@ -602,7 +602,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
     } catch (error) {
         const duration = Math.round(performance.now() - startTime);
         console.error(
-            `\n💥 UNHANDLED ERROR — ${duration}ms:`,
+            `\n💥 UNHANDLED ERROR - ${duration}ms:`,
             error instanceof Error ? error.message : error
         );
         if (error instanceof Error) throw error;
@@ -691,7 +691,7 @@ function enforceGuardrails(
         if (citesEventSignal && lowestTrust <= 0 && changePct > UNVERIFIED_PREMIUM_REJECT_PCT) {
             verdict = "REJECTED";
             notes.push(
-                `Event-driven +${changePct}% rejected — only unverified sources (ai_detected/perplexity) for ${proposalDate}`
+                `Event-driven +${changePct}% rejected - only unverified sources (ai_detected/perplexity) for ${proposalDate}`
             );
         } else if (citesEventSignal && lowestTrust <= 0 && changePct > UNVERIFIED_PREMIUM_CAP_PCT) {
             const cappedPrice = Math.round(currentPrice * (1 + UNVERIFIED_PREMIUM_CAP_PCT / 100));

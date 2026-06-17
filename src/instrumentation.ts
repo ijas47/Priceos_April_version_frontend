@@ -1,5 +1,5 @@
 /**
- * Next.js instrumentation hook — runs once at server startup before any routes are served.
+ * Next.js instrumentation hook - runs once at server startup before any routes are served.
  * Validates that all required environment variables are present so the app fails fast
  * with a clear message rather than crashing on the first request.
  */
@@ -21,10 +21,10 @@ export async function register() {
 
   // Only validate vars the frontend actually uses.
   // MONGODB_URI, JWT_REFRESH_SECRET, LYZR_API_KEY, LYZR_API_URL all belong
-  // in the FastAPI backend — the frontend never calls Lyzr or MongoDB directly.
+  // in the FastAPI backend - the frontend never calls Lyzr or MongoDB directly.
   const required: Record<string, string> = {
     NEXT_PUBLIC_API_URL: "FastAPI backend base URL (e.g. http://localhost:8000/api)",
-    JWT_SECRET: "JWT signing secret — must match the backend's JWT_SECRET",
+    JWT_SECRET: "JWT signing secret - must match the backend's JWT_SECRET",
   };
 
   const missing: string[] = [];
@@ -32,7 +32,7 @@ export async function register() {
   for (const [name, description] of Object.entries(required)) {
     const value = process.env[name];
     if (!value || value.trim().length === 0) {
-      missing.push(`  ${name} — ${description}`);
+      missing.push(`  ${name} - ${description}`);
     }
   }
 

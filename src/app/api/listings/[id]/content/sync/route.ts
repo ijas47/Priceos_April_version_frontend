@@ -5,7 +5,7 @@ import { syncListingContentFromHostaway } from "@/lib/listing-content/snapshot";
 
 export const dynamic = "force-dynamic";
 
-/** POST /api/listings/[id]/content/sync — pull live content from Hostaway */
+/** POST /api/listings/[id]/content/sync - pull live content from Hostaway */
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

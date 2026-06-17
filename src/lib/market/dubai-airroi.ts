@@ -284,7 +284,7 @@ export async function buildDubaiMarketSignals(
   return map;
 }
 
-/** Merge Dubai signals over Airbtics — Dubai wins for comp/month fields. */
+/** Merge Dubai signals over Airbtics - Dubai wins for comp/month fields. */
 export function mergeMarketSignals(
   dubai: Map<string, MarketSignal>,
   airbtics: Map<string, MarketSignal>

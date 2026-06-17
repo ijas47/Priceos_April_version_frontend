@@ -21,7 +21,7 @@ function ForgotPasswordContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  // emailSent state removed — direct password reset, no email needed
+  // emailSent state removed - direct password reset, no email needed
 
   const [error, setError] = useState("");
 

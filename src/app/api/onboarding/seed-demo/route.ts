@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
     const existing = await Listing.countDocuments({ orgId });
     if (existing > 0) {
-      // Already has data — nothing to do.
+      // Already has data - nothing to do.
       return NextResponse.redirect(new URL("/dashboard?seeded=existing", req.url));
     }
 
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
     for (let li = 0; li < SAMPLE_LISTINGS_SEED.length; li++) {
       const seed = SAMPLE_LISTINGS_SEED[li];
-      // hostawayId is unique across orgs — namespace per org to stay idempotent globally
+      // hostawayId is unique across orgs - namespace per org to stay idempotent globally
       const listing = await Listing.create({
         ...seed,
         hostawayId: `${seed.hostawayId}_${orgId.slice(-6)}`,

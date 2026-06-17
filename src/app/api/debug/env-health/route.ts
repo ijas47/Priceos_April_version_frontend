@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/debug/env-health
- * Reports which expected environment variables are set — booleans only,
+ * Reports which expected environment variables are set - booleans only,
  * values are never exposed. Session-required.
  */
 const EXPECTED_KEYS = [
@@ -79,16 +79,16 @@ export async function GET() {
   let researchHint: string;
   if (!hasVerifiedFeed) {
     researchHint =
-      "No verified event feeds configured — set SERP_API_KEY (minimum) or TICKETMASTER_API_KEY. Without these, setup falls back to Perplexity/Lyzr memory (unverified).";
+      "No verified event feeds configured - set SERP_API_KEY (minimum) or TICKETMASTER_API_KEY. Without these, setup falls back to Perplexity/Lyzr memory (unverified).";
   } else if (!researchFeeds.serp) {
     researchHint =
-      "Ticketed feeds only — add SERP_API_KEY for Google Events/News coverage.";
+      "Ticketed feeds only - add SERP_API_KEY for Google Events/News coverage.";
   } else if (!researchFeeds.newsApi) {
     researchHint =
-      "SERP configured — add NEWS_API_KEY for additional demand-signal news.";
+      "SERP configured - add NEWS_API_KEY for additional demand-signal news.";
   } else {
     researchHint =
-      "Verified research feeds ready — Run Aria / Sync Events will use SERP + NewsAPI before any Perplexity fallback.";
+      "Verified research feeds ready - Run Aria / Sync Events will use SERP + NewsAPI before any Perplexity fallback.";
   }
 
   return NextResponse.json({
@@ -100,8 +100,8 @@ export async function GET() {
     hostawayHint: !hasHostawayToken
       ? "Set HOSTAWAY_API_KEY (or Hostaway_Authorization_token) in Vercel"
       : hostawayMode !== "live"
-        ? `HOSTAWAY_MODE is "${hostawayMode}" — set it to "live" and redeploy`
-        : "Ready — use Sync page → Import from Hostaway",
+        ? `HOSTAWAY_MODE is "${hostawayMode}" - set it to "live" and redeploy`
+        : "Ready - use Sync page → Import from Hostaway",
     researchFeeds,
     researchFeedsReady: hasVerifiedFeed,
     cronReady: health.CRON_SECRET === "SET",

@@ -96,7 +96,7 @@ export function BenchmarkPanel({ orgId, listingId, listingName, currency = "AED"
           setData(null);
           return;
         }
-        // Normalise comp objects — cache vs BenchmarkData have slightly different shapes
+        // Normalise comp objects - cache vs BenchmarkData have slightly different shapes
         const comps: Comp[] = (d.comps ?? []).map((c: any) => ({
           name: c.name || c.listing_name || "Unknown",
           source: c.source || c.platform || "Market",
@@ -181,10 +181,10 @@ export function BenchmarkPanel({ orgId, listingId, listingName, currency = "AED"
           </div>
           {percentileBar(data.percentile)}
           <div className="flex justify-between text-[10px] text-text-disabled">
-            <span>P25: {data.p25Rate ?? "—"}</span>
-            <span>P50: {data.p50Rate ?? "—"}</span>
-            <span>P75: {data.p75Rate ?? "—"}</span>
-            <span>P90: {data.p90Rate ?? "—"}</span>
+            <span>P25: {data.p25Rate ?? "-"}</span>
+            <span>P50: {data.p50Rate ?? "-"}</span>
+            <span>P75: {data.p75Rate ?? "-"}</span>
+            <span>P90: {data.p90Rate ?? "-"}</span>
           </div>
         </div>
       )}
@@ -203,7 +203,7 @@ export function BenchmarkPanel({ orgId, listingId, listingName, currency = "AED"
               "text-sm font-bold tabular-nums",
               s.highlight ? "text-primary" : "text-text-primary"
             )}>
-              {s.value ? `${currency} ${s.value.toLocaleString("en-US")}` : "—"}
+              {s.value ? `${currency} ${s.value.toLocaleString("en-US")}` : "-"}
             </p>
           </div>
         ))}
@@ -253,7 +253,7 @@ export function BenchmarkPanel({ orgId, listingId, listingName, currency = "AED"
                       {comp.avgRate.toLocaleString("en-US")}
                     </p>
                     <p className="text-xs text-text-tertiary text-right">
-                      {comp.rating ? `★ ${comp.rating}` : "—"}
+                      {comp.rating ? `★ ${comp.rating}` : "-"}
                     </p>
                     <div className="flex justify-end">
                       {comp.sourceUrl ? (

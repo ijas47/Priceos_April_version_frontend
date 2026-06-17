@@ -120,7 +120,7 @@ interface EngineConfig {
   adjacentTurnoverCost: number;
   allowedCheckinDays: number[];
   allowedCheckoutDays: number[];
-  // Occupancy-based adjustments (KB Tier 1 #4 — Revenue 9/10)
+  // Occupancy-based adjustments (KB Tier 1 #4 - Revenue 9/10)
   occupancyEnabled: boolean;
   occupancyTargetPct: number;
   occupancyHighThresholdPct: number;
@@ -346,7 +346,7 @@ function GuardrailsTab({
               placeholder="e.g. 300"
               className="h-9 bg-white/5 border-white/10 text-sm"
             />
-            <p className="text-[10px] text-muted-foreground/80 mt-1">Minimum price — engine never goes below this</p>
+            <p className="text-[10px] text-muted-foreground/80 mt-1">Minimum price - engine never goes below this</p>
           </div>
           <div>
             <Label className="text-xs text-text-tertiary mb-1.5 block">Ceiling Price ({currency})</Label>
@@ -357,7 +357,7 @@ function GuardrailsTab({
               placeholder="e.g. 3000"
               className="h-9 bg-white/5 border-white/10 text-sm"
             />
-            <p className="text-[10px] text-muted-foreground/80 mt-1">Maximum price — engine never exceeds this</p>
+            <p className="text-[10px] text-muted-foreground/80 mt-1">Maximum price - engine never exceeds this</p>
           </div>
         </div>
       </div>
@@ -427,11 +427,11 @@ function GuardrailsTab({
         </div>
       </div>
 
-      {/* Weekend Minimum Pricing — KB Tier 2 #8 */}
+      {/* Weekend Minimum Pricing - KB Tier 2 #8 */}
       <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 space-y-4">
         <div>
           <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Weekend Minimum Price</h3>
-          <p className="text-[11px] text-text-tertiary mt-0.5">KB Tier 2 #8 — Floor price applied only on selected weekend nights (e.g. Thu/Fri)</p>
+          <p className="text-[11px] text-text-tertiary mt-0.5">KB Tier 2 #8 - Floor price applied only on selected weekend nights (e.g. Thu/Fri)</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -840,7 +840,7 @@ function LeadTimeTab({
               />
               <span>
                 <span className="font-medium">Gradual Ramp Curve</span>
-                <span className="text-muted-foreground/80 ml-1">(KB Tier 1 #3 — tapers from max% at day 1 to min% at day N)</span>
+                <span className="text-muted-foreground/80 ml-1">(KB Tier 1 #3 - tapers from max% at day 1 to min% at day N)</span>
               </span>
             </label>
 
@@ -1475,7 +1475,7 @@ function DateOverridesTab({
   );
 }
 
-// ── Occupancy Tab (KB Tier 1 #4 — Revenue 9/10) ──────────────────────────────
+// ── Occupancy Tab (KB Tier 1 #4 - Revenue 9/10) ──────────────────────────────
 
 function OccupancyTab({
   listingId,
@@ -1551,7 +1551,7 @@ function OccupancyTab({
       <div className="flex items-start gap-2 text-xs bg-amber/5 border border-amber/20 rounded-lg p-3">
         <Info className="h-3.5 w-3.5 mt-0.5 text-amber shrink-0" />
         <span className="text-text-secondary">
-          <span className="font-semibold text-amber">KB Tier 1 #4 — Revenue 9/10.</span>{" "}
+          <span className="font-semibold text-amber">KB Tier 1 #4 - Revenue 9/10.</span>{" "}
           The single most powerful revenue lever for multi-unit operators. Adjusts prices dynamically
           based on how booked the property already is relative to a target occupancy rate.
         </span>
@@ -1845,13 +1845,13 @@ function MinStayTab({
 
 const STUDIO_TABS = [
   { value: "guardrails", label: "Guardrails", icon: Shield, tooltip: "Global floor/ceiling prices and stay limits. These always win last." },
-  { value: "seasons", label: "Seasons", icon: Sun, tooltip: "Seasonal calendar — maps date ranges to pricing & minimum-stay profiles." },
+  { value: "seasons", label: "Seasons", icon: Sun, tooltip: "Seasonal calendar - maps date ranges to pricing & minimum-stay profiles." },
   { value: "leadtime", label: "Lead Time", icon: Clock, tooltip: "Last-minute discounts, far-out premiums, and day-of-week logic." },
   { value: "gap", label: "Gap Logic", icon: Layers, tooltip: "Inventory rules for orphan nights and short gaps between bookings." },
   { value: "los", label: "LOS Discounts", icon: TrendingDown, tooltip: "Length of Stay discounts (e.g. 7+ nights, 30+ nights)." },
   { value: "overrides", label: "Date Overrides", icon: AlignLeft, tooltip: "High-priority overrides for specific events or manual blocks." },
   { value: "occupancy", label: "Occupancy", icon: Activity, tooltip: "Occupancy × lead-time matrix tied to your portfolio calendar." },
-  { value: "minstay", label: "Minstay", icon: CalendarRange, tooltip: "Minimum stay profile — inherit portfolio or override per unit." },
+  { value: "minstay", label: "Minstay", icon: CalendarRange, tooltip: "Minimum stay profile - inherit portfolio or override per unit." },
 ];
 
 interface Props {

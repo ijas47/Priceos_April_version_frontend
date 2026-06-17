@@ -72,7 +72,7 @@ export async function syncListingsToDb(
 }
 
 /**
- * Sync reservations to database — upsert by hostawayReservationId
+ * Sync reservations to database - upsert by hostawayReservationId
  */
 export async function syncReservationsToDb(
     pmsReservations: Array<{
@@ -133,7 +133,7 @@ export async function syncReservationsToDb(
 }
 
 /**
- * Sync calendar days for listings — upsert by listingId+date
+ * Sync calendar days for listings - upsert by listingId+date
  */
 export async function syncCalendarToDb(
     pmsClient: PMSClient,

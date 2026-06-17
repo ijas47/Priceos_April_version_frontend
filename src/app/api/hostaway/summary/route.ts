@@ -199,7 +199,7 @@ Respond in this exact JSON format:
                 actionItems: needsReply > 0 ? [`Reply to ${needsReply} pending message(s)`] : [],
                 bulletPoints: uniqueConversations.map((c) => {
                     const last = c.messages[c.messages.length - 1];
-                    return `${c.guestName}: "${last?.text || "No messages"}" — ${last?.sender === "guest" ? "NEEDS REPLY" : "Resolved"}`;
+                    return `${c.guestName}: "${last?.text || "No messages"}" - ${last?.sender === "guest" ? "NEEDS REPLY" : "Resolved"}`;
                 }),
                 totalConversations: uniqueConversations.length,
                 needsReplyCount: needsReply,

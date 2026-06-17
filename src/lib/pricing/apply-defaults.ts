@@ -73,7 +73,7 @@ export async function applyPricingPackToOrg(
             orgId: oid,
             listingId: lid,
             ruleType: "SEASON",
-            name: `[UAE] ${seg.name} — ${pack.pricingProfiles.find((p) => p.id === seg.pricingProfileId)?.name ?? seg.pricingProfileId}`,
+            name: `[UAE] ${seg.name} - ${pack.pricingProfiles.find((p) => p.id === seg.pricingProfileId)?.name ?? seg.pricingProfileId}`,
             enabled: true,
             priority: 10,
             startDate,

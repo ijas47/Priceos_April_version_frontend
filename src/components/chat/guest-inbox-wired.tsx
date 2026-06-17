@@ -452,7 +452,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
       setShowRewrite(true);
       toast.info("Add context and let Aria rewrite the draft");
     } else {
-      toast.success("Marked as helpful — Aria learns from this");
+      toast.success("Marked as helpful - Aria learns from this");
     }
     try {
       await fetch(`${api}/hostaway/draft-feedback`, {
@@ -460,7 +460,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orgId, conversationId: conv.id, feedback: type, draft: aiDraft }),
       });
-    } catch { /* silent — feedback is best-effort */ }
+    } catch { /* silent - feedback is best-effort */ }
   };
 
   const handleRewrite = async () => {
@@ -537,7 +537,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
       setShowDraft(true);
       // Auto-reply mode: pre-populate the textarea immediately
       if (autoReply) setDraftText(trimmed);
-      toast.success(autoReply ? "AI draft auto-staged — review & send" : "AI draft ready", { id: "ai-draft" });
+      toast.success(autoReply ? "AI draft auto-staged - review & send" : "AI draft ready", { id: "ai-draft" });
     } catch {
       toast.error("Failed to generate draft", { id: "ai-draft" });
     } finally {
@@ -570,7 +570,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
       toast.success(
         data.delivered
           ? "Reply sent to guest via Hostaway"
-          : "Reply saved (local only — guest delivery is disabled)"
+          : "Reply saved (local only - guest delivery is disabled)"
       );
     } catch {
       toast.error("Failed to save reply");
@@ -656,7 +656,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
             </button>
             <button
               onClick={() => { const next = !autoReply; setAutoReply(next); persistCommsMode(testMode, next); }}
-              title={autoReply ? "Auto-reply ON — AI sends directly" : "Auto-reply OFF — queued for PM approval"}
+              title={autoReply ? "Auto-reply ON - AI sends directly" : "Auto-reply OFF - queued for PM approval"}
               className={cn(
                 "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors",
                 autoReply
@@ -910,7 +910,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleFeedback("good")}
-                      title="Mark as good — helps Aria improve"
+                      title="Mark as good - helps Aria improve"
                       className={cn(
                         "flex items-center gap-1 text-[10px] transition-colors",
                         draftFeedback === "good" ? "text-emerald-400" : "text-text-muted hover:text-emerald-400"
@@ -920,7 +920,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
                     </button>
                     <button
                       onClick={() => handleFeedback("bad")}
-                      title="Mark as bad — opens rewrite panel"
+                      title="Mark as bad - opens rewrite panel"
                       className={cn(
                         "flex items-center gap-1 text-[10px] transition-colors",
                         draftFeedback === "bad" ? "text-red-400" : "text-text-muted hover:text-red-400"
@@ -934,7 +934,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
                   </div>
                 </div>
 
-                {/* Draft text — read or edit mode */}
+                {/* Draft text - read or edit mode */}
                 {isEditingDraft ? (
                   <Textarea
                     value={editableDraft}
@@ -1113,7 +1113,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
                 <div className="h-2 rounded-full bg-white/8 w-24" />
               </div>
             </div>
-            {/* Skeleton messages — alternating guest/host */}
+            {/* Skeleton messages - alternating guest/host */}
             {[
               { side: "left",  w: "w-52", h: "h-16" },
               { side: "right", w: "w-44", h: "h-10" },
@@ -1140,7 +1140,7 @@ export function GuestInboxWired({ orgId, properties }: { orgId: string; properti
         )}
       </div>
 
-      {/* Panel 3: Guest Profile — skeleton while loading, real content when conv available */}
+      {/* Panel 3: Guest Profile - skeleton while loading, real content when conv available */}
       {isSidebarCollapsed ? (
         <div className="w-10 shrink-0 flex flex-col bg-surface-1 border-l border-border-default items-center py-4 gap-6 select-none transition-all duration-300">
            <Tooltip>

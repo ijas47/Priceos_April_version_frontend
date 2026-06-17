@@ -69,7 +69,7 @@
 :root {
   --radius: 0.5rem;
 
-  /* PriceOS Core Tokens — Airtable-inspired light */
+  /* PriceOS Core Tokens - Airtable-inspired light */
   --surface-0: #ffffff;
   --surface-1: #f7f8fa;
   --surface-2: #eff1f5;
@@ -121,7 +121,7 @@
 }
 
 .dark {
-  /* PriceOS Core Tokens — calm dark with blue accent */
+  /* PriceOS Core Tokens - calm dark with blue accent */
   --surface-0: #121316;
   --surface-1: #1a1b1f;
   --surface-2: #24252b;

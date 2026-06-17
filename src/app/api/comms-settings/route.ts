@@ -3,7 +3,7 @@ import { connectDB, Organization } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
 
 /**
- * GET /api/comms-settings — returns the org's inbox comms toggles.
+ * GET /api/comms-settings - returns the org's inbox comms toggles.
  * Returns { liveMode, autoReply }.
  */
 export async function GET() {
@@ -22,7 +22,7 @@ export async function GET() {
 }
 
 /**
- * PUT /api/comms-settings — persists the org's inbox comms toggles.
+ * PUT /api/comms-settings - persists the org's inbox comms toggles.
  * Body: { liveMode, autoReply }
  */
 export async function PUT(req: NextRequest) {

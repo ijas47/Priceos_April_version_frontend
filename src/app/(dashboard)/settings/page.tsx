@@ -416,12 +416,12 @@ export default function SettingsPage() {
                     Market Intelligence Spec
                   </h4>
                   <div className="grid grid-cols-2 gap-4">
-                    <SpecRow label="Currency" value={activeMarket?.currency || "—"} />
+                    <SpecRow label="Currency" value={activeMarket?.currency || "-"} />
                     <SpecRow
                       label="Weekend"
                       value={(activeMarket?.weekend || "sat_sun").replace("_", " & ").toUpperCase()}
                     />
-                    <SpecRow label="Timezone" value={activeMarket?.timezone || "—"} />
+                    <SpecRow label="Timezone" value={activeMarket?.timezone || "-"} />
                     <SpecRow label="Market Code" value={selectedMarket} />
                   </div>
                 </div>

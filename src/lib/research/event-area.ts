@@ -1,5 +1,5 @@
 /**
- * Honest area labels for market events — only show a neighborhood when the
+ * Honest area labels for market events - only show a neighborhood when the
  * signal actually references it; otherwise city-wide (e.g. Dubai (overall)).
  */
 
@@ -10,7 +10,7 @@ export interface EventAreaInput {
   eventType?: "event" | "news";
   source?: string;
   city?: string;
-  /** Listing neighborhood — used only when title/venue mentions it */
+  /** Listing neighborhood - used only when title/venue mentions it */
   listingArea?: string;
   /** Stored area from DB (may be wrong legacy data) */
   storedArea?: string;
@@ -75,7 +75,7 @@ export function resolveEventDisplayArea(input: EventAreaInput): string {
     return cityOverallLabel(city);
   }
 
-  // Ticketed / gov feeds — area only when venue or title names it
+  // Ticketed / gov feeds - area only when venue or title names it
   const listingArea = input.listingArea?.trim();
   if (listingArea && listingArea !== city && textMentionsArea(haystack, listingArea)) {
     return listingArea;
@@ -83,7 +83,7 @@ export function resolveEventDisplayArea(input: EventAreaInput): string {
 
   // Venue-specific without neighborhood match → city overall (not random listing area)
   if (venue && venue.length > 2 && !textMentionsArea(haystack, city)) {
-    // Named venue but not a known neighborhood — still city-level unless we matched listing area
+    // Named venue but not a known neighborhood - still city-level unless we matched listing area
     return cityOverallLabel(city);
   }
 

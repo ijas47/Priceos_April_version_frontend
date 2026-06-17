@@ -91,7 +91,7 @@ const REPLACEMENTS = [
   [/border-amber-200 bg-amber-50 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950 dark:hover:bg-amber-900/g, "border-sky-200 bg-sky-50 hover:bg-sky-100 dark:border-sky-900 dark:bg-sky-950 dark:hover:bg-sky-900"],
   [/text-amber-600 dark:text-amber-400/g, "text-sky-700 dark:text-sky-400"],
 
-  // Warning semantics (occupancy mid-range) — use sky instead of amber
+  // Warning semantics (occupancy mid-range) - use sky instead of amber
   [/text-amber-500' : 'text-rose-500/g, "text-sky-500' : 'text-rose-500"],
 
   // Error states using orange

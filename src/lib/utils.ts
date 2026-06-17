@@ -13,6 +13,6 @@ export function cn(...inputs: ClassValue[]) {
 export function formatCurrency(amount: number | string, currencyCode?: string | null): string {
   const code = currencyCode || "AED";
   const num = Number(amount);
-  if (isNaN(num)) return `${code} —`;
+  if (isNaN(num)) return `${code} -`;
   return `${code} ${num.toLocaleString("en-US")}`;
 }

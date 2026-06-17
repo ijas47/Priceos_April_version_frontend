@@ -4,11 +4,11 @@
  * Run with: npm run db:seed
  *
  * Seeds:
- *   1. MarketTemplates   — 10 global markets
- *   2. Sources           — 4 pipeline sources
- *   3. Detectors         — 12 signal detectors
- *   4. Organization      — demo org (admin account)
- *   5. Listings          — 5 sample Dubai properties (linked to demo org)
+ *   1. MarketTemplates   - 10 global markets
+ *   2. Sources           - 4 pipeline sources
+ *   3. Detectors         - 12 signal detectors
+ *   4. Organization      - demo org (admin account)
+ *   5. Listings          - 5 sample Dubai properties (linked to demo org)
  *
  * IMPORTANT: Only run once on a fresh database, or it will skip existing docs.
  */

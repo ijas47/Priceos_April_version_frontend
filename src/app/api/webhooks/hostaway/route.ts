@@ -7,7 +7,7 @@ import { format } from "date-fns";
  *
  * Receives Hostaway unified webhooks (new guest messages, etc.) and upserts
  * them into MongoDB so the inbox updates in near-real-time instead of only
- * on sync. RECEIVE-ONLY — this never writes back to Hostaway.
+ * on sync. RECEIVE-ONLY - this never writes back to Hostaway.
  *
  * Security: fail-closed. Requires HOSTAWAY_WEBHOOK_SECRET to be configured and
  * matched via ?secret= query param or x-webhook-secret header. Without it the
@@ -19,7 +19,7 @@ import { format } from "date-fns";
 export async function POST(req: NextRequest) {
   const secret = process.env.HOSTAWAY_WEBHOOK_SECRET;
   if (!secret) {
-    console.error("[webhooks/hostaway] HOSTAWAY_WEBHOOK_SECRET not configured — refusing");
+    console.error("[webhooks/hostaway] HOSTAWAY_WEBHOOK_SECRET not configured - refusing");
     return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
   }
 
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       : null;
 
     if (!listing) {
-      console.warn(`[webhooks/hostaway] no listing for listingMapId=${listingMapId} — skipping`);
+      console.warn(`[webhooks/hostaway] no listing for listingMapId=${listingMapId} - skipping`);
       return NextResponse.json({ ok: true, ignored: "unmapped-listing" });
     }
 

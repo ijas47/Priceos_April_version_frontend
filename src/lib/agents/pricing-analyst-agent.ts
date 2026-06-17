@@ -51,7 +51,7 @@ export class PricingAnalystAgent {
       .lean();
     const eventWeight = org?.eventPricingWeight ?? "low";
 
-    // Scope events to this listing's org and city — without this, events
+    // Scope events to this listing's org and city - without this, events
     // cached by other tenants (or other cities) leak into pricing.
     const eventAnalysis = await this.eventAgent.analyzeEvents(startDate, endDate, {
       orgId: listing.orgId,
@@ -148,7 +148,7 @@ export class PricingAnalystAgent {
     const proposalIds: string[] = [];
     if (analysisResult.proposals.length === 0) return proposalIds;
 
-    // Resolve orgId once from the listing so every proposal row carries it —
+    // Resolve orgId once from the listing so every proposal row carries it -
     // org-scoped dashboards can't see proposals without it.
     const firstLid = new mongoose.Types.ObjectId(analysisResult.proposals[0].listingId);
     const owner = await Listing.findById(firstLid).select("orgId").lean();
@@ -229,7 +229,7 @@ export class PricingAnalystAgent {
     const allListings = await Listing.find(query).lean();
     const results = new Map<string, AnalysisResult>();
 
-    // Concurrency pool — 5 listings in parallel.
+    // Concurrency pool - 5 listings in parallel.
     const CONCURRENCY = 5;
     const queue = [...allListings];
     const worker = async () => {

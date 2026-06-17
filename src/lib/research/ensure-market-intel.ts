@@ -1,7 +1,7 @@
 /**
  * Window-aware verified market intelligence.
  *
- * SERP / NewsAPI / ticketed feeds run here — never invented by Lyzr at chat time.
+ * SERP / NewsAPI / ticketed feeds run here - never invented by Lyzr at chat time.
  * Chat and setup both call ensureVerifiedMarketIntel() so the injected window
  * always has fresh structured data when keys are configured.
  */
@@ -143,7 +143,7 @@ export interface UpsertIntelResult {
     sourcesUsed: string[];
 }
 
-/** Persist verified aggregator findings — shared by market-setup and chat refresh. */
+/** Persist verified aggregator findings - shared by market-setup and chat refresh. */
 export async function upsertVerifiedFindings(opts: {
     orgId: mongoose.Types.ObjectId;
     listingId: mongoose.Types.ObjectId;

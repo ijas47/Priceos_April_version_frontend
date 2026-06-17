@@ -1,5 +1,5 @@
 /**
- * SDG-DCUL-CulturalEvents — REST cultural events feed.
+ * SDG-DCUL-CulturalEvents - REST cultural events feed.
  * https://developer.dubai.gov.ae/portal/apis/b67333b6-2fbb-494d-9e55-b4d2e082a5f1
  */
 

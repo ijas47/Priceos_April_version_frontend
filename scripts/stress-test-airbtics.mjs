@@ -32,7 +32,7 @@ async function testAirbticsLive() {
   };
 
   if (!key) {
-    result.errors.push("AIRBTICS_API_KEY not set — all live calls skipped");
+    result.errors.push("AIRBTICS_API_KEY not set - all live calls skipped");
     return result;
   }
 
@@ -252,7 +252,7 @@ async function main() {
     console.log("   → Proposals still run from listing price + rules + calendar.");
     console.log("   → market-setup falls back to Lyzr benchmark when no p50ADR.");
   } else if (airbtics.errors.length) {
-    console.log("⚠️  API key set but some Airbtics calls failed — see errors above.");
+    console.log("⚠️  API key set but some Airbtics calls failed - see errors above.");
   } else {
     console.log("✅ Airbtics live API healthy.");
     console.log(`   Comp set listings: ${airbtics.compSet?.listings ?? 0}`);

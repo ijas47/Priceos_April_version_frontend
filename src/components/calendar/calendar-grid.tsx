@@ -135,7 +135,7 @@ export function CalendarGrid({ days, onRefresh }: CalendarGridProps) {
                   {formattedPrice}
                 </span>
               ) : (
-                <span className="mt-0.5 text-[10px] text-muted-foreground">—</span>
+                <span className="mt-0.5 text-[10px] text-muted-foreground">-</span>
               )}
               {isBooked && (
                 <span className="mt-0.5 text-[9px] font-medium uppercase tracking-wide text-red-600 dark:text-red-400">

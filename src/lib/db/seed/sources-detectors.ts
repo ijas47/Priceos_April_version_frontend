@@ -2,7 +2,7 @@ export const SOURCES_SEED = [
   {
     sourceId: "hostaway",
     name: "Hostaway Sync",
-    description: "Syncs listings, calendar availability, and reservations from Hostaway PMS. Read-only — never writes back to Hostaway.",
+    description: "Syncs listings, calendar availability, and reservations from Hostaway PMS. Read-only - never writes back to Hostaway.",
     iconName: "Database",
     schedule: "0 */4 * * *",
     scheduleLabel: "Every 4 hours",

@@ -7,10 +7,10 @@
  * "what is happening in <city> between <from> and <to>".
  *
  * Source trust ladder:
- *   1. Ticketmaster / Eventbrite   — confirmed ticketed events (confidence 0.9)
- *   2. SERP Google Events          — indexed listings        (confidence 0.8)
- *   3. SERP Google News / NewsAPI  — demand signals          (confidence 0.7)
- *   4. Perplexity (NOT here)       — only as a fallback in the research agent,
+ *   1. Ticketmaster / Eventbrite   - confirmed ticketed events (confidence 0.9)
+ *   2. SERP Google Events          - indexed listings        (confidence 0.8)
+ *   3. SERP Google News / NewsAPI  - demand signals          (confidence 0.7)
+ *   4. Perplexity (NOT here)       - only as a fallback in the research agent,
  *                                    capped at confidence 0.5 and labeled.
  *
  * Nothing in this module fabricates data: if no source has keys configured,
@@ -55,7 +55,7 @@ export interface MarketIntelligence {
     findings: IntelFinding[];
     sourcesUsed: string[];
     sourceErrors: SourceError[];
-    /** Per-feed counts — use in setup logs / debug to verify SERP vs NewsAPI vs ticketed sources */
+    /** Per-feed counts - use in setup logs / debug to verify SERP vs NewsAPI vs ticketed sources */
     sourceBreakdown: Record<string, SourceBreakdownEntry>;
     gatheredAt: string;
 }
@@ -182,7 +182,7 @@ export async function gatherMarketIntelligence(opts: {
     const findings: IntelFinding[] = [];
     const seen = new Set<string>();
 
-    // Events — ticketed sources first so they win the dedupe.
+    // Events - ticketed sources first so they win the dedupe.
     const allEvents: SourceEvent[] = [
         ...tmEv.events,
         ...ebEv.events,
@@ -218,7 +218,7 @@ export async function gatherMarketIntelligence(opts: {
         });
     }
 
-    // News — only items that clearly signal demand change.
+    // News - only items that clearly signal demand change.
     const allNews: SourceNews[] = [...serpNews.news, ...napiNews.news];
     for (const n of allNews) {
         const positive = NEWS_DEMAND_POSITIVE.test(n.title + " " + (n.snippet || ""));
@@ -242,7 +242,7 @@ export async function gatherMarketIntelligence(opts: {
         });
     }
 
-    // Curated annual calendar (GITEX, DSF, etc.) — high-confidence supplement
+    // Curated annual calendar (GITEX, DSF, etc.) - high-confidence supplement
     for (const annual of getKnownAnnualEvents(city, countryCode || "AE", dateFrom, dateTo)) {
         const key = dedupeKey(annual.title, annual.dateStart);
         if (seen.has(key)) continue;

@@ -1,6 +1,6 @@
 /**
  * GET /api/lyzr-cleanup
- * One-time cleanup endpoint — deletes all duplicate active_property_data
+ * One-time cleanup endpoint - deletes all duplicate active_property_data
  * and active_property_data_test contexts from the Lyzr account.
  * Safe to call multiple times.
  */
@@ -61,7 +61,7 @@ export async function GET() {
             const ctxId = (ctx as any).id || (ctx as any)._id || (ctx as any).context_id;
             if (STALE_NAMES.includes(ctxName)) {
                 if (!ctxId) {
-                    console.warn(`⚠️  [Cleanup] Context "${ctxName}" has no ID — cannot delete. Raw:`, JSON.stringify(ctx));
+                    console.warn(`⚠️  [Cleanup] Context "${ctxName}" has no ID - cannot delete. Raw:`, JSON.stringify(ctx));
                     failed.push(`${ctxName} (no ID found)`);
                     continue;
                 }

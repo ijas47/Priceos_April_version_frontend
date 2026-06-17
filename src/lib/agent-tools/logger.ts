@@ -7,7 +7,7 @@ function ts(): string {
 }
 
 function fmt(level: LogLevel, endpoint: string, msg: string, meta?: Record<string, unknown>): string {
-  const base = `${ts()} ${TAG} [${level}] ${endpoint} — ${msg}`;
+  const base = `${ts()} ${TAG} [${level}] ${endpoint} - ${msg}`;
   if (meta && Object.keys(meta).length > 0) {
     return `${base} | ${JSON.stringify(meta)}`;
   }

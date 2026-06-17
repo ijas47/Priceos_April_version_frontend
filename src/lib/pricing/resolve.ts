@@ -345,6 +345,6 @@ export function summarizeActivePricingRules(
       far_out_premium_pct: farOut?.enabled ? farOut.endPremiumPct : null,
       orphan_discount_pct: orphan?.enabled ? orphan.discountPct : null,
     },
-    role: "Operational rulebook (~20% weight): occupancy matrix, last-minute ramp, seasonal baseAdj, gap fill — applied in engine Pass 1–3 after market anchor.",
+    role: "Operational rulebook (~20% weight): occupancy matrix, last-minute ramp, seasonal baseAdj, gap fill - applied in engine Pass 1–3 after market anchor.",
   };
 }

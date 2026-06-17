@@ -1,5 +1,5 @@
 /**
- * pms/hostaway-client.ts — FRONTEND STUB
+ * pms/hostaway-client.ts - FRONTEND STUB
  *
  * All direct Hostaway API communication has been moved to the FastAPI backend.
  * The frontend uses these wrapper functions that proxy through /api/hostaway/*.
@@ -58,7 +58,7 @@ export async function sendReply(params: {
 }) {
   if (isReadOnly()) {
     throw new Error(
-      "[PriceOS] sendReply() blocked — HOSTAWAY_READ_ONLY is enabled. " +
+      "[PriceOS] sendReply() blocked - HOSTAWAY_READ_ONLY is enabled. " +
       "Set HOSTAWAY_READ_ONLY=false to allow sending guest messages."
     );
   }

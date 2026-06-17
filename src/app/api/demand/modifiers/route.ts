@@ -6,8 +6,8 @@
  * Query params:
  *   - marketTemplate (string, required): destination key e.g. "dubai", "london"
  *   - month (number, optional): calendar month 1-12. Defaults to current month.
- *   - dateFrom (string, optional): ISO date — month is derived if provided.
- *   - dateTo (string, optional): ISO date — for display context only.
+ *   - dateFrom (string, optional): ISO date - month is derived if provided.
+ *   - dateTo (string, optional): ISO date - for display context only.
  *
  * The route first tries to fetch live signals from the backend
  * `/demand/source-market-signals` endpoint. If unavailable, it falls back
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
         }
       }
     } catch {
-      // Backend unavailable — fall back to seasonal baseline
+      // Backend unavailable - fall back to seasonal baseline
     }
 
     // Use seasonal defaults if no live signals

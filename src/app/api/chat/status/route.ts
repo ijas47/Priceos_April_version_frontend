@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/chat/status — Lyzr agent-event WebSocket credentials.
+ * GET /api/chat/status - Lyzr agent-event WebSocket credentials.
  * Consumed by use-lyzr-agent-events; returns nulls when not configured
  * (the hook falls back to its built-in defaults).
  */

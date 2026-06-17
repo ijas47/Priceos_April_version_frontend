@@ -14,7 +14,7 @@ export const MARKET_TEMPLATES_SEED = [
       absoluteCeilingMultiplier: 3.0,
     },
     seasonalPatterns: [
-      { month: 1, demandScore: 92, ratePremiumPct: 25, notes: "Peak winter — Dubai Shopping Festival" },
+      { month: 1, demandScore: 92, ratePremiumPct: 25, notes: "Peak winter - Dubai Shopping Festival" },
       { month: 2, demandScore: 88, ratePremiumPct: 20, notes: "Dubai Shopping Festival end" },
       { month: 3, demandScore: 75, ratePremiumPct: 10, notes: "Ramadan season" },
       { month: 4, demandScore: 55, ratePremiumPct: -5, notes: "Heat begins" },

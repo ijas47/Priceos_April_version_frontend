@@ -22,7 +22,7 @@ export function isHostawayReadOnly(): boolean {
  * Guest-message sending is governed by a SEPARATE flag from pricing/calendar
  * writes. Even when HOSTAWAY_READ_ONLY stays true (pricing pushes blocked),
  * an operator can opt in to delivering reviewed guest replies by setting
- * HOSTAWAY_ALLOW_GUEST_SEND=true. Off by default — replies stay local-only.
+ * HOSTAWAY_ALLOW_GUEST_SEND=true. Off by default - replies stay local-only.
  */
 export function isGuestSendEnabled(): boolean {
   const flag = (process.env.HOSTAWAY_ALLOW_GUEST_SEND ?? "false").toLowerCase();
@@ -78,7 +78,7 @@ export class HostawayClient {
         };
       }
 
-      // Handle rate limiting (429) — bounded retries, never unbounded recursion.
+      // Handle rate limiting (429) - bounded retries, never unbounded recursion.
       if (response.status === 429) {
         if (attempt >= MAX_RATE_LIMIT_RETRIES) {
           throw {
@@ -148,7 +148,7 @@ export class HostawayClient {
   async updateListing(listingId: number, body: HostawayListingUpdate): Promise<void> {
     if (isHostawayReadOnly()) {
       throw new Error(
-        "[PriceOS] updateListing() blocked — Hostaway is in READ-ONLY mode. " +
+        "[PriceOS] updateListing() blocked - Hostaway is in READ-ONLY mode. " +
           "Set HOSTAWAY_READ_ONLY=false to publish listing content."
       );
     }
@@ -182,7 +182,7 @@ export class HostawayClient {
 
   /**
    * Update calendar intervals (batch price updates).
-   * BLOCKED unless HOSTAWAY_READ_ONLY=false — PriceOS must never
+   * BLOCKED unless HOSTAWAY_READ_ONLY=false - PriceOS must never
    * push prices to Hostaway without explicit operator opt-in.
    */
   async updateCalendar(
@@ -191,7 +191,7 @@ export class HostawayClient {
   ): Promise<void> {
     if (isHostawayReadOnly()) {
       throw new Error(
-        "[PriceOS] updateCalendar() blocked — Hostaway is in READ-ONLY mode. " +
+        "[PriceOS] updateCalendar() blocked - Hostaway is in READ-ONLY mode. " +
         "Set HOSTAWAY_READ_ONLY=false to enable price pushes (not recommended)."
       );
     }
@@ -204,7 +204,7 @@ export class HostawayClient {
   /**
    * Send a message into a guest conversation (delivers to the guest's
    * Airbnb/Booking inbox via Hostaway).
-   * BLOCKED unless HOSTAWAY_ALLOW_GUEST_SEND=true — replies must never reach
+   * BLOCKED unless HOSTAWAY_ALLOW_GUEST_SEND=true - replies must never reach
    * a real guest without explicit operator opt-in. Pricing pushes remain
    * separately blocked by HOSTAWAY_READ_ONLY.
    */
@@ -215,7 +215,7 @@ export class HostawayClient {
   ): Promise<void> {
     if (!isGuestSendEnabled()) {
       throw new Error(
-        "[PriceOS] sendMessage() blocked — HOSTAWAY_ALLOW_GUEST_SEND is not enabled. " +
+        "[PriceOS] sendMessage() blocked - HOSTAWAY_ALLOW_GUEST_SEND is not enabled. " +
         "Replies are saved locally only. Set HOSTAWAY_ALLOW_GUEST_SEND=true to deliver to guests."
       );
     }

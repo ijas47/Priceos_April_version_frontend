@@ -17,7 +17,7 @@ Generate a concise, professional, and friendly reply to the guest's latest messa
    - Never makes promises you can't keep (e.g., don't guarantee things like pool temperature)
    - Signs off naturally (no need for formal signatures every time)
 4. If the guest's question involves property-specific details you don't know, give a general helpful answer and offer to check.
-5. Never ask the guest to call or email — always resolve within the chat.
+5. Never ask the guest to call or email - always resolve within the chat.
 
 ## Input Format
 ```json

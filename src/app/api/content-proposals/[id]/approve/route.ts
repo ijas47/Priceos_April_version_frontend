@@ -36,7 +36,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error: "Hostaway API key not configured — cannot publish content",
+          error: "Hostaway API key not configured - cannot publish content",
         },
         { status: 400 }
       );
@@ -57,7 +57,7 @@ export async function POST(
       verified: result.verified,
       message: result.verified
         ? "Content published and verified on Hostaway"
-        : "Content published — verification pending (check Hostaway sync)",
+        : "Content published - verification pending (check Hostaway sync)",
     });
   } catch (error) {
     console.error("[content approve]", error);

@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
             avgCalendarRate: rateDisplay.avgCalendarRate,
             displayRate: rateDisplay.displayRate,
             rateLabel: rateDisplay.rateLabel,
-            /** @deprecated use displayRate — kept for chat context compatibility */
+            /** @deprecated use displayRate - kept for chat context compatibility */
             avgPrice: rateDisplay.displayRate,
             calendarDays,
             reservations,

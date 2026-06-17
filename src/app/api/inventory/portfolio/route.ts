@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/inventory/portfolio?startDate&endDate — org-wide inventory days. */
+/** GET /api/inventory/portfolio?startDate&endDate - org-wide inventory days. */
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();

@@ -140,7 +140,7 @@ const MESSAGES: Record<string, Message[]> = {
     {
       id: "m2",
       role: "guest",
-      content: "Thank you! I have a question — is early check-in at 11am possible? We have an early flight.",
+      content: "Thank you! I have a question - is early check-in at 11am possible? We have an early flight.",
       time: "Apr 25, 09:16",
     },
   ],

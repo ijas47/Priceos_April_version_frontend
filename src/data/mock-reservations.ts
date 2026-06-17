@@ -58,7 +58,7 @@ function getRandomNights(seed: number): number {
 }
 
 /**
- * Property booking counts — varied per property
+ * Property booking counts - varied per property
  * High-demand properties get more bookings
  */
 const PROPERTY_BOOKING_COUNTS: Record<number, number> = {

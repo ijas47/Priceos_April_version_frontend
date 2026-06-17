@@ -51,7 +51,7 @@ interface EngineRun {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDuration(ms: number | null) {
-  if (!ms) return "—";
+  if (!ms) return "-";
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
 }
@@ -414,7 +414,7 @@ function SyncPageContent() {
 
   const handleHostawayImport = async () => {
     setImporting(true);
-    toast.info("Importing from Hostaway — this can take a few minutes for large portfolios…");
+    toast.info("Importing from Hostaway - this can take a few minutes for large portfolios…");
     try {
       const res = await fetch("/api/sync/trigger", { method: "POST" });
       const data = await res.json().catch(() => ({}));

@@ -18,7 +18,7 @@ export default async function MarketPage() {
   const plus89Str = format(addDays(new Date(), 89), "yyyy-MM-dd");
   const plus29Str = format(addDays(new Date(), 29), "yyyy-MM-dd");
 
-  // Fetch data in parallel — short-TTL cache to speed up repeat navigation
+  // Fetch data in parallel - short-TTL cache to speed up repeat navigation
   const [eventsRes, metricsRes, listingsRes, revRes] = await Promise.all([
     fetch(`${API}/agent-tools/market-events?orgId=${session.orgId}&dateFrom=${todayStr}&dateTo=${plus89Str}`, {
       headers: { Authorization: `Bearer ${token}` },

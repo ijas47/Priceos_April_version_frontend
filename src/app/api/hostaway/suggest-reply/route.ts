@@ -11,7 +11,7 @@ interface HistoryMsg {
  * POST /api/hostaway/suggest-reply
  *
  * Generates an AI reply DRAFT for a guest conversation via the Lyzr
- * Chat Response Agent. Returns synchronously — the draft is staged in the
+ * Chat Response Agent. Returns synchronously - the draft is staged in the
  * UI for human review and is NEVER auto-sent to the guest.
  *
  * Body: { messages?: HistoryMsg[], message?: string, guestName, propertyName,
@@ -116,7 +116,7 @@ Generate a professional, warm, concise reply as the property manager (2-4 senten
                     if (parsed.sentiment) sentiment = parsed.sentiment;
                 }
             } catch {
-                // Plain text reply — use as-is
+                // Plain text reply - use as-is
             }
 
             reply = reply.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();

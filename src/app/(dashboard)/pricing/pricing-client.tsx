@@ -57,7 +57,7 @@ export interface FlowStage {
   label: string;
   status: "pending" | "active" | "done" | "failed";
 }
-// readSSEStream removed — engine/run-all returns JSON, not SSE
+// readSSEStream removed - engine/run-all returns JSON, not SSE
 import { SUPPORT_AGENT_STREAM_EVENT, SupportAgentStreamEventPayload } from "@/lib/chat/inference-events";
 import { useLyzrAgentEvents } from "@/hooks/use-lyzr-agent-events";
 
@@ -142,7 +142,7 @@ function isMarketSegment(segment: string): boolean {
 
 function DeltaBadge({ pct }: { pct: number | null }) {
   if (pct === null || pct === 0)
-    return <span className="text-muted-foreground text-xs">—</span>;
+    return <span className="text-muted-foreground text-xs">-</span>;
   const up = pct > 0;
   return (
     <span
@@ -213,7 +213,7 @@ function RiskBadge({ pct }: { pct: number | null }) {
 function ReasoningCell({ reasoning }: { reasoning: any }) {
   const [open, setOpen] = useState(false);
   const text = useMemo(() => reasoningToText(reasoning), [reasoning]);
-  if (!text) return <span className="text-muted-foreground text-xs">—</span>;
+  if (!text) return <span className="text-muted-foreground text-xs">-</span>;
 
   const segments = parseReasoningSegments(text);
   const marketSegments = segments.filter(isMarketSegment);
@@ -351,7 +351,7 @@ export function PricingClient({
     { id: "generating", label: "Generator" },
   ];
 
-  // Modify state — inline price edit
+  // Modify state - inline price edit
   const [modifyingId, setModifyingId] = useState<string | null>(null);
   const [modifyPrice, setModifyPrice] = useState("");
   const [isSavingModify, setIsSavingModify] = useState(false);
@@ -425,7 +425,7 @@ export function PricingClient({
         router.refresh();
       }, 1500);
     } catch (error) {
-      toast.error((error as Error).message || "Network error — please try again.");
+      toast.error((error as Error).message || "Network error - please try again.");
       setIsGraphProcessing(false);
     } finally {
       setIsGenerating(false);
@@ -439,7 +439,7 @@ export function PricingClient({
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  // Unique properties for filter dropdown — prefer full listings list, fall back to proposal names
+  // Unique properties for filter dropdown - prefer full listings list, fall back to proposal names
   const propertyOptions = useMemo(() => {
     if (allListings.length > 0) return [...allListings].sort((a, b) => a.name.localeCompare(b.name));
     const names = [...new Set(proposals.map((p) => p.listingName))].sort();
@@ -654,7 +654,7 @@ export function PricingClient({
   return (
     <TooltipProvider delayDuration={200}>
     <div className="space-y-5">
-      {/* KPI Strip — pending only */}
+      {/* KPI Strip - pending only */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { label: "Pending", value: counts.pending, color: "text-primary" },
@@ -793,7 +793,7 @@ export function PricingClient({
         </div>
       </div>
 
-      {/* Bulk action bar — shown for pending/rejected selections */}
+      {/* Bulk action bar - shown for pending/rejected selections */}
       {(activeTab === "pending" || activeTab === "rejected") && selectedIds.size > 0 && (
         <div className="flex items-center gap-3 rounded-lg border border-amber/30 bg-amber/5 px-4 py-2.5">
           <span className="text-xs font-semibold text-amber">
@@ -853,7 +853,7 @@ export function PricingClient({
           <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
           <p className="text-muted-foreground text-sm">
             {activeTab === "pending"
-              ? "No pending proposals — all caught up."
+              ? "No pending proposals - all caught up."
               : `No ${activeTab} proposals in the last 14 days.`}
           </p>
         </div>
@@ -1085,7 +1085,7 @@ export function PricingClient({
             <div className="flex items-center gap-2 px-4 py-3 bg-red-500/5 border-t border-red-500/10">
               <AlertTriangle className="h-3.5 w-3.5 text-red-400 shrink-0" />
               <p className="text-xs text-red-400">
-                <strong>{displayProposals.filter((p) => riskLevel(p.changePct) === "high").length} high-risk proposals</strong> (&gt;15% change) — review individually before bulk approving.
+                <strong>{displayProposals.filter((p) => riskLevel(p.changePct) === "high").length} high-risk proposals</strong> (&gt;15% change) - review individually before bulk approving.
               </p>
             </div>
           )}

@@ -1,5 +1,5 @@
 /**
- * SDG-DTCM-CalendarEvents — GraphQL event feed.
+ * SDG-DTCM-CalendarEvents - GraphQL event feed.
  * https://developer.dubai.gov.ae/portal/apis/84994f74-aaa3-4cbe-b2a4-467a8a52ec77
  */
 
@@ -11,7 +11,7 @@ const BASE_URL =
   process.env.DTCM_CALENDAR_BASE_URL ||
   "https://apis.dubai.gov.ae/secure/dtcm/calendarevents/1.0.0";
 
-/** GraphQL query variants — portal OpenAPI omits schema; try common shapes. */
+/** GraphQL query variants - portal OpenAPI omits schema; try common shapes. */
 const EVENT_QUERIES = [
   `query { events { title name startDate endDate venue { name } url } }`,
   `query { getEvents { title name startDate endDate venue url } }`,
