@@ -49,45 +49,15 @@ export async function applyPricingPackToOrg(
       },
     });
 
+    // Remove legacy %-based seasonal rules; month-first market anchor + profile
+    // switching replaces stacked SEASON priceAdjPct rules.
     await PricingRule.deleteMany({
       listingId: lid,
-      name: { $regex: /^\[UAE\]/ },
+      name: { $regex: /^\[(UAE|Auto)\]/ },
+      ruleType: "SEASON",
     });
 
     const rules: Record<string, unknown>[] = [];
-
-    if (calendar) {
-      for (const seg of calendar.segments) {
-        if (seg.baseAdjPct == null && seg.minAdjPct == null) continue;
-        const adj = seg.baseAdjPct ?? seg.minAdjPct ?? 0;
-        if (Math.abs(adj) < 1) continue;
-
-        for (const yearOffset of [0, 1]) {
-          const y = currentYear + yearOffset;
-          const [sm, sd] = seg.startMd.split("-").map(Number);
-          const [em, ed] = seg.endMd.split("-").map(Number);
-          const startDate = `${y}-${String(sm).padStart(2, "0")}-${String(sd).padStart(2, "0")}`;
-          const endDate = `${y}-${String(em).padStart(2, "0")}-${String(ed).padStart(2, "0")}`;
-
-          rules.push({
-            orgId: oid,
-            listingId: lid,
-            ruleType: "SEASON",
-            name: `[UAE] ${seg.name} - ${pack.pricingProfiles.find((p) => p.id === seg.pricingProfileId)?.name ?? seg.pricingProfileId}`,
-            enabled: true,
-            priority: 10,
-            startDate,
-            endDate,
-            priceAdjPct: adj,
-            isBlocked: false,
-            closedToArrival: false,
-            closedToDeparture: false,
-            suspendLastMinute: false,
-            suspendGapFill: false,
-          });
-        }
-      }
-    }
 
     const summerProfile = pack.pricingProfiles.find((p) => p.id === "low_season_summer");
     if (summerProfile) {

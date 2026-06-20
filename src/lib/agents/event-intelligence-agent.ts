@@ -2,6 +2,7 @@ import { connectDB, MarketEvent, Listing } from "@/lib/db";
 import { format } from "date-fns";
 import mongoose from "mongoose";
 import { gatherMarketIntelligence, type SourceBreakdownEntry } from "@/lib/research/aggregator";
+import { resolveEventUpliftPct } from "@/lib/pricing/event-pricing";
 
 export interface EventSignal {
   name: string;
@@ -210,38 +211,16 @@ export class EventIntelligenceAgent {
     suggestedIncrease: number;
     reasoning: string;
   } {
-    if (events.length === 0) {
-      return { suggestedIncrease: 0, reasoning: "No events detected, maintain current pricing" };
+    const { upliftPct, reasoning } = resolveEventUpliftPct(
+      events.map((e) => ({ name: e.name, impactLevel: e.expectedImpact })),
+      weight
+    );
+    if (upliftPct === 0) {
+      return { suggestedIncrease: 0, reasoning: reasoning ?? "No events detected, maintain current pricing" };
     }
-
-    const caps = {
-      low: { high: 8, medium: 4, low: 2 },
-      medium: { high: 15, medium: 8, low: 4 },
-      high: { high: 30, medium: 15, low: 5 },
-    }[weight];
-
-    const highImpactEvents = events.filter((e) => e.expectedImpact === "high");
-    const mediumImpactEvents = events.filter((e) => e.expectedImpact === "medium");
-
-    if (highImpactEvents.length > 0) {
-      const eventNames = highImpactEvents.map((e) => e.name).join(", ");
-      return {
-        suggestedIncrease: caps.high,
-        reasoning: `High-impact events detected: ${eventNames}. Capped uplift (${weight} weight).`,
-      };
-    }
-
-    if (mediumImpactEvents.length > 0) {
-      const eventNames = mediumImpactEvents.map((e) => e.name).join(", ");
-      return {
-        suggestedIncrease: caps.medium,
-        reasoning: `Medium-impact events detected: ${eventNames}. Capped uplift (${weight} weight).`,
-      };
-    }
-
     return {
-      suggestedIncrease: caps.low,
-      reasoning: `Low-impact events detected. Minor capped uplift (${weight} weight).`,
+      suggestedIncrease: upliftPct,
+      reasoning: reasoning ?? `Event uplift +${upliftPct}%`,
     };
   }
 }

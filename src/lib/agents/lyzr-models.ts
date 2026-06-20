@@ -28,7 +28,9 @@ export const GEMINI_FLASH = "gemini/gemini-3-flash-preview";
 export const GEMINI_FLASH_LITE = "gemini/gemini-3.1-flash-lite";
 /** Best reasoning for user-facing orchestration and complex synthesis */
 export const CLAUDE_SONNET = "anthropic/claude-sonnet-4-6";
-/** Deterministic guardrails and numeric validation */
+/** Fast deterministic guardrails (demo-safe, lower latency than gpt-4.1) */
+export const GPT_4O_MINI = "gpt-4o-mini";
+/** Heavier validation when mini is insufficient */
 export const GPT_41 = "gpt-4.1";
 /** Internet-connected search for live events and competitor rates */
 export const PERPLEXITY_SONAR = "perplexity/sonar";
@@ -57,6 +59,11 @@ export const MODEL_PROVIDER_BINDINGS: Record<string, LyzrProviderBinding> = {
     llm_credential_id: "lyzr_google",
     model: "gemini/gemini-3.1-flash-lite",
   },
+  [GPT_4O_MINI]: {
+    provider_id: "OpenAI",
+    llm_credential_id: "lyzr_openai",
+    model: "gpt-4o-mini",
+  },
   [GPT_41]: {
     provider_id: "OpenAI",
     llm_credential_id: "lyzr_openai",
@@ -75,53 +82,53 @@ export function getProviderBinding(modelKey: string): LyzrProviderBinding | unde
 
 /**
  * Live Lyzr agent registry - env overrides supported for each agent ID.
- * Models tuned for demo week: accurate dates/events, fast workers, strict safety.
+ * Models tuned for live demos: Gemini Flash for chat latency, mini for safety gates.
  */
 export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
   {
     lyzrAgentId: process.env.LYZR_CRO_ROUTER_AGENT_ID || "69998743f4d61186679a9515",
     name: "CRO Router (Aria)",
     tier: "orchestrator",
-    model: CLAUDE_SONNET,
+    model: GEMINI_FLASH,
     temperature: 0.2,
-    maxTokens: 4000,
-    rationale: "Best reasoning for multi-agent orchestration; low temp prevents date/event hallucinations",
+    maxTokens: 3000,
+    rationale: "Gemini 3 Flash: fast user-facing orchestration with strong tool use",
   },
   {
     lyzrAgentId: process.env.LYZR_PROPERTY_ANALYST_AGENT_ID || "699987c35dbb137e7b66052e",
     name: "Property Analyst",
     tier: "analyst",
-    model: GEMINI_FLASH,
+    model: GEMINI_FLASH_LITE,
     temperature: 0.1,
-    maxTokens: 4000,
-    rationale: "Fast structured calendar/gap analysis",
+    maxTokens: 2500,
+    rationale: "Ultra-fast structured calendar/gap analysis",
   },
   {
     lyzrAgentId: process.env.LYZR_BOOKING_INTELLIGENCE_AGENT_ID || "699988262654671e44099318",
     name: "Booking Intelligence",
     tier: "analyst",
-    model: GEMINI_FLASH,
+    model: GEMINI_FLASH_LITE,
     temperature: 0.1,
-    maxTokens: 3000,
-    rationale: "Fast pattern extraction from reservation data",
+    maxTokens: 2000,
+    rationale: "Ultra-fast reservation pattern extraction",
   },
   {
     lyzrAgentId: process.env.LYZR_MARKET_RESEARCH_AGENT_ID || "699991985dbb137e7b660594",
     name: "Market Research",
     tier: "analyst",
-    model: GEMINI_FLASH,
+    model: GEMINI_FLASH_LITE,
     temperature: 0.1,
-    maxTokens: 3000,
-    rationale: "Parse-only on verified SERP/News/DB intel - no live Sonar hallucinations",
+    maxTokens: 2000,
+    rationale: "Parse-only on verified DB/SERP intel - lowest latency worker",
   },
   {
     lyzrAgentId: process.env.LYZR_PRICE_GUARD_AGENT_ID || "6999933b83d9dff0252dd86f",
     name: "PriceGuard",
     tier: "safety",
-    model: GPT_41,
+    model: GPT_4O_MINI,
     temperature: 0.0,
-    maxTokens: 2500,
-    rationale: "Deterministic pricing validation - zero creativity",
+    maxTokens: 2000,
+    rationale: "Fast deterministic pricing validation at temp 0",
   },
   {
     lyzrAgentId: process.env.Marketing_Agent_ID || "699993adb8bd4d3aac102a81",
@@ -158,10 +165,10 @@ export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
     lyzrAgentId: process.env.Lyzr_Guardrail_Agent_for_Floor_Ceiling_Values || "69a941c5ad0c99ac601ac935",
     name: "Guardrails (Floor/Ceiling)",
     tier: "safety",
-    model: GPT_41,
+    model: GPT_4O_MINI,
     temperature: 0.0,
-    maxTokens: 2000,
-    rationale: "Strict floor/ceiling enforcement",
+    maxTokens: 1500,
+    rationale: "Fast strict floor/ceiling enforcement",
   },
   {
     lyzrAgentId: process.env.LYZR_Conversation_Summary_Agent_ID || process.env.LYZR_CONVERSATION_SUMMARY_AGENT_ID || "699d6ba5d3183ea975c8c375",
@@ -169,7 +176,7 @@ export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
     tier: "guest",
     model: GEMINI_FLASH_LITE,
     temperature: 0.2,
-    maxTokens: 2000,
+    maxTokens: 1500,
     rationale: "Fast guest-thread summarization",
   },
   {
@@ -178,8 +185,8 @@ export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
     tier: "guest",
     model: GEMINI_FLASH,
     temperature: 0.3,
-    maxTokens: 1500,
-    rationale: "Warm accurate guest replies for demo inbox",
+    maxTokens: 1200,
+    rationale: "Warm accurate guest replies - Flash for quality, capped tokens for speed",
   },
   {
     lyzrAgentId: process.env.LYZR_DASHBOARD_AGENT_ID || "69df6b63fac6b1f936ca8e7b",
@@ -187,7 +194,7 @@ export const LYZR_AGENT_MODELS: LyzrModelSpec[] = [
     tier: "orchestrator",
     model: GEMINI_FLASH,
     temperature: 0.2,
-    maxTokens: 3000,
+    maxTokens: 2500,
     rationale: "Fast portfolio-level Q&A",
   },
 ];

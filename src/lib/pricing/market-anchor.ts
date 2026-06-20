@@ -1,13 +1,17 @@
 import type { MarketSignal } from "@/lib/engine/waterfall";
 import type { CompListing } from "@/lib/airbtics/client";
+import { resolveAnchorWeights } from "./anchor-weights";
 
-/** Signal weights for Pass 0 market anchor (listed price is reference-only). */
+/** @deprecated Use resolveAnchorWeights() — kept for tests referencing static blend. */
 export const ANCHOR_WEIGHTS = {
   compSetP50: 0.35,
   pacingAdr: 0.25,
   monthAnchorAdr: 0.2,
   listedReference: 0.1,
 } as const;
+
+/** Blend weight toward forward pacing ADR for a single day. */
+export const PACING_ADR_BLEND = 0.25;
 
 export interface CompSetPercentiles {
   p25: number | null;
@@ -67,56 +71,58 @@ export function compSetPercentilesFromBenchmark(
 }
 
 /**
- * Blend comp-set, pacing, month market ADR, and a small listed-reference weight.
- * De-anchors pricing from flat PMS listing price when market data exists.
+ * Month-first market anchor. Listed Hostaway price is a weak reference when
+ * monthly market ADR exists; comp-set p50 should be month-specific per day.
  */
 export function resolveMarketAnchorBase(
   listedReference: number,
   signal?: MarketSignal
-): { price: number; notes: string[]; usedMarketAnchor: boolean } {
+): { price: number; notes: string[]; usedMarketAnchor: boolean; anchorMode: string } {
   if (!signal) {
-    return { price: listedReference, notes: [], usedMarketAnchor: false };
+    return { price: listedReference, notes: [], usedMarketAnchor: false, anchorMode: "listed_only" };
   }
 
+  const { weights, mode, confidence } = resolveAnchorWeights(signal);
   const parts: { weight: number; value: number; label: string }[] = [];
 
-  if (signal.compSetP50 && signal.compSetP50 > 0) {
+  if (signal.monthAnchorAdr && signal.monthAnchorAdr > 0 && weights.monthAnchorAdr) {
     parts.push({
-      weight: ANCHOR_WEIGHTS.compSetP50,
+      weight: weights.monthAnchorAdr,
+      value: signal.monthAnchorAdr,
+      label: `month p50 ${Math.round(signal.monthAnchorAdr)}`,
+    });
+  }
+  if (signal.compSetP50 && signal.compSetP50 > 0 && weights.compSetP50) {
+    parts.push({
+      weight: weights.compSetP50,
       value: signal.compSetP50,
       label: `comps p50 ${Math.round(signal.compSetP50)}`,
     });
   }
-  if (signal.pacingAdr && signal.pacingAdr > 0) {
+  if (signal.pacingAdr && signal.pacingAdr > 0 && weights.pacingAdr) {
     parts.push({
-      weight: ANCHOR_WEIGHTS.pacingAdr,
+      weight: weights.pacingAdr,
       value: signal.pacingAdr,
       label: `pacing ${Math.round(signal.pacingAdr)}`,
     });
   }
-  if (signal.monthAnchorAdr && signal.monthAnchorAdr > 0) {
+  if (signal.annualAnchorAdr && signal.annualAnchorAdr > 0 && weights.annualAnchorAdr) {
     parts.push({
-      weight: ANCHOR_WEIGHTS.monthAnchorAdr,
-      value: signal.monthAnchorAdr,
-      label: `month p50 ${Math.round(signal.monthAnchorAdr)}`,
-    });
-  } else if (signal.annualAnchorAdr && signal.annualAnchorAdr > 0) {
-    parts.push({
-      weight: ANCHOR_WEIGHTS.monthAnchorAdr,
+      weight: weights.annualAnchorAdr,
       value: signal.annualAnchorAdr,
-      label: `market annual ${Math.round(signal.annualAnchorAdr)}`,
+      label: `annual ${Math.round(signal.annualAnchorAdr)}`,
     });
   }
-  if (listedReference > 0) {
+  if (listedReference > 0 && weights.listedReference) {
     parts.push({
-      weight: ANCHOR_WEIGHTS.listedReference,
+      weight: weights.listedReference,
       value: listedReference,
       label: `listed ref ${Math.round(listedReference)}`,
     });
   }
 
   if (parts.length === 0) {
-    return { price: listedReference, notes: [], usedMarketAnchor: false };
+    return { price: listedReference, notes: [], usedMarketAnchor: false, anchorMode: "listed_only" };
   }
 
   const totalW = parts.reduce((s, p) => s + p.weight, 0);
@@ -126,10 +132,10 @@ export function resolveMarketAnchorBase(
   const usedMarketAnchor = parts.some((p) => !p.label.startsWith("listed ref"));
 
   const notes = [
-    `[MARKET] Anchor ${price} (${parts
+    `[MARKET] Anchor ${price} [${mode}, conf ${(confidence * 100).toFixed(0)}%] (${parts
       .map((p) => `${Math.round((p.weight / totalW) * 100)}% ${p.label}`)
       .join(", ")})`,
   ];
 
-  return { price, notes, usedMarketAnchor };
+  return { price, notes, usedMarketAnchor, anchorMode: mode };
 }

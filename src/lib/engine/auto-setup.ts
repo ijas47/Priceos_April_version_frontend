@@ -256,15 +256,32 @@ async function configureListing(
     },
   });
 
-  // Generate seasonal pricing rules from market data
-  const rulesCreated = await generateSeasonalRules(
-    lid,
-    orgOid,
-    basePrice,
-    template,
-    marketCtx,
-    listing.currencyCode || "AED",
-  );
+  // Month-first market anchor handles seasonal ADR; only create Airbtics SEASON
+  // rules when no portfolio pricing pack is on the org.
+  let rulesCreated = 0;
+  const { Organization } = await import("@/lib/db");
+  const org = await Organization.findById(orgOid)
+    .select("pricingPackVersion marketCode")
+    .lean();
+  const hasPricingPack =
+    !!org?.pricingPackVersion || org?.marketCode === "UAE_DXB" || !org?.marketCode;
+
+  if (!hasPricingPack) {
+    rulesCreated = await generateSeasonalRules(
+      lid,
+      orgOid,
+      basePrice,
+      template,
+      marketCtx,
+      listing.currencyCode || "AED",
+    );
+  } else {
+    await PricingRule.deleteMany({
+      listingId: lid,
+      ruleType: "SEASON",
+      name: { $regex: /^\[Auto\]/ },
+    });
+  }
 
   return {
     listingId: lid.toString(),

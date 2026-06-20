@@ -255,24 +255,40 @@ The CRO agent reads this context and can answer questions like:
 
 ---
 
-## 10. Pricing Engine — No agents
+## 10. Pricing Engine — No Lyzr agents (deterministic + cached intel)
 
-The pricing engine (`runPipeline` → `computeDay`) runs entirely without calling any Lyzr agents or external APIs. It reads pre-computed data from MongoDB.
+The pricing engine (`runPipeline` → `computeDay`) runs **without Lyzr**. It reads
+pre-computed and ingested data from MongoDB and optional Airbtics/Dubai datasets.
 
 ```
 runPipeline(listingId)
   │
-  ├─ Reads: AirbticsCache (pacing data — already cached from Run Aria)
-  ├─ Reads: InventoryMaster (current status per day)
-  ├─ Reads: PricingRule (host-configured rules)
-  ├─ Reads: BenchmarkData (competitor rates from Run Aria)
+  ├─ Reads: Organization (pricingStrategy, guardrails, eventPricingWeight)
+  ├─ Reads: DubaiMarketMonthly / DubaiCompListing (Dubai listings — primary)
+  ├─ Reads: Airbtics market context + BenchmarkData (fallback / non-Dubai)
+  ├─ Reads: InventoryMaster (calendar status + current prices)
+  ├─ Reads: PricingRule (manual rules; [UAE]/[Auto] SEASON % rules filtered out)
+  ├─ Reads: MarketEvent (per-day event uplift caps)
+  ├─ Reads: Reservations (booking pace vs STLY, recency)
   │
-  └─ Writes: InventoryMaster (proposed prices, min_stay, etc.)
+  ├─ Layer 0: Month-first market anchor (per-day month p50/p25/p75)
+  ├─ Layer A: Waterfall (profiles, LM, gaps, occupancy matrix)
+  ├─ Layer B: Elasticity + demand modifier + event uplift
+  ├─ Layer C: Proposal guardrails (max daily Δ%, auto-approve threshold)
+  │
+  └─ Writes: InventoryMaster (proposedPrice, proposalStatus, reasoning, …)
 ```
 
-The engine loops 365 days. For each day, it checks the Airbtics pacing:
-- Market occupancy ≥ 80% → apply **+20% surge**
-- Market occupancy ≥ 65% → apply **+10% boost**
-- Market occupancy < 20% and within 14 days → apply **−10% last-minute discount**
+**Month-first anchor** de-anchors pricing from a flat Hostaway base when monthly
+market ADR exists (critical for Dubai summer vs winter). The UAE seasonal
+**calendar** switches tactical profiles only — not stacked `%` season rules.
 
-This is why running "Run Aria" before "Generate Proposals" matters — it seeds the cache that the engine reads.
+**Strategy presets** (Conservative / Balanced / Aggressive) are re-applied every
+run from `Organization.pricingStrategy`.
+
+**Auto-approve:** proposals with `|changePct| ≤ settings.guardrails.autoApproveThreshold`
+are written with `proposalStatus="approved"`. Push to Hostaway still requires
+approve API + `HOSTAWAY_READ_ONLY=false`.
+
+Aria chat is **orthogonal** — it explains proposals using the same inventory
+payload but does not compute prices.

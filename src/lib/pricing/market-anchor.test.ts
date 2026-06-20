@@ -7,16 +7,17 @@ import {
 import type { MarketSignal } from "@/lib/engine/waterfall";
 
 describe("resolveMarketAnchorBase", () => {
-  it("de-anchors from flat listed price when comp-set p50 is available", () => {
+  it("month-first anchor de-anchors from flat listed price", () => {
     const signal: MarketSignal = {
       compSetP50: 520,
       pacingAdr: 500,
-      monthAnchorAdr: 510,
+      monthAnchorAdr: 900,
       annualAnchorAdr: 480,
     };
-    const { price, usedMarketAnchor } = resolveMarketAnchorBase(165, signal);
+    const { price, usedMarketAnchor, anchorMode } = resolveMarketAnchorBase(165, signal);
     expect(usedMarketAnchor).toBe(true);
-    expect(price).toBeGreaterThan(400);
+    expect(anchorMode).toBe("month_first");
+    expect(price).toBeGreaterThan(600);
     expect(price).not.toBe(165);
   });
 

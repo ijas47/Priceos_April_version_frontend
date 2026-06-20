@@ -258,15 +258,17 @@ export async function buildDubaiMarketSignals(
 
     const signal: MarketSignal = {};
 
-    const compP50 = compPercentiles.p50 ?? monthRow?.p50Adr;
+    // Month-specific comp percentiles drive seasonal base (Dubai 100 vs 1000 swing).
+    const monthP50 = monthRow?.p50Adr;
+    const compP50 = monthP50 ?? compPercentiles.p50;
     if (compP50 && compP50 > 0) {
       signal.compSetP50 = compP50;
-      if (compPercentiles.p25) signal.compSetP25 = compPercentiles.p25;
-      if (compPercentiles.p75) signal.compSetP75 = compPercentiles.p75;
-      signal.compSetSource = compPercentiles.source;
+      signal.compSetP25 = monthRow?.p25Adr ?? compPercentiles.p25 ?? undefined;
+      signal.compSetP75 = monthRow?.p75Adr ?? compPercentiles.p75 ?? undefined;
+      signal.compSetSource = monthP50 ? "dubai_airroi_monthly" : compPercentiles.source;
     }
 
-    if (monthRow?.p50Adr) signal.monthAnchorAdr = monthRow.p50Adr;
+    if (monthP50) signal.monthAnchorAdr = monthP50;
     if (ctx.annualP50) signal.annualAnchorAdr = ctx.annualP50;
 
     if (pacingRow?.avgOccupancy != null) {

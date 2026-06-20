@@ -10,6 +10,8 @@ import {
 import type { MarketPricingPack, PricingProfile, SeasonalSegment } from "./types";
 import { UAE_PRICELABS_DEFAULTS } from "./uae-pricelabs-defaults";
 import type { ListingConfig, Rule } from "@/lib/engine/waterfall";
+import { usesMonthFirstAnchor } from "@/lib/pricing/anchor-weights";
+import type { MarketSignal } from "@/lib/engine/waterfall";
 
 function mdFromDate(d: Date): string {
   return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -208,7 +210,8 @@ export function applyProfileToConfig(
   },
   pack: MarketPricingPack,
   date: Date,
-  groupOverrides?: { seasonalCalendarOverrideId?: string; pricingProfileOverrideId?: string }
+  groupOverrides?: { seasonalCalendarOverrideId?: string; pricingProfileOverrideId?: string },
+  marketSignal?: MarketSignal
 ): ListingConfig {
   const usePortfolio = listing.usePortfolioPricingDefaults !== false;
   if (!usePortfolio) return base;
@@ -249,7 +252,10 @@ export function applyProfileToConfig(
     out.lastMinuteMinDiscountPct = portfolioLm.minDiscountPct;
   }
 
-  if (segment?.baseAdjPct != null) {
+  // Seasonal calendar switches tactical profiles only when month-first market
+  // anchor is active — avoid stacking small % rules on top of monthly ADR.
+  const skipSeasonalPct = usesMonthFirstAnchor(marketSignal);
+  if (!skipSeasonalPct && segment?.baseAdjPct != null) {
     out.basePrice = out.basePrice * (1 + segment.baseAdjPct / 100);
   }
 

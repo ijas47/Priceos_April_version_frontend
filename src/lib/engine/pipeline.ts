@@ -66,6 +66,25 @@ import {
     buildCalendarPriceMap,
     resolveDayCalendarPrice,
 } from "./calendar-rates";
+import {
+    applyStrategyPresetToConfig,
+    resolveMonthlyGuardrailBand,
+} from "@/lib/pricing/strategy-runtime";
+import {
+    resolveStrategyPreset,
+    type Strategy,
+} from "@/lib/pricing/strategy-presets";
+import { applyProposalGuardrails } from "@/lib/pricing/proposal-guardrails";
+import { applyEventUplift } from "@/lib/pricing/event-pricing";
+import { usesMonthFirstAnchor } from "@/lib/pricing/anchor-weights";
+
+function filterLegacySeasonRules(rules: Rule[]): Rule[] {
+    return rules.filter(
+        (r) =>
+            r.ruleType !== "SEASON" ||
+            (!String(r.name).startsWith("[UAE]") && !String(r.name).startsWith("[Auto]"))
+    );
+}
 
 function toNum(val: string | number | null | undefined): number {
     if (val === null || val === undefined) return 0;
@@ -118,7 +137,7 @@ export async function runPipeline(
         today.setHours(0, 0, 0, 0);
 
         const pricingCtx = await loadPricingContext(lid, listing.orgId, today);
-        const allRules: Rule[] = mergeRules(pricingCtx);
+        const allRules: Rule[] = filterLegacySeasonRules(mergeRules(pricingCtx));
 
         const [groupDoc, orgRow] = await Promise.all([
             PropertyGroup.findOne({
@@ -127,8 +146,17 @@ export async function runPipeline(
             })
                 .select("seasonalCalendarOverrideId pricingProfileOverrideId minStayProfileOverrideId seasonalCalendarOverrideId")
                 .lean(),
-            Organization.findById(listing.orgId).select("marketCode").lean(),
+            Organization.findById(listing.orgId)
+                .select("marketCode pricingStrategy settings.guardrails eventPricingWeight")
+                .lean(),
         ]);
+
+        const strategyPreset = resolveStrategyPreset(
+            (orgRow?.pricingStrategy as Strategy | undefined) ?? "balanced"
+        );
+        const orgGuardrails = orgRow?.settings?.guardrails ?? undefined;
+        const eventWeight =
+            (orgRow?.eventPricingWeight as "low" | "medium" | "high" | undefined) ?? "low";
 
         const orgTemplate = await MarketTemplate.findOne({
             marketCode: orgRow?.marketCode ?? "UAE_DXB",
@@ -172,11 +200,14 @@ export async function runPipeline(
             gapFillOverrideCico: listing.gapFillOverrideCico,
         };
 
+        const strategyBaseConfig = applyStrategyPresetToConfig(baseConfig, orgRow?.pricingStrategy as Strategy | undefined);
+
         const endDate = addDays(today, 364);
         const todayStr = dateStr(today);
         const crisisWindowEnd = dateStr(addDays(today, 90));
+        const pipelineEndStrEarly = dateStr(addDays(today, 364));
 
-        const [lastReservation, crisisEventRows] = await Promise.all([
+        const [lastReservation, crisisEventRows, marketEventRows] = await Promise.all([
             Reservation.findOne({
                 listingId: lid,
                 status: { $in: ["confirmed", "pending", "checked_in", "checked_out"] },
@@ -194,7 +225,30 @@ export async function runPipeline(
                 .select("name description impactLevel confidence")
                 .limit(100)
                 .lean(),
+            MarketEvent.find({
+                orgId: listing.orgId,
+                isActive: true,
+                endDate: { $gte: todayStr },
+                startDate: { $lte: pipelineEndStrEarly },
+            })
+                .select("name startDate endDate impactLevel")
+                .lean(),
         ]);
+
+        const eventsByDate = new Map<string, { name: string; impactLevel: "high" | "medium" | "low" }[]>();
+        for (const ev of marketEventRows) {
+            const impact = (ev.impactLevel === "high" || ev.impactLevel === "medium" || ev.impactLevel === "low")
+                ? ev.impactLevel
+                : "low";
+            const start = new Date(`${ev.startDate}T00:00:00.000Z`);
+            const end = new Date(`${ev.endDate}T00:00:00.000Z`);
+            for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+                const key = dateStr(d);
+                const bucket = eventsByDate.get(key) ?? [];
+                bucket.push({ name: ev.name, impactLevel: impact });
+                eventsByDate.set(key, bucket);
+            }
+        }
 
         const daysSinceLastBooking = computeDaysSinceLastBooking(
             today,
@@ -385,8 +439,8 @@ export async function runPipeline(
                 listingFallbackPrice
             );
             let dayConfig: ListingConfig = {
-                ...baseConfig,
-                basePrice: dayCalendarPrice > 0 ? dayCalendarPrice : baseConfig.basePrice,
+                ...strategyBaseConfig,
+                basePrice: dayCalendarPrice > 0 ? dayCalendarPrice : strategyBaseConfig.basePrice,
                 occupancyPct: blendedOccupancyPct,
             };
             dayConfig = applyProfileToConfig(
@@ -399,7 +453,8 @@ export async function runPipeline(
                           seasonalCalendarOverrideId: groupDoc.seasonalCalendarOverrideId,
                           pricingProfileOverrideId: groupDoc.pricingProfileOverrideId,
                       }
-                    : undefined
+                    : undefined,
+                signal
             );
 
             const leadTime = Math.round(
@@ -430,21 +485,38 @@ export async function runPipeline(
                 };
             }
 
-            const floorResult = resolveDynamicFloor({
+            const monthBand = resolveMonthlyGuardrailBand({
                 staticFloor,
+                staticCeiling: ceiling,
+                monthP25: signal?.compSetP25 ?? null,
+                monthP75: signal?.compSetP75 ?? null,
+                monthP50: signal?.monthAnchorAdr ?? signal?.compSetP50 ?? null,
+                preset: strategyPreset,
+            });
+
+            const floorResult = resolveDynamicFloor({
+                staticFloor: monthBand.floor,
                 leadTimeDays: leadTime,
                 stlyRate: stlyRateByDate.get(ds) ?? null,
                 safetyConfig: pricingCtx.pack.portfolioDefaults.safetyMinimumPrice,
                 compSetP25: signal?.compSetP25 ?? null,
             });
             dayConfig.absoluteMinPrice = floorResult.floor;
+            dayConfig.absoluteMaxPrice = monthBand.ceiling;
             dayConfig.bookingRecency = bookingRecencyConfig;
             dayConfig.daysSinceLastBooking = daysSinceLastBooking;
             dayConfig.crisisTier = crisisRegime.tier;
 
             const result = computeDay(currentDate, today, dayConfig, allRules, bookingCtx, signal);
 
-            const reasoningParts = [result.note, floorResult.note].filter(Boolean);
+            const reasoningParts = [
+                result.note,
+                monthBand.note,
+                floorResult.note,
+            ].filter(Boolean);
+            if (signal && usesMonthFirstAnchor(signal) && i === 0) {
+                reasoningParts.unshift("[SEASON] Month-first market anchor (calendar profiles only)");
+            }
             if (bookingPace.primaryPaceRatio != null && i === 0) {
                 const w60 = bookingPace.windows.find((w) => w.horizonDays === 60);
                 if (w60) {
@@ -467,13 +539,14 @@ export async function runPipeline(
             let elasticityWeight: number | undefined;
             let pBook: number | undefined;
             const effectiveFloor = floorResult.floor;
-            if (result.isAvailable === 1 && ceiling > effectiveFloor) {
+            const effectiveCeiling = monthBand.ceiling;
+            if (result.isAvailable === 1 && effectiveCeiling > effectiveFloor) {
                 const month = currentDate.getMonth() + 1;
                 const opt = computeOptimizedPrice({
                     rulebookPrice: result.price,
                     params: elasticityParams,
                     floor: effectiveFloor,
-                    ceiling,
+                    ceiling: effectiveCeiling,
                     demandModifierPct: demandModifierFor(month),
                 });
                 elasticityPrice = opt.finalPrice;
@@ -482,10 +555,21 @@ export async function runPipeline(
                 if (elasticityEnabled) optimizedPrice = opt.finalPrice;
             }
 
-            // Compute change % vs this day's Hostaway calendar rate.
-            const changePct = dayCalendarPrice > 0
-                ? Math.round(((optimizedPrice - dayCalendarPrice) / dayCalendarPrice) * 1000) / 10
-                : 0;
+            const dayEvents = eventsByDate.get(ds) ?? [];
+            if (dayEvents.length > 0 && result.isAvailable === 1) {
+                const eventAdj = applyEventUplift(optimizedPrice, dayEvents, eventWeight);
+                optimizedPrice = Math.min(eventAdj.price, effectiveCeiling);
+                if (eventAdj.reasoning) reasoningParts.push(eventAdj.reasoning);
+            }
+
+            const guardrailed = applyProposalGuardrails({
+                proposedPrice: optimizedPrice,
+                currentPrice: dayCalendarPrice,
+                guardrails: orgGuardrails,
+                isBooked: bookingCtx.isBooked,
+            });
+            optimizedPrice = guardrailed.proposedPrice;
+            reasoningParts.push(...guardrailed.guardrailNotes);
 
             bulkOps.push({
                 updateOne: {
@@ -502,9 +586,9 @@ export async function runPipeline(
                             elasticityPrice,
                             elasticityWeight,
                             pBook,
-                            changePct,
+                            changePct: guardrailed.changePct,
                             reasoning: reasoningParts.join("; "),
-                            proposalStatus: "pending",
+                            proposalStatus: guardrailed.proposalStatus,
                             minStay: result.minimumStay,
                             maxStay: result.maximumStay,
                             closedToArrival: result.closedToArrival === 1,
@@ -647,22 +731,30 @@ async function buildAirbticsMarketSignals(
             ? Math.max(0, Math.min(1, 1 - marketOcc))
             : undefined;
 
-    const compP50 =
+        const fallbackCompP50 =
         compPercentiles.p50 ??
         (annualAnchor && annualAnchor > 0 ? Math.round(annualAnchor) : undefined);
+
+    const monthMetricsByYm = new Map(
+        ctx.monthlyMetrics
+            .filter((m) => m.month)
+            .map((m) => [m.month as string, m])
+    );
 
     for (let i = 0; i < days; i++) {
         const d = addDays(startDate, i);
         const ds = dateStr(d);
         const ym = ds.slice(0, 7);
         const monthAnchor = monthAdr.get(ym);
+        const monthMetrics = monthMetricsByYm.get(ym);
         const pacing = pacingMap.get(ds);
         const signal: MarketSignal = {};
-        if (compP50) {
-            signal.compSetP50 = compP50;
-            if (compPercentiles.p25) signal.compSetP25 = compPercentiles.p25;
-            if (compPercentiles.p75) signal.compSetP75 = compPercentiles.p75;
-            signal.compSetSource = compPercentiles.source;
+        const monthCompP50 = monthAnchor ?? fallbackCompP50;
+        if (monthCompP50) {
+            signal.compSetP50 = monthCompP50;
+            signal.compSetP25 = monthMetrics?.p25_adr ?? compPercentiles.p25 ?? undefined;
+            signal.compSetP75 = monthMetrics?.p75_adr ?? compPercentiles.p75 ?? undefined;
+            signal.compSetSource = monthAnchor ? "airbtics_monthly" : compPercentiles.source;
         }
         if (monthAnchor) signal.monthAnchorAdr = monthAnchor;
         if (annualAnchor) signal.annualAnchorAdr = annualAnchor;

@@ -80,18 +80,51 @@ users). API: `src/app/api/*`.
 Entry point: `runPipeline(listingId)` in `src/lib/engine/pipeline.ts`. For each
 listing it computes the next **365 days** and writes proposals into the
 `InventoryMaster` collection (`proposedPrice`, `changePct`, `reasoning`,
-`proposalStatus="pending"`), and logs an `EngineRun` audit row.
+`proposalStatus`), and logs an `EngineRun` audit row.
+
+**On every run** the engine re-reads `Organization.pricingStrategy` and
+`Organization.settings.guardrails` — strategy is not a one-time setup snapshot.
+
+### Layer 0 — month-first market anchor (seasonal base)
+`resolveMarketAnchorBase()` in `src/lib/pricing/market-anchor.ts` with dynamic
+weights from `src/lib/pricing/anchor-weights.ts`:
+
+| Mode | When | Weights (approx.) |
+|------|------|-------------------|
+| **month_first** | Monthly market ADR available (Dubai `DubaiMarketMonthly`, Airbtics monthly) | 50% month p50, 20% month comp p50, 15% pacing, 10% annual, 5% listed Hostaway ref |
+| **market_blend** | Partial market data | Legacy blend; listed price weighs more |
+| **listed_only** | No market data | 100% Hostaway calendar / listing price |
+
+Per-day comp percentiles are **month-specific** (not a single TTM median for all
+365 days). This is what enables Dubai-style seasonal swings (e.g. summer p25 vs
+winter p75) without stacking conflicting `%` seasonal rules.
+
+**Unified seasonality:** the UAE PriceLabs calendar switches **tactical profiles**
+(occupancy matrix, last-minute ramps, MLOS) per date segment. Legacy
+`[UAE]`/`[Auto]` `SEASON` `priceAdjPct` rules are **not** applied when
+month-first anchor is active — they are filtered out of the engine and removed
+on `applyPricingPackToOrg()`.
 
 ### Layer A — deterministic 4-pass waterfall
 `computeDay()` in `src/lib/engine/waterfall.ts`:
-1. **Market anchor** — seasonality (month vs annual market median, capped
-   0.5×–2.0×) and forward-occupancy demand, from Airbtics signals.
-2. **Foundation** — operator seasonal/event/admin rules (`PricingRule`).
-3. **Strategy** — last-minute discounts, far-out premiums, day-of-week pricing.
-4. **Inventory** — gap-fill for 1–2 night gaps between bookings.
-5. **Integrity** — clamp to floor/ceiling, enforce min-stay, round to 2dp.
+1. **Market anchor** — month-first blend + forward-occupancy demand + booking
+   pace vs STLY.
+2. **Foundation** — operator event/admin rules and **manual** `SEASON` rules
+   (auto-generated `%` season rules removed).
+3. **Strategy** — last-minute, far-out, DOW, occupancy matrix (from active
+   seasonal **profile** + live `pricingStrategy` preset).
+4. **Inventory** — gap-fill / gap-prevention between bookings.
+5. **Integrity** — clamp to per-day floor/ceiling band, enforce min-stay.
 
-### Layer B — revenue optimization (elasticity + demand) — **live**
+**Per-day guardrail band:** `resolveMonthlyGuardrailBand()` sets floor/ceiling
+from month market p25/p75 × strategy `floorMult`/`ceilingMult` (Conservative /
+Balanced / Aggressive), then `resolveDynamicFloor()` may raise the floor via
+STLY safety and comp p25 guards.
+
+### Layer B — events, elasticity, org guardrails
+- **Events** — `MarketEvent` rows indexed by date; uplift caps shared with
+  `src/lib/pricing/event-pricing.ts` (weight: `Organization.eventPricingWeight`).
+- **Revenue optimization (elasticity + demand) — live**
 `src/lib/engine/optimization.ts` + `src/lib/elasticity/model.ts` +
 `src/lib/demand/modifiers.ts`:
 - Fit a **logistic booking-probability model** (IRLS) on the listing's own past
@@ -107,9 +140,29 @@ listing it computes the next **365 days** and writes proposals into the
   Each day records `elasticityPrice` / `elasticityWeight` / `pBook` for the
   rulebook-vs-optimized comparison shown on the Pricing page.
 
+### Layer C — proposal guardrails (enforced)
+`applyProposalGuardrails()` in `src/lib/pricing/proposal-guardrails.ts`:
+- Caps each proposal vs **current Hostaway calendar price** by
+  `settings.guardrails.maxSingleDayChangePct` (from strategy preset).
+- Sets `proposalStatus="approved"` when `|changePct| ≤ autoApproveThreshold`.
+- Larger moves stay `pending` for human review (or bulk approve in UI).
+
 ### Guardrails (always)
-Floor/ceiling clamp + ±25% shift cap + per-rule price overrides. The optimizer
-can never escape a listing's floor/ceiling.
+Month band floor/ceiling + elasticity ±25% shift cap + per-rule overrides + daily
+change cap. The optimizer cannot escape the effective per-day band.
+
+### Strategy presets (Conservative / Balanced / Aggressive)
+Defined in `src/lib/pricing/strategy-presets.ts`. These are **risk posture**
+knobs re-applied every engine run via `applyStrategyPresetToConfig()`:
+
+| Preset | Floor×market p25 | Ceiling×market p75 | LM discount | Auto-approve under |
+|--------|------------------|--------------------|-------------|--------------------|
+| Conservative | 0.7× | 1.8× | 10% | 3% |
+| Balanced | 0.5× | 2.5× | 15% | 5% |
+| Aggressive | 0.4× | 3.5× | 25% | 10% |
+
+Apply via `POST /api/pricing/portfolio-setup` or onboarding; engine picks up
+changes on the next `runPipeline` without re-running setup.
 
 ## 6. Agents (Lyzr manager–worker)
 
@@ -122,6 +175,9 @@ can never escape a listing's floor/ceiling.
   Chat Response. Agent IDs are configured via env (`LYZR_*_AGENT_ID`).
 - **Constraints:** only Aria talks to the user; only the channel-sync path writes
   to the PMS; workers never execute autonomously.
+- **Pricing engine:** does **not** call Lyzr. Event uplifts use cached
+  `MarketEvent` documents + shared `event-pricing.ts` (same caps as
+  `EventIntelligenceAgent.getPricingRecommendation`).
 - **Resilience:** the Lyzr proxy (`src/lib/agents/ai-agent.ts`) has a 60s
   timeout; the chat route runs as a polled background job.
 

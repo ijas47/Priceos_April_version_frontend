@@ -10,10 +10,9 @@
  */
 
 import {
-  CLAUDE_SONNET,
   GEMINI_FLASH,
   GEMINI_FLASH_LITE,
-  GPT_41,
+  GPT_4O_MINI,
   PERPLEXITY_SONAR,
 } from "./lyzr-models";
 import {
@@ -131,9 +130,9 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [MANAGER_AGENT_ID]: {
     agentId: MANAGER_AGENT_ID,
     name: "CRO Router",
-    model: CLAUDE_SONNET,
+    model: GEMINI_FLASH,
     temperature: 0.2,
-    maxTokens: 4000,
+    maxTokens: 3000,
     tools: [
       ...PORTFOLIO_TOOLS,
       ...PROPERTY_TOOLS,
@@ -149,9 +148,9 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [STRATEGY_AGENT_ID]: {
     agentId: STRATEGY_AGENT_ID,
     name: "Property Analyst",
-    model: GEMINI_FLASH,
+    model: GEMINI_FLASH_LITE,
     temperature: 0.1,
-    maxTokens: 4000,
+    maxTokens: 2500,
     tools: [...PROPERTY_TOOLS],
     outputSchema: PROPERTY_ANALYST_OUTPUT_SCHEMA,
   },
@@ -163,9 +162,9 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [BOOKING_AGENT_ID]: {
     agentId: BOOKING_AGENT_ID,
     name: "Booking Intelligence",
-    model: GEMINI_FLASH,
+    model: GEMINI_FLASH_LITE,
     temperature: 0.1,
-    maxTokens: 3000,
+    maxTokens: 2000,
     tools: [...BOOKING_TOOLS],
     outputSchema: BOOKING_INTELLIGENCE_OUTPUT_SCHEMA,
   },
@@ -177,9 +176,9 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [EVENT_AGENT_ID]: {
     agentId: EVENT_AGENT_ID,
     name: "Market Research",
-    model: GEMINI_FLASH,
+    model: GEMINI_FLASH_LITE,
     temperature: 0.1,
-    maxTokens: 3000,
+    maxTokens: 2000,
     tools: [...MARKET_TOOLS],
   },
 
@@ -191,9 +190,9 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [PRICEGUARD_AGENT_ID]: {
     agentId: PRICEGUARD_AGENT_ID,
     name: "PriceGuard",
-    model: GPT_41,
+    model: GPT_4O_MINI,
     temperature: 0.0,
-    maxTokens: 2500,
+    maxTokens: 2000,
     tools: [],
     outputSchema: PRICEGUARD_OUTPUT_SCHEMA,
   },
@@ -218,9 +217,9 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [GUARDRAILS_AGENT_ID]: {
     agentId: GUARDRAILS_AGENT_ID,
     name: "Guardrails Agent",
-    model: GPT_41,
+    model: GPT_4O_MINI,
     temperature: 0.0,
-    maxTokens: 2000,
+    maxTokens: 1500,
     tools: [...GUARDRAILS_TOOLS],
   },
 
@@ -245,9 +244,9 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [ARIA_AGENT_ID]: {
     agentId: ARIA_AGENT_ID,
     name: "Aria",
-    model: CLAUDE_SONNET,
+    model: GEMINI_FLASH,
     temperature: 0.2,
-    maxTokens: 4000,
+    maxTokens: 3000,
     tools: [
       ...PORTFOLIO_TOOLS,
       ...PROPERTY_TOOLS,
@@ -261,9 +260,9 @@ export const AGENT_CONFIGS: Record<string, AgentToolConfig> = {
   [MARKET_AGENT_ID]: {
     agentId: MARKET_AGENT_ID,
     name: "Market Agent",
-    model: GEMINI_FLASH,
+    model: GEMINI_FLASH_LITE,
     temperature: 0.1,
-    maxTokens: 3000,
+    maxTokens: 2000,
     tools: [...MARKET_TOOLS],
   },
 };

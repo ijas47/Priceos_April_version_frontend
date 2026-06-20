@@ -2,6 +2,42 @@
 
 Notable changes to PriceOS. Newest first.
 
+## Unreleased — Pricing intelligence overhaul
+
+### Pricing engine
+- **Month-first market anchor.** Dynamic weights (`anchor-weights.ts`): when
+  monthly market ADR exists, 50% month p50 + month-specific comp percentiles;
+  listed Hostaway price reduced to 5% reference weight.
+- **Per-day seasonal comps.** Dubai and Airbtics signals now use **that month's**
+  p25/p50/p75 per calendar day (not one static TTM median for the full horizon).
+- **Unified seasonality.** UAE calendar switches tactical profiles only;
+  legacy `[UAE]`/`[Auto]` `SEASON` `priceAdjPct` rules removed on pack apply and
+  filtered from engine runs when month-first anchor is active.
+- **Strategy on every run.** `pricingStrategy` presets (LM, far-out, gap-fill,
+  DOW) re-applied inside `runPipeline` — not only at portfolio setup.
+- **Monthly guardrail bands.** Floor/ceiling derived from month market p25/p75 ×
+  strategy `floorMult`/`ceilingMult` (Dubai 100 vs 1000 swing).
+- **Event pricing in pipeline.** Cached `MarketEvent` rows apply capped uplifts
+  via shared `event-pricing.ts` (same logic as Event Intelligence agent).
+- **Proposal guardrails enforced.** `maxSingleDayChangePct` caps daily moves;
+  `autoApproveThreshold` sets `proposalStatus="approved"` for small deltas.
+
+### Tests
+- New unit tests: `proposal-guardrails`, `event-pricing`, `strategy-runtime`;
+  updated `market-anchor` expectations.
+
+### Lyzr agents (demo latency)
+- **CRO Router:** Claude Sonnet → **Gemini 3 Flash** (synced to Lyzr Studio).
+- **Workers:** Property/Booking/Market → **Gemini 3.1 Flash Lite**.
+- **Safety:** PriceGuard + Guardrails → **gpt-4o-mini** (temp 0).
+- Capped `maxTokens` on chat-facing agents for faster turns.
+
+### Docs
+- `docs/ARCHITECTURE.md` — pricing engine sections 5 (layers 0–C, strategy table).
+- `docs/agent-call-reference.md` — engine data flow updated.
+
+---
+
 ## Unreleased — Security hardening, revenue optimization & docs
 
 ### Security
