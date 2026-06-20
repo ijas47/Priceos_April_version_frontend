@@ -223,8 +223,9 @@ export async function buildDubaiMarketContext(
 }
 
 /**
- * Build per-day market signals from Dubai open data (primary before Airbtics).
- * Forward pacing uses same-month-last-year from monthly aggregates.
+ * Build per-day market signals from Dubai open data.
+ * Seasonal anchors (month p50, comp percentiles) are primary for UAE.
+ * forwardOccupancy / pacingAdr here are static fallbacks — live values come from Airbtics when configured.
  */
 export async function buildDubaiMarketSignals(
   area: string,
@@ -286,14 +287,68 @@ export async function buildDubaiMarketSignals(
   return map;
 }
 
-/** Merge Dubai signals over Airbtics - Dubai wins for comp/month fields. */
+/**
+ * Field ownership when merging Dubai local data + Airbtics API.
+ *
+ * 1. Dubai (local Kaggle ingest): monthAnchorAdr, comp percentiles — seasonal anchors for UAE demos.
+ * 2. Airbtics (when API key set): forwardOccupancy, pacingAdr, live market occupancy — forward demand.
+ * 3. Dubai pacing fields are fallback only when Airbtics is unavailable or missing a date.
+ */
+export const DUBAI_PRIMARY_SIGNAL_FIELDS = [
+  "compSetP25",
+  "compSetP50",
+  "compSetP75",
+  "compSetSource",
+  "monthAnchorAdr",
+  "annualAnchorAdr",
+] as const;
+
+export const AIRBTICS_LIVE_SIGNAL_FIELDS = [
+  "forwardOccupancy",
+  "pacingAdr",
+  "marketOccupancy",
+  "activeListings",
+  "supplyPressure",
+] as const;
+
+export interface MergeMarketSignalsOptions {
+  /** AIRBTICS_API_KEY set and at least one day of Airbtics signals loaded. */
+  airbticsLive?: boolean;
+}
+
+/** True when the map contains per-day forward pacing from Airbtics. */
+export function hasAirbticsPacingData(map: Map<string, MarketSignal>): boolean {
+  for (const signal of map.values()) {
+    if (
+      (signal.forwardOccupancy != null && signal.forwardOccupancy > 0) ||
+      (signal.pacingAdr != null && signal.pacingAdr > 0)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function mergeMarketSignals(
   dubai: Map<string, MarketSignal>,
-  airbtics: Map<string, MarketSignal>
+  airbtics: Map<string, MarketSignal>,
+  options?: MergeMarketSignalsOptions
 ): Map<string, MarketSignal> {
+  const airbticsLive = options?.airbticsLive ?? false;
   const merged = new Map<string, MarketSignal>(airbtics);
-  for (const [ds, dSignal] of dubai) {
-    const aSignal = merged.get(ds) ?? {};
+
+  const allDates = new Set([...dubai.keys(), ...airbtics.keys()]);
+  for (const ds of allDates) {
+    const dSignal = dubai.get(ds) ?? {};
+    const aSignal = airbtics.get(ds) ?? {};
+
+    const preferAirbticsLive = (field: keyof MarketSignal) => {
+      const aVal = aSignal[field];
+      const dVal = dSignal[field];
+      if (airbticsLive && aVal != null) return aVal;
+      return dVal ?? aVal;
+    };
+
     merged.set(ds, {
       ...aSignal,
       ...dSignal,
@@ -303,12 +358,13 @@ export function mergeMarketSignals(
       compSetSource: dSignal.compSetSource ?? aSignal.compSetSource,
       monthAnchorAdr: dSignal.monthAnchorAdr ?? aSignal.monthAnchorAdr,
       annualAnchorAdr: dSignal.annualAnchorAdr ?? aSignal.annualAnchorAdr,
-      forwardOccupancy: aSignal.forwardOccupancy ?? dSignal.forwardOccupancy,
-      pacingAdr: aSignal.pacingAdr ?? dSignal.pacingAdr,
-      marketOccupancy: dSignal.marketOccupancy ?? aSignal.marketOccupancy,
-      activeListings: dSignal.activeListings ?? aSignal.activeListings,
-      supplyPressure: dSignal.supplyPressure ?? aSignal.supplyPressure,
+      forwardOccupancy: preferAirbticsLive("forwardOccupancy") as number | undefined,
+      pacingAdr: preferAirbticsLive("pacingAdr") as number | undefined,
+      marketOccupancy: preferAirbticsLive("marketOccupancy") as number | undefined,
+      activeListings: preferAirbticsLive("activeListings") as number | undefined,
+      supplyPressure: preferAirbticsLive("supplyPressure") as number | undefined,
     });
   }
+
   return merged;
 }

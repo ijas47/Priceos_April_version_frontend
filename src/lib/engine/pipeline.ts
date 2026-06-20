@@ -29,6 +29,7 @@ import {
     BookingContext,
     MarketSignal,
 } from "./waterfall";
+import { isAvailable as isAirbticsApiConfigured } from "@/lib/airbtics/client";
 import { getCompSet, getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
 import { resolveAreaBounds } from "@/lib/pricing/area-bounds";
 import {
@@ -50,6 +51,7 @@ import {
     buildDubaiMarketContext,
     resolveDubaiCompSetPercentiles,
     mergeMarketSignals,
+    hasAirbticsPacingData,
     isDubaiDatasetReady,
 } from "@/lib/market/dubai-airroi";
 import {
@@ -703,7 +705,8 @@ interface ListingMarketInput {
 
 /**
  * Build a date→MarketSignal map for the next N days.
- * Dubai AirROI open data is primary for Dubai listings; Airbtics fills gaps.
+ * Dubai local data: month anchors + comp percentiles (UAE seasonal wedge).
+ * Airbtics (when API key set): forward occupancy + pacing ADR per day.
  */
 async function buildMarketSignals(
     listing: ListingMarketInput,
@@ -742,7 +745,12 @@ async function buildMarketSignals(
         console.error("[buildMarketSignals] Airbtics:", (err as Error).message);
     }
 
-    return mergeMarketSignals(dubaiMap, airbticsMap);
+    const airbticsLive =
+        isAirbticsApiConfigured() &&
+        airbticsMap.size > 0 &&
+        hasAirbticsPacingData(airbticsMap);
+
+    return mergeMarketSignals(dubaiMap, airbticsMap, { airbticsLive });
 }
 
 /** Airbtics-backed signals - used as fallback when Dubai open data is missing fields. */
