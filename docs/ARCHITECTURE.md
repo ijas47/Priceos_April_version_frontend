@@ -27,7 +27,7 @@ inbox with AI-drafted replies.
 | Auth | Custom JWT (HS256) in httpOnly cookies |
 | Edge auth | `jose` (signature verification in middleware) |
 | AI orchestration | Lyzr manager–worker agents |
-| Market data | Airbtics |
+| Market data | Dubai local ingest (AirROI Kaggle) + Airbtics API |
 | PMS | Hostaway (abstracted `PMSClient`) |
 | UI | shadcn/ui + Radix + Tailwind v4 |
 | State | Zustand |
@@ -85,6 +85,43 @@ listing it computes the next **365 days** and writes proposals into the
 **On every run** the engine re-reads `Organization.pricingStrategy` and
 `Organization.settings.guardrails` — strategy is not a one-time setup snapshot.
 
+### Market signals — Dubai local + Airbtics (field ownership)
+`buildMarketSignals()` in `pipeline.ts` merges two sources via
+`mergeMarketSignals()` in `src/lib/market/dubai-airroi.ts`:
+
+| Source | Owns | When used |
+|--------|------|-----------|
+| **Dubai local** (`DubaiMarketMonthly`, `DubaiCompListing`, ingest script `scripts/ingest-dubai-airroi.mjs`) | `monthAnchorAdr`, `compSetP25/P50/P75`, `annualAnchorAdr`, geo comp percentiles | Dubai listings when dataset ingested |
+| **Airbtics** (`AIRBTICS_API_KEY`) | `forwardOccupancy`, `pacingAdr`, `marketOccupancy`, `activeListings`, `supplyPressure` | When API key set and pacing payload loads |
+| **Dubai pacing fields** | Same as Airbtics live fields | **Fallback only** when Airbtics unavailable |
+
+Historical month p50 is a **seasonal anchor**, not today's clearing price in a
+demand slump. Live forward pacing from Airbtics (when configured) drives
+near-term demand adjustments.
+
+### PMS listed price sanity (onboarding)
+`runListingPriceSanity()` in `listing-price-sanity-service.ts` runs during
+auto-setup and compares Hostaway `listing.price` + calendar shape to:
+1. TTM achieved ADR from reservations (≥3 bookings), else
+2. Market benchmark p50, else
+3. Hostaway fallback.
+
+Persists `validatedBasePrice`, `basePriceSource`, `pmsPriceTrusted` on `Listing`.
+Flat round-number placeholders (100/500 AED) with large deviation from reference
+trigger an `Insight` and pipeline uses trusted base instead of wrong PMS price.
+In **distressed** demand, low listed rates are not overridden by historical medians.
+
+### Demand regime (distressed / soft / normal / strong)
+`resolveDemandRegime()` in `src/lib/pricing/demand-regime.ts` runs each pipeline
+pass using forward occupancy (30-day avg), portfolio occupancy, booking pace vs
+STLY, `detectCrisisRegime()` from `MarketEvent` intel, and Gulf summer trough.
+
+When **distressed** (e.g. 0% portfolio occ + weak forward market + crisis signals):
+- Market anchor scaled toward listed price (`demandAnchorScale` ~0.42).
+- Comp p25 near-term floor guard **suspended** (`resolveDynamicFloor`).
+- Month p25 floor lift **skipped** (`resolveMonthlyGuardrailBand`).
+- Integrity clamp capped at `listed × 1.12` — won't pull 162 AED up to historical p25.
+
 ### Layer 0 — month-first market anchor (seasonal base)
 `resolveMarketAnchorBase()` in `src/lib/pricing/market-anchor.ts` with dynamic
 weights from `src/lib/pricing/anchor-weights.ts`:
@@ -119,7 +156,8 @@ on `applyPricingPackToOrg()`.
 **Per-day guardrail band:** `resolveMonthlyGuardrailBand()` sets floor/ceiling
 from month market p25/p75 × strategy `floorMult`/`ceilingMult` (Conservative /
 Balanced / Aggressive), then `resolveDynamicFloor()` may raise the floor via
-STLY safety and comp p25 guards.
+STLY safety and comp p25 guards — **unless demand regime is distressed** (static
+floor only; comp p25 guard suspended).
 
 ### Layer B — events, elasticity, org guardrails
 - **Events** — `MarketEvent` rows indexed by date; uplift caps shared with
@@ -170,6 +208,13 @@ changes on the next `runPipeline` without re-running setup.
   answers the operator, presents proposals. On the user's **first message** for a
   property + date range it **auto-primes** (market scan + benchmark + guardrail
   setup) — there is no separate "Run Aria" activation step anymore.
+- **Chat context injection** (`POST /api/chat`): first message per session injects
+  fresh MongoDB payload including `demand_regime`, `pricing_directives`,
+  `engine_proposals`, and STLY summary. Benchmark `verdict` becomes
+  `DEFENSIVE_HOLD` in distressed markets — Aria must not label listings
+  UNDERPRICED solely because listed rate is below historical p50 when occupancy
+  is zero and forward demand is weak. **`engine_proposals` are authoritative** for
+  recommended prices in narrative.
 - **Workers:** Property Analyst, Booking Intelligence, Market/Internet Research,
   Competitor Benchmark, PriceGuard/Guardrails, Marketing, Conversation Summary,
   Chat Response. Agent IDs are configured via env (`LYZR_*_AGENT_ID`).

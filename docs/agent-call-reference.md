@@ -264,15 +264,20 @@ pre-computed and ingested data from MongoDB and optional Airbtics/Dubai datasets
 runPipeline(listingId)
   │
   ├─ Reads: Organization (pricingStrategy, guardrails, eventPricingWeight)
-  ├─ Reads: DubaiMarketMonthly / DubaiCompListing (Dubai listings — primary)
-  ├─ Reads: Airbtics market context + BenchmarkData (fallback / non-Dubai)
+  ├─ Reads: DubaiMarketMonthly / DubaiCompListing (Dubai — month anchors + comps)
+  ├─ Reads: Airbtics market context (live forward pacing when API key set)
+  ├─ Reads: BenchmarkData (Aria chat / legacy benchmark agent — not engine anchor)
+  ├─ Runs: listing price sanity (on auto-setup; validatedBasePrice on Listing)
+  ├─ Runs: demand regime (distressed / soft / normal / strong)
   ├─ Reads: InventoryMaster (calendar status + current prices)
   ├─ Reads: PricingRule (manual rules; [UAE]/[Auto] SEASON % rules filtered out)
   ├─ Reads: MarketEvent (per-day event uplift caps)
   ├─ Reads: Reservations (booking pace vs STLY, recency)
   │
-  ├─ Layer 0: Month-first market anchor (per-day month p50/p25/p75)
-  ├─ Layer A: Waterfall (profiles, LM, gaps, occupancy matrix)
+  ├─ Merge: mergeMarketSignals() — Dubai owns monthAnchorAdr + comp %iles;
+  │          Airbtics owns forwardOccupancy + pacingAdr when AIRBTICS_API_KEY set
+  ├─ Layer 0: Month-first market anchor (per-day month p50/p25/p75) + demand scale
+  ├─ Layer A: Waterfall (profiles, LM, gaps, occupancy matrix, crisis tier)
   ├─ Layer B: Elasticity + demand modifier + event uplift
   ├─ Layer C: Proposal guardrails (max daily Δ%, auto-approve threshold)
   │
@@ -283,6 +288,18 @@ runPipeline(listingId)
 market ADR exists (critical for Dubai summer vs winter). The UAE seasonal
 **calendar** switches tactical profiles only — not stacked `%` season rules.
 
+**Dubai vs Airbtics split:** ingest Dubai data for seasonal anchors (`monthAnchorAdr`,
+per-month p25/p50/p75). Use Airbtics for **live** `forwardOccupancy` and `pacingAdr`
+when `AIRBTICS_API_KEY` is set. Do not use Dubai's static pacing proxy when Airbtics
+pacing is available.
+
+**Demand regime:** when forward occupancy, portfolio pickup, or crisis signals indicate
+**distressed** demand, the engine scales anchors toward the listed price and suspends
+comp-p25 floor lifts — historical p50 is not treated as today's clearing rate.
+
+**PMS sanity:** auto-setup validates Hostaway listed price vs TTM ADR / market p50;
+wrong placeholders get `validatedBasePrice` + an Insight, not blind trust of PMS defaults.
+
 **Strategy presets** (Conservative / Balanced / Aggressive) are re-applied every
 run from `Organization.pricingStrategy`.
 
@@ -290,5 +307,6 @@ run from `Organization.pricingStrategy`.
 are written with `proposalStatus="approved"`. Push to Hostaway still requires
 approve API + `HOSTAWAY_READ_ONLY=false`.
 
-Aria chat is **orthogonal** — it explains proposals using the same inventory
-payload but does not compute prices.
+**Aria chat** does not compute prices but receives `demand_regime`, `pricing_directives`,
+and `engine_proposals` on first message — narrative must align with engine output, not
+raw `benchmark.p50` alone in distressed markets.

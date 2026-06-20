@@ -2,6 +2,42 @@
 
 Notable changes to PriceOS. Newest first.
 
+## Unreleased — Demand-aware pricing, PMS sanity, market data split
+
+### Market data (Dubai local + Airbtics)
+- **Dubai local data kept for UAE seasonal anchors.** Ingested AirROI Kaggle
+  dataset (`DubaiMarketMonthly`, `DubaiCompListing`) supplies per-month p25/p50/p75
+  and geo comp percentiles — the UAE demo wedge (e.g. Marina summer vs winter).
+- **Airbtics owns live forward demand when `AIRBTICS_API_KEY` is set.**
+  `mergeMarketSignals()` in `dubai-airroi.ts`: Dubai wins `monthAnchorAdr` and
+  comp percentiles; Airbtics wins `forwardOccupancy`, `pacingAdr`, and live market
+  occupancy. Dubai pacing is **fallback only** when Airbtics is off or missing a date.
+
+### PMS listed price validation
+- **`listing-price-sanity.ts`** compares Hostaway listed/calendar rates to TTM
+  achieved ADR and market p50; detects flat placeholder defaults (100/500 AED).
+- Persists on `Listing`: `validatedBasePrice`, `basePriceSource`, `basePriceConfidencePct`,
+  `pmsPriceTrusted`, `basePriceValidatedAt`.
+- Runs on auto-setup; emits `Insight` (`detectorKey: listing_price_sanity`) when unreliable.
+- Pipeline uses `resolvePipelineListedPrice()` — ignores flat wrong calendar when untrusted.
+
+### Demand regime (distressed summer / crisis)
+- **`demand-regime.ts`** classifies `distressed | soft | normal | strong` from
+  forward occupancy, portfolio occupancy, booking pace vs STLY, crisis tier, and
+  Gulf summer trough (Jun–Sep).
+- **Distressed behavior:** scales market anchor toward listed price (~42% blend),
+  suspends comp p25 floor guard, skips month p25 floor lift, caps integrity clamp
+  to `listed × 1.12` — stops chasing historical p50 when demand has collapsed.
+- **Aria chat** injects `demand_regime`, `pricing_directives`, and rewrites benchmark
+  verdict to `DEFENSIVE_HOLD` in distressed markets; mandates `engine_proposals` as
+  authoritative recommended price.
+
+### Tests
+- `demand-regime.test.ts`, `listing-price-sanity.test.ts`, expanded `dubai-airroi.test.ts`
+  (merge policy + pacing ownership).
+
+---
+
 ## Unreleased — Pricing intelligence overhaul
 
 ### Pricing engine
