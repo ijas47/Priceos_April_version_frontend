@@ -10,6 +10,8 @@ export interface DynamicFloorInput {
   /** Apply comp p25 guard within this lead time (days). 0 = disabled. */
   nearTermCompGuardDays?: number;
   nearTermCompFloorPct?: number;
+  /** When true, skip comp p25 near-term floor lift (distressed / soft demand). */
+  suspendCompFloorGuard?: boolean;
 }
 
 export interface DynamicFloorResult {
@@ -54,6 +56,7 @@ export function resolveDynamicFloor(input: DynamicFloorInput): DynamicFloorResul
   }
 
   if (
+    !input.suspendCompFloorGuard &&
     compSetP25 != null &&
     compSetP25 > 0 &&
     nearTermCompGuardDays > 0 &&

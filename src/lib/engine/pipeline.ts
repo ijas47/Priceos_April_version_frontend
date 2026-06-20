@@ -41,6 +41,10 @@ import { buildStlySummary, shiftIsoDate } from "@/lib/pricing/stly";
 import { computeDaysSinceLastBooking } from "@/lib/pricing/booking-recency";
 import { detectCrisisRegime } from "@/lib/pricing/crisis-regime";
 import {
+    resolveDemandRegime,
+    resolveDistressedEffectiveFloor,
+} from "@/lib/pricing/demand-regime";
+import {
     isDubaiMarket,
     buildDubaiMarketSignals,
     buildDubaiMarketContext,
@@ -394,6 +398,32 @@ export async function runPipeline(
             stlySummary.days.map((d) => [d.date, d.stly_rate])
         );
 
+        const forwardOccSamples: number[] = [];
+        for (let i = 0; i < 30; i++) {
+            const sig = marketSignals.get(dateStr(addDays(today, i)));
+            if (sig?.forwardOccupancy != null && sig.forwardOccupancy > 0) {
+                forwardOccSamples.push(sig.forwardOccupancy);
+            }
+        }
+        const avgForwardOcc =
+            forwardOccSamples.length > 0
+                ? forwardOccSamples.reduce((s, v) => s + v, 0) / forwardOccSamples.length
+                : null;
+
+        const firstSignal = marketSignals.get(todayStr);
+        const demandRegime = resolveDemandRegime({
+            forwardOccupancy: avgForwardOcc,
+            marketOccupancy: firstSignal?.marketOccupancy ?? null,
+            portfolioOccupancyPct: pricingCtx.occupancyPct,
+            bookingPaceRatio: bookingPace.primaryPaceRatio,
+            crisisTier: crisisRegime.tier,
+            month: today.getMonth() + 1,
+            city,
+            countryCode,
+            listedPrice: pipelineBasePrice,
+            pacingAdr: firstSignal?.pacingAdr ?? null,
+        });
+
         let daysChanged = 0;
         const bulkOps: any[] = [];
         const listingFallbackPrice = pipelineBasePrice;
@@ -502,20 +532,32 @@ export async function runPipeline(
                 monthP75: signal?.compSetP75 ?? null,
                 monthP50: signal?.monthAnchorAdr ?? signal?.compSetP50 ?? null,
                 preset: strategyPreset,
+                demandRegime: demandRegime.regime,
+            });
+
+            const regimeStaticFloor = resolveDistressedEffectiveFloor({
+                staticFloor: monthBand.floor,
+                listedPrice: dayCalendarPrice,
+                pacingAdr: signal?.pacingAdr ?? null,
+                regime: demandRegime,
             });
 
             const floorResult = resolveDynamicFloor({
-                staticFloor: monthBand.floor,
+                staticFloor: regimeStaticFloor,
                 leadTimeDays: leadTime,
                 stlyRate: stlyRateByDate.get(ds) ?? null,
                 safetyConfig: pricingCtx.pack.portfolioDefaults.safetyMinimumPrice,
                 compSetP25: signal?.compSetP25 ?? null,
+                suspendCompFloorGuard: demandRegime.suspendCompFloorGuard,
             });
             dayConfig.absoluteMinPrice = floorResult.floor;
             dayConfig.absoluteMaxPrice = monthBand.ceiling;
             dayConfig.bookingRecency = bookingRecencyConfig;
             dayConfig.daysSinceLastBooking = daysSinceLastBooking;
             dayConfig.crisisTier = crisisRegime.tier;
+            dayConfig.demandRegime = demandRegime.regime;
+            dayConfig.demandAnchorScale = demandRegime.anchorScale;
+            dayConfig.demandMaxFloorVsListedPct = demandRegime.maxFloorVsListedPct;
 
             const result = computeDay(currentDate, today, dayConfig, allRules, bookingCtx, signal);
 
@@ -538,6 +580,11 @@ export async function runPipeline(
             if (crisisRegime.tier > 0 && crisisRegime.reason) {
                 reasoningParts.unshift(
                     `[CRISIS] Tier ${crisisRegime.tier}: ${crisisRegime.reason}`
+                );
+            }
+            if (i === 0 && demandRegime.regime !== "normal") {
+                reasoningParts.unshift(
+                    `[DEMAND] ${demandRegime.regime.toUpperCase()} (score ${demandRegime.score}) - ${demandRegime.reasons.join(", ")}`
                 );
             }
 

@@ -23,6 +23,12 @@ import {
     UNVERIFIED_PREMIUM_REJECT_PCT,
     type MarketEventWindow,
 } from "@/lib/research/source-trust";
+import { detectCrisisRegime } from "@/lib/pricing/crisis-regime";
+import {
+    adjustBenchmarkVerdictForRegime,
+    resolveDemandRegime,
+} from "@/lib/pricing/demand-regime";
+import { computeBookingPace } from "@/lib/pricing/booking-pace";
 import mongoose from "mongoose";
 import { fetchJsonWithRetry, toUserFacingAgentError } from "@/lib/lyzr/fetch-with-retry";
 
@@ -354,6 +360,48 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 }))
             );
 
+            const crisisRegime = detectCrisisRegime(
+                events.map((e) => ({
+                    name: e.name,
+                    description: e.description,
+                    impactLevel: e.impactLevel,
+                    confidence: e.confidence,
+                }))
+            );
+
+            const bookingPace = computeBookingPace({
+                today: dateFrom,
+                forwardInventory: rawInventory.map((r) => ({
+                    date: r.date,
+                    status: r.status,
+                })),
+                forwardReservations: resRows.map((r) => ({
+                    checkIn: r.checkIn,
+                    checkOut: r.checkOut,
+                    status: r.status,
+                })),
+                stlyInventory: stlyInventory.map((r) => ({
+                    date: r.date,
+                    status: r.status,
+                })),
+                stlyReservations: stlyReservations.map((r) => ({
+                    checkIn: r.checkIn,
+                    checkOut: r.checkOut,
+                    status: r.status,
+                })),
+            });
+
+            const demandRegime = resolveDemandRegime({
+                forwardOccupancy: null,
+                portfolioOccupancyPct: occupancy,
+                bookingPaceRatio: bookingPace.primaryPaceRatio,
+                crisisTier: crisisRegime.tier,
+                month: new Date(dateFrom).getMonth() + 1,
+                city: listing?.city || "Dubai",
+                countryCode: listing?.countryCode || "AE",
+                listedPrice: Number(listing?.price || 0),
+            });
+
             const engineProposals = rawInventory
                 .filter((inv) => inv.proposedPrice != null)
                 .map((inv) => ({
@@ -402,9 +450,17 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 },
                 benchmark: benchmark
                     ? {
-                          verdict: benchmark.verdict || "FAIR",
+                          verdict: adjustBenchmarkVerdictForRegime(
+                              benchmark.verdict,
+                              demandRegime.regime,
+                              occupancy
+                          ),
+                          raw_verdict: benchmark.verdict || "FAIR",
                           percentile: benchmark.percentile || 50,
                           median_market_rate: Number(benchmark.p50Rate || 0),
+                          historical_p25: Number(benchmark.p25Rate || 0),
+                          historical_p50: Number(benchmark.p50Rate || 0),
+                          historical_p75: Number(benchmark.p75Rate || 0),
                           p25: Number(benchmark.p25Rate || 0),
                           p50: Number(benchmark.p50Rate || 0),
                           p75: Number(benchmark.p75Rate || 0),
@@ -415,8 +471,28 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                           recommended_weekend: Number(benchmark.recommendedWeekend || benchmark.p75Rate || 0),
                           recommended_event: Number(benchmark.recommendedEvent || benchmark.p90Rate || 0),
                           reasoning: benchmark.reasoning || "",
+                          is_historical_seasonal_reference: true,
+                          not_current_clearing_price_when_distressed:
+                              demandRegime.regime === "distressed" || demandRegime.regime === "soft",
                       }
                     : null,
+                demand_regime: {
+                    state: demandRegime.regime,
+                    score: demandRegime.score,
+                    reasons: demandRegime.reasons,
+                    crisis_tier: crisisRegime.tier,
+                    crisis_reason: crisisRegime.reason,
+                    booking_pace_vs_stly: bookingPace.primaryPaceRatio,
+                    narrative_guidance: demandRegime.narrativeGuidance,
+                },
+                pricing_directives: [
+                    "Use engine_proposals as the authoritative recommended price — not benchmark.p50 or floor_price alone.",
+                    demandRegime.narrativeGuidance,
+                    demandRegime.regime === "distressed"
+                        ? "Never label the listing UNDERPRICED solely because listed rate is below historical p50 when portfolio occupancy is 0% and forward market occupancy is weak."
+                        : "Compare listed rate to forward pacing and booking pickup, not only seasonal medians.",
+                    "STLY and benchmark percentiles are historical seasonal references — not mandates to raise rates during demand slumps.",
+                ],
                 market_intel: {
                     refreshed: intelRefresh.refreshed,
                     cache_reason: intelRefresh.assessment.reason,
@@ -523,6 +599,13 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             `Only cite events from market_events whose start_date/end_date overlap this window.`,
             `Never mention seasonal events (e.g. Ramadan, Eid, F1) unless they fall inside the analysis window per the injected data.`,
             `If no overlapping event exists in market_events, write "No major events in this period" - do not invent events.`,
+            ``,
+            `[DEMAND-AWARE PRICING - MANDATORY]`,
+            `Read demand_regime.state and pricing_directives in the injected JSON before any pricing verdict.`,
+            `When demand_regime.state is "distressed" or "soft": historical benchmark p50/p25 are NOT current clearing prices.`,
+            `Do NOT recommend raising to floor_price or market p50 when demand is distressed — prioritize occupancy.`,
+            `Your proposed prices in chat must align with engine_proposals when present.`,
+            `Never claim UNDERPRICED when demand_regime is distressed and listed rate matches engine proposals.`,
         ].join("\n");
 
         let anchoredMessage = message;

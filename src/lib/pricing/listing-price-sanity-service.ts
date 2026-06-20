@@ -8,6 +8,7 @@ import {
   ttmCutoffDate,
   type ListingPriceSanityResult,
 } from "@/lib/pricing/listing-price-sanity";
+import { resolveDemandRegime } from "@/lib/pricing/demand-regime";
 
 export interface RunListingPriceSanityOptions {
   listingId: string;
@@ -67,12 +68,21 @@ export async function runListingPriceSanity(
       ? Math.round(monthlyP50s.reduce((s, v) => s + v, 0) / monthlyP50s.length)
       : null);
 
+  const demandRegime = resolveDemandRegime({
+    marketOccupancy: options.marketCtx?.occupancy ?? null,
+    month: new Date().getMonth() + 1,
+    city: listing.city || "Dubai",
+    countryCode: listing.countryCode || "AE",
+    listedPrice: Number(listing.price) || 0,
+  });
+
   const result = assessListingPriceSanity({
     listedPrice: Number(listing.price) || 0,
     calendarPrices,
     ttmAdr,
     ttmReservationCount,
     marketP50,
+    demandRegime: demandRegime.regime,
   });
 
   await Listing.findByIdAndUpdate(listingOid, {

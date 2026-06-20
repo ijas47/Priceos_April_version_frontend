@@ -1,4 +1,5 @@
 import { resolveMarketAnchorBase } from "@/lib/pricing/market-anchor";
+import type { DemandRegime } from "@/lib/pricing/demand-regime";
 import { resolvePaceDemandMultiplier } from "@/lib/pricing/booking-pace";
 import { resolveBookingRecencyDiscountPct } from "@/lib/pricing/booking-recency";
 import {
@@ -67,6 +68,12 @@ export interface ListingConfig {
     daysSinceLastBooking?: number | null;
     /** Active geopolitical crisis tier for this run (0 = normal). */
     crisisTier?: CrisisTier;
+    /** Demand regime from forward occ / pace / crisis signals. */
+    demandRegime?: DemandRegime;
+    /** Scales market anchor toward listed price when demand is weak. */
+    demandAnchorScale?: number;
+    /** Do not clamp above listed × factor in distressed mode. */
+    demandMaxFloorVsListedPct?: number;
 }
 
 export interface Rule {
@@ -174,7 +181,9 @@ export function computeDay(
 
     // ── Pass 0 - Market Anchor (comp-set + pacing; listed price = reference only) ─
     const listedReference = config.basePrice;
-    const anchor = resolveMarketAnchorBase(listedReference, marketSignal);
+    const anchor = resolveMarketAnchorBase(listedReference, marketSignal, {
+      anchorScale: config.demandAnchorScale ?? 1,
+    });
     let basePrice = anchor.price;
     notes.push(...anchor.notes);
 
@@ -520,8 +529,19 @@ export function computeDay(
 
     // ── Pass 4 - Integrity ────────────────────────────────────────────────────
 
-    const effectiveMinPrice = ruleMinPrice ?? config.absoluteMinPrice;
+    let effectiveMinPrice = ruleMinPrice ?? config.absoluteMinPrice;
     const effectiveMaxPrice = ruleMaxPrice ?? config.absoluteMaxPrice;
+
+    if (
+      config.demandRegime === "distressed" &&
+      listedReference > 0 &&
+      config.demandMaxFloorVsListedPct
+    ) {
+      effectiveMinPrice = Math.min(
+        effectiveMinPrice,
+        Math.round(listedReference * config.demandMaxFloorVsListedPct)
+      );
+    }
 
     if (price < effectiveMinPrice) {
         notes.push(

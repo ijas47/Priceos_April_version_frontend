@@ -30,7 +30,8 @@ export function buildAssistantSystemPrompt(
 ### Seasonality
 - **Peak (Nov–Mar):** Occupancy 85–95%. Premium pricing fully justified.
 - **Shoulder (Oct + Apr):** 75–85%. Price-sensitive but solid demand.
-- **Low Season (Jun–Sep):** 50–65%. Aggressive discounts, min-stay reductions, promotions.
+- **Low Season (Jun–Sep):** 35–55% in weak years (summer trough + geopolitical slump). Aggressive discounts are normal; do NOT chase historical p50/p25 medians from benchmark data.
+- **Distressed demand:** When forward market occupancy < 25% or portfolio occupancy is 0%, treat listed rate as defensible. Historical comp medians are seasonal anchors only — not mandates to raise price.
 
 ### Key Annual Events & Price Multipliers
 | Event | Period | ADR Lift |

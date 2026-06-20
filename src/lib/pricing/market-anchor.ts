@@ -76,8 +76,10 @@ export function compSetPercentilesFromBenchmark(
  */
 export function resolveMarketAnchorBase(
   listedReference: number,
-  signal?: MarketSignal
+  signal?: MarketSignal,
+  options?: { anchorScale?: number }
 ): { price: number; notes: string[]; usedMarketAnchor: boolean; anchorMode: string } {
+  const anchorScale = options?.anchorScale ?? 1;
   if (!signal) {
     return { price: listedReference, notes: [], usedMarketAnchor: false, anchorMode: "listed_only" };
   }
@@ -126,13 +128,19 @@ export function resolveMarketAnchorBase(
   }
 
   const totalW = parts.reduce((s, p) => s + p.weight, 0);
-  const price = Math.round(
-    parts.reduce((s, p) => s + p.value * (p.weight / totalW), 0)
-  );
+  let blended = parts.reduce((s, p) => s + p.value * (p.weight / totalW), 0);
+
+  if (anchorScale !== 1 && listedReference > 0) {
+    blended = listedReference + (blended - listedReference) * anchorScale;
+  }
+
+  const price = Math.round(blended);
   const usedMarketAnchor = parts.some((p) => !p.label.startsWith("listed ref"));
 
+  const scaleNote =
+    anchorScale !== 1 ? `, demand-scale ${(anchorScale * 100).toFixed(0)}%` : "";
   const notes = [
-    `[MARKET] Anchor ${price} [${mode}, conf ${(confidence * 100).toFixed(0)}%] (${parts
+    `[MARKET] Anchor ${price} [${mode}, conf ${(confidence * 100).toFixed(0)}%${scaleNote}] (${parts
       .map((p) => `${Math.round((p.weight / totalW) * 100)}% ${p.label}`)
       .join(", ")})`,
   ];

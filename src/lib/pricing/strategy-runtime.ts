@@ -1,4 +1,5 @@
 import type { ListingConfig } from "@/lib/engine/waterfall";
+import type { DemandRegime } from "@/lib/pricing/demand-regime";
 import {
   type Strategy,
   type StrategyPreset,
@@ -47,10 +48,19 @@ export function resolveMonthlyGuardrailBand(args: {
   monthP75?: number | null;
   monthP50?: number | null;
   preset: StrategyPreset;
+  demandRegime?: DemandRegime;
 }): MonthlyGuardrailBand {
   const { staticFloor, staticCeiling, preset } = args;
   const p25 = args.monthP25 ?? args.monthP50;
   const p75 = args.monthP75 ?? args.monthP50;
+
+  if (args.demandRegime === "distressed") {
+    return {
+      floor: staticFloor,
+      ceiling: staticCeiling,
+      note: "[BAND] Distressed demand - static floor/ceiling only (no month p25 lift)",
+    };
+  }
 
   if (!p25 || !p75 || p25 <= 0 || p75 <= 0) {
     return { floor: staticFloor, ceiling: staticCeiling, note: null };

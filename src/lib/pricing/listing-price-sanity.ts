@@ -1,5 +1,6 @@
 import { subDays, format } from "date-fns";
 import { resolveDisplayRate } from "@/lib/pricing/display-rate";
+import type { DemandRegime } from "@/lib/pricing/demand-regime";
 import { resolveDayCalendarPrice } from "@/lib/engine/calendar-rates";
 
 export type BasePriceSource = "history_1y" | "benchmark" | "hostaway";
@@ -19,6 +20,8 @@ export interface ListingPriceSanityInput {
   ttmReservationCount?: number;
   /** Market benchmark (monthly p50 or annual p50). */
   marketP50?: number | null;
+  /** When distressed/soft, do not override low listed prices with historical medians. */
+  demandRegime?: DemandRegime;
 }
 
 export interface ListingPriceSanityResult {
@@ -119,7 +122,7 @@ export function assessListingPriceSanity(
   const significantDeviation =
     deviationPct != null && deviationPct > LISTED_PRICE_DEVIATION_THRESHOLD;
 
-  const isPlaceholder =
+  let isPlaceholder =
     referencePrice != null &&
     significantDeviation &&
     (flatCalendar || isRoundPlaceholderPrice(listedReference) || source !== "hostaway");
@@ -127,7 +130,17 @@ export function assessListingPriceSanity(
   let trustedBasePrice = listedReference > 0 ? listedReference : referencePrice ?? 0;
   let pmsPriceTrusted = true;
 
-  if (isPlaceholder && referencePrice) {
+  const distressedDemand =
+    input.demandRegime === "distressed" || input.demandRegime === "soft";
+
+  if (distressedDemand && isPlaceholder) {
+    trustedBasePrice = listedReference > 0 ? listedReference : trustedBasePrice;
+    pmsPriceTrusted = true;
+    source = "hostaway";
+    confidencePct = 55;
+    flags.push("distressed_demand_trust_listed");
+    isPlaceholder = false;
+  } else if (isPlaceholder && referencePrice) {
     trustedBasePrice = referencePrice;
     pmsPriceTrusted = false;
     flags.push("pms_price_unreliable");
