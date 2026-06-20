@@ -16,6 +16,7 @@ import {
   portfolioGuardrailsFromStrategy,
 } from "@/lib/pricing/strategy-presets";
 import mongoose from "mongoose";
+import { runListingPriceSanity } from "@/lib/pricing/listing-price-sanity-service";
 
 export type { Strategy } from "@/lib/pricing/strategy-presets";
 export {
@@ -46,6 +47,12 @@ interface ListingSetupResult {
   guardrails?: { floor: number; ceiling: number };
   rulesCreated?: number;
   engineRun?: boolean;
+  priceSanity?: {
+    source: string;
+    trustedBasePrice: number;
+    pmsPriceTrusted: boolean;
+    insightCreated: boolean;
+  };
   error?: string;
 }
 
@@ -181,10 +188,17 @@ async function configureListing(
   marketCtx: Awaited<ReturnType<typeof getMarketContext>> | null,
 ): Promise<ListingSetupResult> {
   const lid = listing._id as mongoose.Types.ObjectId;
-  const basePrice = Number(listing.price) || 0;
-  if (basePrice <= 0) {
+  const listedPrice = Number(listing.price) || 0;
+  if (listedPrice <= 0) {
     return { listingId: lid.toString(), name: listing.name, status: "failed", error: "No base price" };
   }
+
+  const sanity = await runListingPriceSanity({
+    listingId: lid.toString(),
+    orgId: orgOid.toString(),
+    marketCtx,
+  });
+  const basePrice = sanity.result.trustedBasePrice > 0 ? sanity.result.trustedBasePrice : listedPrice;
 
   // Guardrails: prefer Airbtics ADR percentiles if available
   let floor: number;
@@ -225,10 +239,14 @@ async function configureListing(
       priceCeiling: ceiling,
       floorReasoning: guardrailsSource === "ai"
         ? `Auto-set from Airbtics p25 ADR (lowest month) * 0.85`
-        : `Auto-set from ${preset.floorMult}x base price (${listing.currencyCode} ${basePrice})`,
+        : sanity.result.pmsPriceTrusted
+          ? `Auto-set from ${preset.floorMult}x base price (${listing.currencyCode} ${basePrice})`
+          : `Auto-set from ${preset.floorMult}x validated base (${listing.currencyCode} ${basePrice}, source: ${sanity.result.source})`,
       ceilingReasoning: guardrailsSource === "ai"
         ? `Auto-set from Airbtics p75 ADR (highest month) * 1.3`
-        : `Auto-set from ${preset.ceilingMult}x base price (${listing.currencyCode} ${basePrice})`,
+        : sanity.result.pmsPriceTrusted
+          ? `Auto-set from ${preset.ceilingMult}x base price (${listing.currencyCode} ${basePrice})`
+          : `Auto-set from ${preset.ceilingMult}x validated base (${listing.currencyCode} ${basePrice}, source: ${sanity.result.source})`,
       guardrailsSource,
       lastMinuteEnabled: true,
       lastMinuteDaysOut: preset.lastMinuteDaysOut,
@@ -289,6 +307,12 @@ async function configureListing(
     status: "configured",
     guardrails: { floor, ceiling },
     rulesCreated,
+    priceSanity: {
+      source: sanity.result.source,
+      trustedBasePrice: sanity.result.trustedBasePrice,
+      pmsPriceTrusted: sanity.result.pmsPriceTrusted,
+      insightCreated: sanity.insightCreated,
+    },
   };
 }
 

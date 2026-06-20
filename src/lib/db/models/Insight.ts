@@ -62,7 +62,7 @@ const InsightSchema = new Schema<IInsight>(
       enum: [
         "BOOKING_PACE", "LEAD_TIME", "CANCELLATION_RISK", "OCCUPANCY",
         "GAP_FILL", "LOS_OPTIMIZATION", "COMPETITOR_RATE", "DAY_OF_WEEK",
-        "REVIEW_SCORE", "EVENT_IMPACT", "SEASONAL_SHIFT", "CHANNEL_MIX",
+        "REVIEW_SCORE", "EVENT_IMPACT", "SEASONAL_SHIFT", "CHANNEL_MIX", "PMS_SYNC",
       ],
       required: true,
     },

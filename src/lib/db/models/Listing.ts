@@ -11,6 +11,13 @@ export interface IListing extends Document {
   bathroomsNumber: number;
   propertyTypeId: number;
   price: number;
+  /** Trusted base when PMS price is validated (may differ from listing.price). */
+  validatedBasePrice?: number;
+  basePriceSource?: "history_1y" | "benchmark" | "hostaway";
+  basePriceConfidencePct?: number;
+  basePriceSampleSize?: number;
+  pmsPriceTrusted?: boolean;
+  basePriceValidatedAt?: Date;
   currencyCode: string;
   personCapacity?: number;
   amenities?: string[];
@@ -82,6 +89,16 @@ const ListingSchema = new Schema<IListing>(
     bathroomsNumber: { type: Number, default: 1 },
     propertyTypeId: { type: Number, default: 0 },
     price: { type: Number, required: true },
+    validatedBasePrice: { type: Number },
+    basePriceSource: {
+      type: String,
+      enum: ["history_1y", "benchmark", "hostaway"],
+      default: "hostaway",
+    },
+    basePriceConfidencePct: { type: Number, default: 0 },
+    basePriceSampleSize: { type: Number, default: 0 },
+    pmsPriceTrusted: { type: Boolean, default: true },
+    basePriceValidatedAt: { type: Date },
     currencyCode: { type: String, default: "AED" },
     personCapacity: { type: Number },
     amenities: [{ type: String }],

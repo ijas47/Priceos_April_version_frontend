@@ -64,8 +64,8 @@ import { computeDemandModifier, getDefaultSignals } from "@/lib/demand/modifiers
 import {
     refreshListingCalendarFromHostaway,
     buildCalendarPriceMap,
-    resolveDayCalendarPrice,
-} from "./calendar-rates";
+} from "@/lib/engine/calendar-rates";
+import { resolvePipelineListedPrice } from "@/lib/pricing/listing-price-sanity";
 import {
     applyStrategyPresetToConfig,
     resolveMonthlyGuardrailBand,
@@ -163,8 +163,16 @@ export async function runPipeline(
         }).lean();
         const weekendDays = resolveWeekendDays(orgTemplate?.weekendDefinition ?? "thu_fri");
 
+        const listingListedPrice = toNum(listing.price);
+        const validatedBasePrice = toNum(listing.validatedBasePrice);
+        const pmsPriceTrusted = listing.pmsPriceTrusted !== false;
+        const pipelineBasePrice =
+            !pmsPriceTrusted && validatedBasePrice > 0
+                ? validatedBasePrice
+                : listingListedPrice;
+
         const baseConfig: ListingConfig = {
-            basePrice: toNum(listing.price),
+            basePrice: pipelineBasePrice,
             absoluteMinPrice: toNum(listing.priceFloor),
             absoluteMaxPrice: toNum(listing.priceCeiling),
             defaultMinStay: 1,
@@ -388,10 +396,10 @@ export async function runPipeline(
 
         let daysChanged = 0;
         const bulkOps: any[] = [];
-        const listingFallbackPrice = toNum(listing.price);
+        const listingFallbackPrice = pipelineBasePrice;
         const calendarPriceByDate = buildCalendarPriceMap(
             existingInventory,
-            listingFallbackPrice
+            listingListedPrice
         );
         const staticFloor = baseConfig.absoluteMinPrice;
         const ceiling = baseConfig.absoluteMaxPrice;
@@ -433,11 +441,13 @@ export async function runPipeline(
             };
 
             const signal = marketSignals.get(ds);
-            const dayCalendarPrice = resolveDayCalendarPrice(
-                ds,
+            const dayCalendarPrice = resolvePipelineListedPrice({
+                date: ds,
                 calendarPriceByDate,
-                listingFallbackPrice
-            );
+                listingFallbackPrice: listingListedPrice,
+                validatedBasePrice: validatedBasePrice > 0 ? validatedBasePrice : null,
+                pmsPriceTrusted,
+            });
             let dayConfig: ListingConfig = {
                 ...strategyBaseConfig,
                 basePrice: dayCalendarPrice > 0 ? dayCalendarPrice : strategyBaseConfig.basePrice,
