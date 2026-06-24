@@ -43,14 +43,20 @@ export async function POST(req: NextRequest) {
       return apiError("UNAUTHORIZED", "Invalid credentials", 401);
     }
 
+    const onboardingStep = org.onboardingStep || "complete";
+    const mustChangePassword = org.mustChangePassword === true;
+
     const payload = {
       userId: org._id.toString(),
-      orgId:  org._id.toString(),
-      email:  org.email,
-      role:   org.role,
+      orgId: org._id.toString(),
+      email: org.email,
+      role: org.role,
+      isApproved: true,
+      onboardingStep,
+      mustChangePassword,
     };
 
-    const accessToken  = signAccessToken(payload);
+    const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(org._id.toString());
 
     org.refreshToken = refreshToken;
@@ -59,13 +65,15 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json({
       success: true,
       user: {
-        id:    org._id.toString(),
+        id: org._id.toString(),
         email: org.email,
-        name:  org.fullName || org.name,
-        role:  org.role,
+        name: org.fullName || org.name,
+        role: org.role,
         orgId: org._id.toString(),
-        plan:  org.plan,
+        plan: org.plan,
       },
+      needsPasswordChange: mustChangePassword,
+      needsOnboarding: onboardingStep !== "complete",
     });
 
     response.cookies.set(COOKIE_NAME, accessToken, {

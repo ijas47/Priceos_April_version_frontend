@@ -4,6 +4,10 @@ import { connectDB, Organization, MarketTemplate } from "@/lib/db";
 import { signAccessToken } from "@/lib/auth/jwt";
 import { COOKIE_NAME } from "@/lib/auth/server";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
+import {
+  validatePilotAccessCode,
+  redeemPilotAccessCode,
+} from "@/lib/auth/pilot-access";
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req as any);
@@ -16,10 +20,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { name, email, password, orgName, marketCode } = await req.json();
+    const { name, email, password, orgName, marketCode, pilotCode, accessCode } = await req.json();
+    const code = pilotCode || accessCode;
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "name, email and password are required" }, { status: 400 });
+    }
+
+    if (!code || !String(code).trim()) {
+      return NextResponse.json(
+        { error: "A valid pilot access code is required to sign up" },
+        { status: 403 }
+      );
     }
 
     if (password.length < 8) {
@@ -31,6 +43,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
 
+    const pilot = await validatePilotAccessCode(String(code));
+    if (!pilot.valid) {
+      return NextResponse.json({ error: pilot.reason || "Invalid access code" }, { status: 403 });
+    }
+
     await connectDB();
 
     const existing = await Organization.findOne({ email: email.toLowerCase() });
@@ -38,12 +55,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
     }
 
-    // Resolve market template for defaults
     const mktCode = marketCode || "UAE_DXB";
     const template = await MarketTemplate.findOne({ marketCode: mktCode });
-
     const passwordHash = await bcrypt.hash(password, 12);
-
     const { UAE_PRICELABS_DEFAULTS } = await import("@/lib/pricing/uae-pricelabs-defaults");
 
     const org = await Organization.create({
@@ -53,10 +67,14 @@ export async function POST(req: NextRequest) {
       fullName: name,
       role: "owner",
       isApproved: true,
+      onboardingStep: "connect",
+      mustChangePassword: false,
+      subscriptionStatus: "pilot",
+      pilotCodeLabel: pilot.source === "database" ? String(code).trim() : pilot.source,
       marketCode: mktCode,
       currency: template?.currency || "AED",
       timezone: template?.timezone || "Asia/Dubai",
-      plan: "starter",
+      plan: pilot.plan || "starter",
       pricingPack: mktCode === "UAE_DXB"
         ? (UAE_PRICELABS_DEFAULTS as unknown as Record<string, unknown>)
         : undefined,
@@ -74,11 +92,16 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    await redeemPilotAccessCode(pilot, org._id.toString());
+
     const accessToken = signAccessToken({
       userId: org._id.toString(),
       orgId: org._id.toString(),
       email: org.email,
       role: org.role,
+      isApproved: true,
+      onboardingStep: "connect",
+      mustChangePassword: false,
     });
 
     const response = NextResponse.json({
@@ -90,6 +113,7 @@ export async function POST(req: NextRequest) {
         role: org.role,
         orgId: org._id.toString(),
       },
+      needsOnboarding: true,
     }, { status: 201 });
 
     response.cookies.set(COOKIE_NAME, accessToken, {

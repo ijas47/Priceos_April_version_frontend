@@ -47,7 +47,8 @@ export async function POST(req: NextRequest) {
       const { resolveMarketId, getMarketContext } = await import("@/lib/airbtics/market-context");
       const listings = await Listing.find({ orgId: orgOid, isActive: true }).lean();
       const cities = [...new Set(listings.map(l => `${l.city || "Dubai"}|${l.countryCode || "AE"}`))];
-      const bedroomCounts = [...new Set(listings.map(l => l.bedroomsNumber || 1))];
+      const { resolveBedroomsNumber } = await import("@/lib/pricing/bedrooms");
+      const bedroomCounts = [...new Set(listings.map(l => resolveBedroomsNumber(l.bedroomsNumber, 1)))];
       let cached = 0;
       for (const cityKey of cities) {
         const [city, cc] = cityKey.split("|");

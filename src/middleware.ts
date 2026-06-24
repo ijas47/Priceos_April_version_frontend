@@ -27,6 +27,8 @@ const PUBLIC_PATHS = [
   "/api/auth/register",
   "/api/auth/refresh",
   "/api/auth/check-approval",
+  "/api/auth/change-password",
+  "/auth/change-password",
   "/api/onboarding",
   "/api/hostaway/metadata",
   "/api/sync/run",          // needed by Go Live step
@@ -54,6 +56,7 @@ interface JwtPayload {
   exp?: number;
   isApproved?: boolean;
   onboardingStep?: string;
+  mustChangePassword?: boolean;
 }
 
 /**
@@ -102,6 +105,21 @@ export default async function middleware(request: NextRequest) {
   // Legacy tokens (issued before onboardingStep was added) → treat as approved+complete
   const isApproved = jwtPayload?.isApproved ?? true;
   const onboardingStep = jwtPayload?.onboardingStep ?? "complete";
+  const mustChangePassword = jwtPayload?.mustChangePassword === true;
+  const changePasswordAllowed =
+    pathname.startsWith("/auth/change-password") ||
+    pathname.startsWith("/api/auth/change-password") ||
+    pathname.startsWith("/api/auth/logout");
+
+  if (valid && mustChangePassword && !changePasswordAllowed) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "Password change required", code: "PASSWORD_CHANGE_REQUIRED" },
+        { status: 403 }
+      );
+    }
+    return NextResponse.redirect(new URL("/auth/change-password", request.url));
+  }
 
   // Root redirect
   if (pathname === "/") {

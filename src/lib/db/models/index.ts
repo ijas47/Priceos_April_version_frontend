@@ -1,6 +1,9 @@
 export { Organization } from "./Organization";
 export type { IOrganization } from "./Organization";
 
+export { PilotAccessCode } from "./PilotAccessCode";
+export type { IPilotAccessCode } from "./PilotAccessCode";
+
 export { User } from "./User";
 export type { IUser } from "./User";
 

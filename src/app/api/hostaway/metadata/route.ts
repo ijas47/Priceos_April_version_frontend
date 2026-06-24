@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
         id: String(l.id),
         hostawayId: String(l.id),
         name: l.name || `Listing ${l.id}`,
-        bedrooms: l.bedroomsNumber || 1,
+        bedrooms: l.bedroomsNumber ?? 1,
         city: l.city || "",
         countryCode: l.countryCode || "",
         type: l.propertyTypeId === 1 ? "Apartment" : l.propertyTypeId === 2 ? "House" : "Property",

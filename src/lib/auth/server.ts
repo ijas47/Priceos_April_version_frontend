@@ -26,6 +26,7 @@ export interface SessionPayload {
   role: string;
   isApproved?: boolean;
   onboardingStep?: string;
+  mustChangePassword?: boolean;
 }
 
 /**

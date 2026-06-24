@@ -141,6 +141,20 @@ function StepConnect({ onNext }: { onNext: (listings: Listing[]) => void }) {
       if (!res.ok) throw new Error(data.error || data.message || "Connection failed");
 
       if (data?.success && data?.mode === "real") {
+        const saveRes = await fetch("/api/organizations", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            hostawayAccountId: accountId.trim(),
+            hostawayApiKey: apiSecret.trim(),
+          }),
+        });
+        const saveData = await saveRes.json().catch(() => ({}));
+        if (!saveRes.ok) {
+          throw new Error(saveData.error || "Connected but failed to save credentials");
+        }
+
+        await saveProgress({ step: "select", listings: data.listings });
         toast.success(`✅ Connected! Found ${data.total} properties.`);
         onNext(data.listings);
         return;

@@ -28,6 +28,11 @@ import {
     adjustBenchmarkVerdictForRegime,
     resolveDemandRegime,
 } from "@/lib/pricing/demand-regime";
+import { resolveBedroomsNumber } from "@/lib/pricing/bedrooms";
+import {
+    assessBenchmarkSanity,
+    applyBenchmarkSanityToPayload,
+} from "@/lib/pricing/benchmark-sanity";
 import { computeBookingPace } from "@/lib/pricing/booking-pace";
 import mongoose from "mongoose";
 import { fetchJsonWithRetry, toUserFacingAgentError } from "@/lib/lyzr/fetch-with-retry";
@@ -421,6 +426,19 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 (engineProposals.length / windowDayCount) * 100
             );
 
+            const resolvedBedrooms = resolveBedroomsNumber(listing?.bedroomsNumber, 1);
+            const benchmarkSanity = benchmark
+                ? assessBenchmarkSanity({
+                      p25: Number(benchmark.p25Rate || 0),
+                      p50: Number(benchmark.p50Rate || 0),
+                      p75: Number(benchmark.p75Rate || 0),
+                      p90: Number(benchmark.p90Rate || 0),
+                      currentPrice: Number(listing?.price || avgCalPrice || 0),
+                      bedrooms: resolvedBedrooms,
+                      achievedAdr: avgDailyRate > 0 ? avgDailyRate : null,
+                  })
+                : null;
+
             propertyDataPayload = {
                 today: new Date().toISOString().split("T")[0],
                 market_data_scanned_at: benchmark?.createdAt
@@ -432,7 +450,8 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     name: listing?.name || context.propertyName || "Unknown Property",
                     area: listing?.area || "Dubai",
                     city: listing?.city || "Dubai",
-                    bedrooms: listing?.bedroomsNumber || 1,
+                    bedrooms: resolvedBedrooms,
+                    unit_type: resolvedBedrooms === 0 ? "studio" : `${resolvedBedrooms}BR`,
                     bathrooms: listing?.bathroomsNumber || 1,
                     personCapacity: listing?.personCapacity || 0,
                     current_price: Number(listing?.price || 0),
@@ -448,33 +467,45 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     total_nights: totalDays,
                     avg_nightly_rate: avgCalPrice,
                 },
-                benchmark: benchmark
-                    ? {
-                          verdict: adjustBenchmarkVerdictForRegime(
-                              benchmark.verdict,
-                              demandRegime.regime,
-                              occupancy
-                          ),
-                          raw_verdict: benchmark.verdict || "FAIR",
-                          percentile: benchmark.percentile || 50,
-                          median_market_rate: Number(benchmark.p50Rate || 0),
-                          historical_p25: Number(benchmark.p25Rate || 0),
-                          historical_p50: Number(benchmark.p50Rate || 0),
-                          historical_p75: Number(benchmark.p75Rate || 0),
-                          p25: Number(benchmark.p25Rate || 0),
-                          p50: Number(benchmark.p50Rate || 0),
-                          p75: Number(benchmark.p75Rate || 0),
-                          p90: Number(benchmark.p90Rate || 0),
-                          avg_weekday: Number(benchmark.avgWeekday || 0),
-                          avg_weekend: Number(benchmark.avgWeekend || 0),
-                          recommended_weekday: Number(benchmark.recommendedWeekday || benchmark.p50Rate || 0),
-                          recommended_weekend: Number(benchmark.recommendedWeekend || benchmark.p75Rate || 0),
-                          recommended_event: Number(benchmark.recommendedEvent || benchmark.p90Rate || 0),
-                          reasoning: benchmark.reasoning || "",
-                          is_historical_seasonal_reference: true,
-                          not_current_clearing_price_when_distressed:
-                              demandRegime.regime === "distressed" || demandRegime.regime === "soft",
-                      }
+                benchmark: benchmark && benchmarkSanity
+                    ? applyBenchmarkSanityToPayload(
+                          {
+                              verdict: adjustBenchmarkVerdictForRegime(
+                                  benchmark.verdict,
+                                  demandRegime.regime,
+                                  occupancy
+                              ),
+                              raw_verdict: benchmark.verdict || "FAIR",
+                              percentile: benchmark.percentile || 50,
+                              median_market_rate: benchmarkSanity.p50,
+                              historical_p25: Number(benchmark.p25Rate || 0),
+                              historical_p50: Number(benchmark.p50Rate || 0),
+                              historical_p75: Number(benchmark.p75Rate || 0),
+                              p25: benchmarkSanity.p25,
+                              p50: benchmarkSanity.p50,
+                              p75: benchmarkSanity.p75,
+                              p90: benchmarkSanity.p90,
+                              avg_weekday: Number(benchmark.avgWeekday || 0),
+                              avg_weekend: Number(benchmark.avgWeekend || 0),
+                              recommended_weekday: Number(
+                                  benchmark.recommendedWeekday || benchmarkSanity.p50 || 0
+                              ),
+                              recommended_weekend: Number(
+                                  benchmark.recommendedWeekend || benchmarkSanity.p75 || 0
+                              ),
+                              recommended_event: Number(
+                                  benchmark.recommendedEvent || benchmarkSanity.p90 || 0
+                              ),
+                              reasoning: benchmarkSanity.rejected
+                                  ? `${benchmarkSanity.reason} Original cache: p25=${benchmark.p25Rate} p50=${benchmark.p50Rate} p75=${benchmark.p75Rate}.`
+                                  : benchmark.reasoning || "",
+                              is_historical_seasonal_reference: true,
+                              not_current_clearing_price_when_distressed:
+                                  demandRegime.regime === "distressed" ||
+                                  demandRegime.regime === "soft",
+                          },
+                          benchmarkSanity
+                      )
                     : null,
                 demand_regime: {
                     state: demandRegime.regime,
@@ -606,6 +637,8 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             `Do NOT recommend raising to floor_price or market p50 when demand is distressed — prioritize occupancy.`,
             `Your proposed prices in chat must align with engine_proposals when present.`,
             `Never claim UNDERPRICED when demand_regime is distressed and listed rate matches engine proposals.`,
+            `If benchmark.benchmark_rejected is true, quote ONLY the corrected p25/p50/p75 and explain benchmark_rejection_reason — never the historical_p25/p50/p75 cache values.`,
+            `Studios are bedrooms=0 (unit_type studio). Never compare a studio to 1BR comp percentiles.`,
         ].join("\n");
 
         let anchoredMessage = message;

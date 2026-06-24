@@ -10,6 +10,10 @@ export interface IOrganization extends Document {
   fullName?: string;
   hostawayApiKey?: string;
   hostawayAccountId?: string;
+  onboardingStep?: string;
+  mustChangePassword?: boolean;
+  subscriptionStatus?: "pilot" | "trialing" | "active" | "past_due" | "canceled";
+  pilotCodeLabel?: string;
   marketCode: string;
   currency: string;
   timezone: string;
@@ -56,6 +60,14 @@ const OrgSchema = new Schema<IOrganization>(
     fullName: { type: String },
     hostawayApiKey: { type: String },
     hostawayAccountId: { type: String },
+    onboardingStep: { type: String, default: "connect" },
+    mustChangePassword: { type: Boolean, default: false },
+    subscriptionStatus: {
+      type: String,
+      enum: ["pilot", "trialing", "active", "past_due", "canceled"],
+      default: "pilot",
+    },
+    pilotCodeLabel: { type: String },
     marketCode: { type: String, default: "UAE_DXB" },
     currency: { type: String, default: "AED" },
     timezone: { type: String, default: "Asia/Dubai" },

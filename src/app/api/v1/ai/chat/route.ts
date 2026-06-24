@@ -13,6 +13,8 @@ import { chatRequestSchema, formatZodErrors } from "@/lib/validators";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { CRO_ROUTER_AGENT_ID } from "@/lib/agents/constants";
 import mongoose from "mongoose";
+import { resolveBedroomsNumber } from "@/lib/pricing/bedrooms";
+import { assessBenchmarkSanity } from "@/lib/pricing/benchmark-sanity";
 
 const LYZR_API_URL = process.env.LYZR_API_URL || "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
 const LYZR_API_KEY = process.env.LYZR_API_KEY!;
@@ -102,13 +104,26 @@ export async function POST(req: Request) {
             const occupancy = uiMetrics?.occupancy ?? (bookableDays > 0 ? Math.round((bookedDays / bookableDays) * 100) : 0);
             const avgCalPrice = uiMetrics?.avgPrice ?? Number(calResult?.avgPrice || listing?.price || 0);
 
+            const resolvedBedrooms = resolveBedroomsNumber(listing?.bedroomsNumber, 1);
+            const benchmarkSanity = benchmarkDoc
+                ? assessBenchmarkSanity({
+                      p25: Number(benchmarkDoc.p25Rate || 0),
+                      p50: Number(benchmarkDoc.p50Rate || 0),
+                      p75: Number(benchmarkDoc.p75Rate || 0),
+                      p90: Number(benchmarkDoc.p90Rate || 0),
+                      currentPrice: Number(listing?.price || avgCalPrice || 0),
+                      bedrooms: resolvedBedrooms,
+                  })
+                : null;
+
             propertyDataPayload = {
                 today: new Date().toISOString().split('T')[0],
                 analysis_window: { from: dateFrom, to: dateTo },
                 property: {
                     listingId: pid.toString(),
                     name: listing?.name || context.propertyName || "Property",
-                    bedrooms: listing?.bedroomsNumber || 1,
+                    bedrooms: resolvedBedrooms,
+                    unit_type: resolvedBedrooms === 0 ? "studio" : `${resolvedBedrooms}BR`,
                     current_price: Number(listing?.price || 0),
                     floor_price: Number(listing?.priceFloor || 0),
                     ceiling_price: Number(listing?.priceCeiling || 0),
@@ -118,8 +133,18 @@ export async function POST(req: Request) {
                     booked_nights: bookedDays,
                     avg_nightly_rate: avgCalPrice,
                 },
-                benchmark: benchmarkDoc
-                    ? { verdict: benchmarkDoc.verdict, percentile: benchmarkDoc.percentile, p50: benchmarkDoc.p50Rate }
+                benchmark: benchmarkDoc && benchmarkSanity
+                    ? {
+                          verdict: benchmarkDoc.verdict,
+                          percentile: benchmarkDoc.percentile,
+                          p25: benchmarkSanity.p25,
+                          p50: benchmarkSanity.p50,
+                          p75: benchmarkSanity.p75,
+                          p90: benchmarkSanity.p90,
+                          benchmark_trusted: benchmarkSanity.trusted,
+                          benchmark_rejected: benchmarkSanity.rejected,
+                          benchmark_rejection_reason: benchmarkSanity.reason,
+                      }
                     : null,
             };
         }

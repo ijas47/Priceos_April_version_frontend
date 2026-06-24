@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/server";
 import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
 import { connectDB, Listing } from "@/lib/db";
+import { resolveBedroomsNumber } from "@/lib/pricing/bedrooms";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
             await connectDB();
             const listing = await Listing.findById(listingId).lean();
             if (listing) {
-                bedrooms = String(listing.bedroomsNumber || 2);
+                bedrooms = String(resolveBedroomsNumber(listing.bedroomsNumber, 1));
                 const resolved = await resolveMarketId(
                     listing.city || "Dubai",
                     listing.countryCode || "AE"

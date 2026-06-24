@@ -21,6 +21,7 @@ export interface TokenPayload {
   role: string;
   isApproved?: boolean;
   onboardingStep?: string;
+  mustChangePassword?: boolean;
 }
 
 /**

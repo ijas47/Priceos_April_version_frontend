@@ -54,6 +54,7 @@ import {
     hasAirbticsPacingData,
     isDubaiDatasetReady,
 } from "@/lib/market/dubai-airroi";
+import { resolveBedroomsNumber } from "@/lib/pricing/bedrooms";
 import {
     computeBookingPace,
     paceRatioForLeadTime,
@@ -371,7 +372,7 @@ export async function runPipeline(
             const dubaiCtx = await buildDubaiMarketContext(
                 listing.area || city,
                 city,
-                listing.bedroomsNumber || 2
+                resolveBedroomsNumber(listing.bedroomsNumber, 1)
             );
             const marketOccPct = occupancyToPct(dubaiCtx?.latestMonth?.avgOccupancy);
             blendedOccupancyPct = resolveBlendedOccupancyPct({
@@ -715,7 +716,7 @@ async function buildMarketSignals(
 ): Promise<Map<string, MarketSignal>> {
     const city = listing.city || "Dubai";
     const countryCode = listing.countryCode || "AE";
-    const bedrooms = listing.bedroomsNumber || 2;
+    const bedrooms = resolveBedroomsNumber(listing.bedroomsNumber, 1);
 
     let dubaiMap = new Map<string, MarketSignal>();
     if (isDubaiMarket(city, countryCode) && (await isDubaiDatasetReady())) {
@@ -762,7 +763,7 @@ async function buildAirbticsMarketSignals(
     days: number
 ): Promise<Map<string, MarketSignal>> {
     const map = new Map<string, MarketSignal>();
-    const bedrooms = String(listing.bedroomsNumber || 2);
+    const bedrooms = String(resolveBedroomsNumber(listing.bedroomsNumber, 1));
     const endDate = addDays(startDate, days - 1);
 
     const mktId = await resolveMarketId(city, countryCode);
@@ -842,7 +843,7 @@ async function resolveCompSetPercentiles(
     endDate: Date,
     options?: { skipDubai?: boolean }
 ): Promise<CompSetPercentiles> {
-    const bedrooms = listing.bedroomsNumber || 2;
+    const bedrooms = resolveBedroomsNumber(listing.bedroomsNumber, 1);
     const bounds = resolveAreaBounds(listing.area || city, city);
 
     if (!options?.skipDubai && bounds && isDubaiMarket(city, countryCode)) {

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   UserPlus, Mail, CheckCircle2, XCircle, Clock, Trash2,
   RefreshCw, Copy, Eye, EyeOff, ChevronDown, ChevronUp,
-  Shield, Zap, Globe2, AlertTriangle, X,
+  Shield, Zap, Globe2, AlertTriangle, X, Ticket, Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,23 @@ interface User {
   plan: string;
   onboardingStep: string;
   createdAt: string;
+}
+
+interface PilotCode {
+  id: string;
+  code: string;
+  label: string;
+  plan: string;
+  maxUses: number;
+  usedCount: number;
+  isActive: boolean;
+  expiresAt: string | null;
+  createdAt: string | null;
+}
+
+interface PilotCodesConfig {
+  openRegistration: boolean;
+  envBypassConfigured: boolean;
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────────
@@ -285,6 +302,259 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
   );
 }
 
+// ── Pilot Codes Panel ──────────────────────────────────────────────────────────
+
+function PilotCodesPanel() {
+  const [codes, setCodes] = useState<PilotCode[]>([]);
+  const [config, setConfig] = useState<PilotCodesConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [createdCode, setCreatedCode] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    label: "",
+    plan: "starter" as "starter" | "growth" | "scale",
+    maxUses: 1,
+    code: "",
+    expiresInDays: "",
+  });
+
+  const fetchCodes = () => {
+    setLoading(true);
+    fetch("/api/admin/pilot-codes")
+      .then((res) => res.json())
+      .then((data) => {
+        setCodes(data.codes ?? []);
+        setConfig(data.config ?? null);
+      })
+      .catch(() => toast.error("Could not load pilot codes"))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchCodes(); }, []);
+
+  const handleCreate = async () => {
+    setCreating(true);
+    try {
+      const res = await fetch("/api/admin/pilot-codes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: form.label.trim() || undefined,
+          plan: form.plan,
+          maxUses: form.maxUses,
+          code: form.code.trim() || undefined,
+          expiresInDays: form.expiresInDays ? Number(form.expiresInDays) : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create code");
+      setCreatedCode(data.code.code);
+      setForm({ label: "", plan: "starter", maxUses: 1, code: "", expiresInDays: "" });
+      setShowForm(false);
+      fetchCodes();
+      toast.success("Pilot code created");
+    } catch (e: unknown) {
+      toast.error((e as Error).message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const toggleActive = async (id: string, isActive: boolean) => {
+    try {
+      const res = await fetch("/api/admin/pilot-codes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, isActive }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      fetchCodes();
+      toast.success(isActive ? "Code activated" : "Code deactivated");
+    } catch {
+      toast.error("Could not update code");
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Ticket className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Pilot Access Codes</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Gate self-serve signup until billing is live. Share codes with pilot clients.
+            </p>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => { setShowForm((v) => !v); setCreatedCode(null); }}
+          className="bg-primary hover:bg-primary text-black font-bold gap-1.5 h-9"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          New Code
+        </Button>
+      </div>
+
+      {config && (
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          {config.envBypassConfigured && (
+            <span className="px-2 py-1 rounded-full border border-green-500/20 bg-green-500/10 text-green-400 font-semibold">
+              PILOT_BYPASS_CODE configured
+            </span>
+          )}
+          {config.openRegistration && (
+            <span className="px-2 py-1 rounded-full border border-destructive/20 bg-destructive/10 text-destructive font-semibold">
+              Open registration enabled
+            </span>
+          )}
+        </div>
+      )}
+
+      {createdCode && (
+        <div className="p-3 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] text-primary uppercase tracking-wider font-bold mb-1">New code — copy now</p>
+            <p className="text-sm font-mono text-primary">{createdCode}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { navigator.clipboard.writeText(createdCode); toast.success("Copied!"); }}
+            className="shrink-0"
+          >
+            <Copy className="h-4 w-4 text-primary" />
+          </button>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Label</label>
+              <Input
+                placeholder="e.g. Acme Properties pilot"
+                value={form.label}
+                onChange={(e) => setForm({ ...form, label: e.target.value })}
+                className="bg-background border-border h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Custom code (optional)</label>
+              <Input
+                placeholder="Auto-generated if blank"
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value })}
+                className="bg-background border-border h-9 text-sm font-mono"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Plan</label>
+              <Select value={form.plan} onValueChange={(v) => setForm({ ...form, plan: v as typeof form.plan })}>
+                <SelectTrigger className="bg-background border-border h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="starter">Starter</SelectItem>
+                  <SelectItem value="growth">Growth</SelectItem>
+                  <SelectItem value="scale">Scale</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Max uses</label>
+              <Input
+                type="number"
+                min={1}
+                max={1000}
+                value={form.maxUses}
+                onChange={(e) => setForm({ ...form, maxUses: Number(e.target.value) || 1 })}
+                className="bg-background border-border h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
+                Expires in days <span className="normal-case font-normal">(optional)</span>
+              </label>
+              <Input
+                type="number"
+                min={1}
+                placeholder="Never expires if blank"
+                value={form.expiresInDays}
+                onChange={(e) => setForm({ ...form, expiresInDays: e.target.value })}
+                className="bg-background border-border h-9 text-sm max-w-xs"
+              />
+            </div>
+          </div>
+          <button
+            onClick={handleCreate}
+            disabled={creating}
+            className="h-9 px-4 bg-primary hover:bg-primary disabled:opacity-40 text-black font-bold rounded-lg text-xs flex items-center gap-1.5"
+          >
+            {creating ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            {creating ? "Creating…" : "Create Code"}
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
+          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+          Loading codes…
+        </div>
+      ) : codes.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-2">
+          No database codes yet. Create one above or set <code className="text-xs">PILOT_BYPASS_CODE</code> in Vercel.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {codes.map((c) => (
+            <div
+              key={c.id}
+              className={cn(
+                "flex items-center gap-4 px-4 py-3 rounded-xl border",
+                c.isActive ? "border-border bg-muted/30" : "border-border/50 bg-muted/10 opacity-60"
+              )}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-mono font-bold text-foreground">{c.code}</span>
+                  <Badge variant="outline" className="text-[10px]">{c.plan}</Badge>
+                  {!c.isActive && (
+                    <Badge variant="outline" className="text-[10px] text-muted-foreground">Inactive</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground truncate mt-0.5">{c.label}</p>
+                <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                  {c.usedCount}/{c.maxUses} used
+                  {c.expiresAt && ` · expires ${new Date(c.expiresAt).toLocaleDateString("en-US")}`}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { navigator.clipboard.writeText(c.code); toast.success("Copied!"); }}
+                  className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+                <Switch
+                  checked={c.isActive}
+                  onCheckedChange={(v) => toggleActive(c.id, v)}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── User Row ───────────────────────────────────────────────────────────────────
 
 function UserRow({ user, onRefresh }: { user: User; onRefresh: () => void }) {
@@ -495,6 +765,8 @@ export default function UsersPage() {
           Add User
         </Button>
       </div>
+
+      <PilotCodesPanel />
 
       {/* Search */}
       <Input

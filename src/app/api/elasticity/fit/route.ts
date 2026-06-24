@@ -103,7 +103,8 @@ export async function GET(req: NextRequest) {
       const listing = await Listing.findById(listingId).lean();
       const city = listing?.city || "Dubai";
       const cc = listing?.countryCode || "AE";
-      const br = String(listing?.bedroomsNumber || 2);
+      const { resolveBedroomsNumber } = await import("@/lib/pricing/bedrooms");
+      const br = String(resolveBedroomsNumber(listing?.bedroomsNumber, 1));
       const mktId = await resolveMarketId(city, cc);
       if (mktId) {
         const ctx = await getMarketContext(mktId, br);

@@ -121,7 +121,8 @@ function buildRulesProposals(
 ): OptimizerProposalDraft[] {
   const { channels, shared } = snapshot;
   const area = listing.area || listing.city;
-  const beds = listing.bedroomsNumber || shared.bedroomsNumber || 1;
+  const beds =
+    listing.bedroomsNumber ?? shared.bedroomsNumber ?? 1;
   const amenities = topAmenities(shared.amenities);
   const amenityBit = amenities.length ? amenities.join(" · ") : "WiFi · AC";
 

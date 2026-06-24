@@ -17,6 +17,7 @@ import {
 } from "@/lib/pricing/strategy-presets";
 import mongoose from "mongoose";
 import { runListingPriceSanity } from "@/lib/pricing/listing-price-sanity-service";
+import { resolveBedroomsNumber } from "@/lib/pricing/bedrooms";
 
 export type { Strategy } from "@/lib/pricing/strategy-presets";
 export {
@@ -86,7 +87,7 @@ export async function runAutoSetup(input: AutoSetupInput): Promise<AutoSetupResu
   // Try Airbtics for market intelligence - per bedroom count
   const bedroomGroups = new Map<number, typeof listings>();
   for (const l of listings) {
-    const br = l.bedroomsNumber || 1;
+    const br = resolveBedroomsNumber(l.bedroomsNumber, 1);
     const group = bedroomGroups.get(br) ?? [];
     group.push(l);
     bedroomGroups.set(br, group);
@@ -130,7 +131,7 @@ export async function runAutoSetup(input: AutoSetupInput): Promise<AutoSetupResu
           defaults,
           weekendDays,
           template,
-          marketContexts.get(listing.bedroomsNumber || 1) ?? null,
+          marketContexts.get(resolveBedroomsNumber(listing.bedroomsNumber, 1)) ?? null,
         );
         results.push(result);
       } catch (err) {

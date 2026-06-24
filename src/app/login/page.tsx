@@ -38,6 +38,10 @@ function SignInForm() {
                 router.push("/pending-approval");
                 return;
             }
+            if (data.needsPasswordChange) {
+                router.push("/auth/change-password");
+                return;
+            }
             if (data.needsOnboarding) {
                 router.push("/onboarding");
                 return;
@@ -118,6 +122,7 @@ function SignUpForm() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [pilotCode, setPilotCode] = useState("");
     const [marketCode, setMarketCode] = useState("UAE_DXB");
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -130,7 +135,7 @@ function SignUpForm() {
             const res = await fetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, password, marketCode }),
+                body: JSON.stringify({ name, email, password, marketCode, pilotCode }),
             });
             const data = await res.json();
             if (!res.ok) {
@@ -149,7 +154,7 @@ function SignUpForm() {
                 localStorage.setItem("priceos-token", data.accessToken);
             }
 
-            router.push("/pending-approval");
+            router.push("/onboarding");
             router.refresh();
         } catch {
             setError("Network error. Please try again.");
@@ -159,6 +164,21 @@ function SignUpForm() {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label className="form-label">Pilot access code</label>
+                <input
+                    type="text"
+                    value={pilotCode}
+                    onChange={(e) => setPilotCode(e.target.value)}
+                    required
+                    autoComplete="off"
+                    placeholder="e.g. MARINA-PILOT-2026"
+                    className="form-input font-mono uppercase"
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                    Required for signup. Your PriceOS contact will provide this code.
+                </p>
+            </div>
             <div>
                 <label className="form-label">Full Name</label>
                 <input

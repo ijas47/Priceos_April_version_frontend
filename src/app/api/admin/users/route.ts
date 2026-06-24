@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
     const temporaryPassword = crypto.randomBytes(6).toString("base64url");
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 
+    const skipOnboarding = body.skipOnboarding === true;
+
     const org = await Organization.create({
       name: fullName,
       fullName,
@@ -72,6 +74,9 @@ export async function POST(req: NextRequest) {
       passwordHash,
       role: role || "viewer",
       isApproved: true,
+      mustChangePassword: true,
+      onboardingStep: skipOnboarding ? "complete" : "connect",
+      subscriptionStatus: "pilot",
       marketCode: marketCode || "UAE_DXB",
       currency: "AED",
       timezone: "Asia/Dubai",

@@ -18,6 +18,9 @@ import { upsertVerifiedFindings } from "@/lib/research/ensure-market-intel";
 import { getStaticHolidaysForWindow } from "@/lib/research/static-holidays";
 import { resolveDtcmEligibility } from "@/lib/research/dtcm-eligibility";
 import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
+import { resolveBedroomsNumber, bedroomsLabel } from "@/lib/pricing/bedrooms";
+import { assessBenchmarkSanity } from "@/lib/pricing/benchmark-sanity";
+import { buildDubaiMarketContext } from "@/lib/market/dubai-airroi";
 import {
     getCalendarAvgPrice,
     refreshListingCalendarFromHostaway,
@@ -96,9 +99,11 @@ export async function POST(req: NextRequest) {
         const listing = await Listing.findById(listingObjectId).lean();
         const city = listing?.city || "Dubai";
         const area = listing?.area || city;
-        const bedrooms = listing?.bedroomsNumber || 1;
+        const bedrooms = resolveBedroomsNumber(listing?.bedroomsNumber, 1);
         const currency = listing?.currencyCode || "AED";
-        console.log(`🏠 Property: "${listing?.name || "Unknown"}" in ${area}, ${city} (${bedrooms}BR)`);
+        console.log(
+            `🏠 Property: "${listing?.name || "Unknown"}" in ${area}, ${city} (${bedroomsLabel(bedrooms)})`
+        );
 
         try {
             await refreshListingCalendarFromHostaway(
@@ -178,8 +183,8 @@ export async function POST(req: NextRequest) {
 
         if (!airbticsHasBenchmark) {
             const airbticsContext = "";
-            const benchmarkPrompt = `City: ${city}. Area: ${area}. ${bedrooms}BR. Current calendar avg rate: ${yourListingPrice || "Unknown"} ${currency}. Date range: ${dateRange.from} to ${dateRange.to}.${airbticsContext}
-Find 10-15 comparable short-term rental properties. Return JSON with rate_distribution (p25,p50,p75,p90,avg_weekday,avg_weekend), pricing_verdict (verdict,percentile,your_price), rate_trend (direction,pct_change), recommended_rates (weekday,weekend,event_peak,reasoning), comps array.`;
+            const benchmarkPrompt = `City: ${city}. Area: ${area}. ${bedroomsLabel(bedrooms)}. Current calendar avg rate: ${yourListingPrice || "Unknown"} ${currency}. Date range: ${dateRange.from} to ${dateRange.to}.${airbticsContext}
+Find 10-15 comparable short-term rental properties with the SAME bedroom count (${bedroomsLabel(bedrooms)}). Return JSON with rate_distribution (p25,p50,p75,p90,avg_weekday,avg_weekend), pricing_verdict (verdict,percentile,your_price), rate_trend (direction,pct_change), recommended_rates (weekday,weekend,event_peak,reasoning), comps array.`;
 
             const benchmarkRes = await callLyzrAgent(
                 BENCHMARK_AGENT_ID || MARKET_RESEARCH_ID,
@@ -254,21 +259,86 @@ Find 10-15 comparable short-term rental properties. Return JSON with rate_distri
             rateDist?.p50 ||
             latestMetric?.p50_adr ||
             Number(listing?.price || 500);
+        let p25Rate =
+            latestMetric?.p25_adr ||
+            rateDist?.p25 ||
+            Math.round(medianRate * 0.85);
+        let p50Rate = medianRate;
+        let p75Rate =
+            latestMetric?.p75_adr ||
+            rateDist?.p75 ||
+            Math.round(medianRate * 1.15);
+        let p90Rate = rateDist?.p90 || Math.round(medianRate * 1.3);
+        let benchmarkReasoning =
+            (recommendedRates?.reasoning as string) ||
+            (airbticsHasBenchmark
+                ? `Benchmark anchored on Airbtics market p50 ADR (${medianRate} ${currency}).`
+                : "Data synthesized from Lyzr benchmark fallback.");
+
+        const sanity = assessBenchmarkSanity({
+            p25: Number(p25Rate || 0),
+            p50: Number(p50Rate || 0),
+            p75: Number(p75Rate || 0),
+            p90: Number(p90Rate || 0),
+            currentPrice: yourListingPrice,
+            bedrooms,
+        });
+
+        if (sanity.rejected) {
+            try {
+                const dubaiCtx = await buildDubaiMarketContext(area, city, bedrooms);
+                const dubaiP50 =
+                    dubaiCtx?.latestMonth?.p50Adr ?? dubaiCtx?.compPercentiles.p50 ?? null;
+                if (dubaiP50 && dubaiP50 > 0) {
+                    const dubaiSanity = assessBenchmarkSanity({
+                        p25: dubaiCtx?.latestMonth?.p25Adr ?? dubaiCtx?.compPercentiles.p25 ?? dubaiP50 * 0.85,
+                        p50: dubaiP50,
+                        p75: dubaiCtx?.latestMonth?.p75Adr ?? dubaiCtx?.compPercentiles.p75 ?? dubaiP50 * 1.15,
+                        currentPrice: yourListingPrice,
+                        bedrooms,
+                    });
+                    if (dubaiSanity.trusted) {
+                        p25Rate = dubaiSanity.p25;
+                        p50Rate = dubaiSanity.p50;
+                        p75Rate = dubaiSanity.p75;
+                        p90Rate = dubaiSanity.p90;
+                        benchmarkReasoning = `Dubai local comp set (${bedroomsLabel(bedrooms)}): p50=${p50Rate} ${currency}.`;
+                        console.log(`📉 Benchmark corrected from Dubai local data: p50=${p50Rate}`);
+                    } else {
+                        p25Rate = sanity.p25;
+                        p50Rate = sanity.p50;
+                        p75Rate = sanity.p75;
+                        p90Rate = sanity.p90;
+                        benchmarkReasoning = sanity.reason ?? benchmarkReasoning;
+                        console.warn(`📉 Benchmark rejected: ${sanity.reason}`);
+                    }
+                } else {
+                    p25Rate = sanity.p25;
+                    p50Rate = sanity.p50;
+                    p75Rate = sanity.p75;
+                    p90Rate = sanity.p90;
+                    benchmarkReasoning = sanity.reason ?? benchmarkReasoning;
+                    console.warn(`📉 Benchmark rejected: ${sanity.reason}`);
+                }
+            } catch (err) {
+                p25Rate = sanity.p25;
+                p50Rate = sanity.p50;
+                p75Rate = sanity.p75;
+                p90Rate = sanity.p90;
+                benchmarkReasoning = sanity.reason ?? benchmarkReasoning;
+                console.warn(`📉 Benchmark rejected: ${sanity.reason}`, (err as Error).message);
+            }
+        }
+
         const benchmarkDoc = {
             orgId,
             listingId: listingObjectId,
             dateFrom: dateRange.from,
             dateTo: dateRange.to,
-            p25Rate:
-                latestMetric?.p25_adr ||
-                rateDist?.p25 ||
-                Math.round(medianRate * 0.85),
-            p50Rate: medianRate,
-            p75Rate:
-                latestMetric?.p75_adr ||
-                rateDist?.p75 ||
-                Math.round(medianRate * 1.15),
-            p90Rate: rateDist?.p90 || Math.round(medianRate * 1.3),
+            p25Rate,
+            p50Rate,
+            p75Rate,
+            p90Rate,
             avgWeekday: rateDist?.avg_weekday || medianRate,
             avgWeekend: rateDist?.avg_weekend || Math.round(medianRate * 1.25),
             yourPrice: Number(pricingVerdict?.your_price) || yourListingPrice || medianRate,
@@ -279,11 +349,7 @@ Find 10-15 comparable short-term rental properties. Return JSON with rate_distri
             recommendedWeekday: Number(recommendedRates?.weekday) || medianRate,
             recommendedWeekend: Number(recommendedRates?.weekend) || Math.round(medianRate * 1.2),
             recommendedEvent: Number(recommendedRates?.event_peak) || Math.round(medianRate * 1.5),
-            reasoning:
-                (recommendedRates?.reasoning as string) ||
-                (airbticsHasBenchmark
-                    ? `Benchmark anchored on Airbtics market p50 ADR (${medianRate} ${currency}).`
-                    : "Data synthesized from Lyzr benchmark fallback."),
+            reasoning: benchmarkReasoning,
             comps: (Array.isArray(agentBench?.comps) ? agentBench.comps : []).map((c: Record<string, unknown>) => ({
                 name: c.name || "Unknown Listing",
                 source: c.source || "Airbnb",
