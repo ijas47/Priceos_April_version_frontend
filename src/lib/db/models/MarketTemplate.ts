@@ -35,6 +35,11 @@ export interface IMarketTemplate extends Document {
     requiresLicence: boolean;
     licenceFieldLabel?: string;
   } | null;
+  /** AI/deterministic bootstrap cache (PriceLabs-parity pack JSON) */
+  pricingPack?: Record<string, unknown>;
+  pricingPackVersion?: string;
+  pricingPackGeneratedAt?: Date;
+  bootstrapSources?: string[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -81,6 +86,10 @@ const MarketTemplateSchema = new Schema<IMarketTemplate>(
       },
       default: null,
     },
+    pricingPack: { type: Schema.Types.Mixed },
+    pricingPackVersion: { type: String },
+    pricingPackGeneratedAt: { type: Date },
+    bootstrapSources: [{ type: String }],
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

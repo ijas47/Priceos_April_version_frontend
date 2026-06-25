@@ -4,7 +4,7 @@
  * Run with: npm run db:seed
  *
  * Seeds:
- *   1. MarketTemplates   - 10 global markets
+ *   1. MarketTemplates   - global markets (incl. Madrid, Rome, Milan)
  *   2. Sources           - 4 pipeline sources
  *   3. Detectors         - 12 signal detectors
  *   4. Organization      - demo org (admin account)
