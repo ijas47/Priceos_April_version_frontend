@@ -9,6 +9,8 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { PricingRulesStudio } from "@/components/pricing/pricing-rules-studio";
+import { inferMarketFromListings, type InferredMarket } from "@/lib/market/infer-market";
+import { getWizardMarketOptions } from "@/lib/market/market-registry";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -43,6 +45,7 @@ interface Listing {
   name: string;
   bedrooms: number;
   city: string;
+  countryCode?: string;
   type: string;
   thumbnail: string | null;
 }
@@ -59,18 +62,15 @@ interface MarketTemplate {
 
 // ── Market Templates ───────────────────────────────────────────────────────────
 
-const MARKETS: MarketTemplate[] = [
-  { code: "UAE_DXB", name: "Dubai", country: "UAE", currency: "AED", flag: "🇦🇪", weekend: "Thu–Fri", maxChangePct: 15 },
-  { code: "GBR_LON", name: "London", country: "UK", currency: "GBP", flag: "🇬🇧", weekend: "Fri–Sat", maxChangePct: 10 },
-  { code: "USA_NYC", name: "New York", country: "USA", currency: "USD", flag: "🇺🇸", weekend: "Fri–Sat", maxChangePct: 12 },
-  { code: "FRA_PAR", name: "Paris", country: "France", currency: "EUR", flag: "🇫🇷", weekend: "Fri–Sat", maxChangePct: 10 },
-  { code: "NLD_AMS", name: "Amsterdam", country: "Netherlands", currency: "EUR", flag: "🇳🇱", weekend: "Fri–Sat", maxChangePct: 10 },
-  { code: "ESP_BCN", name: "Barcelona", country: "Spain", currency: "EUR", flag: "🇪🇸", weekend: "Fri–Sat", maxChangePct: 12 },
-  { code: "USA_MIA", name: "Miami", country: "USA", currency: "USD", flag: "🇺🇸", weekend: "Fri–Sat", maxChangePct: 20 },
-  { code: "PRT_LIS", name: "Lisbon", country: "Portugal", currency: "EUR", flag: "🇵🇹", weekend: "Fri–Sat", maxChangePct: 12 },
-  { code: "USA_NSH", name: "Nashville", country: "USA", currency: "USD", flag: "🇺🇸", weekend: "Fri–Sat", maxChangePct: 20 },
-  { code: "AUS_SYD", name: "Sydney", country: "Australia", currency: "AUD", flag: "🇦🇺", weekend: "Fri–Sat", maxChangePct: 15 },
-];
+const MARKETS: MarketTemplate[] = getWizardMarketOptions().map((m) => ({
+  code: m.code,
+  name: m.name,
+  country: m.country,
+  currency: m.currency,
+  flag: m.flag,
+  weekend: m.weekend,
+  maxChangePct: m.maxChangePct,
+}));
 
 // ── Demo Listings (for client demos - no API key needed) ───────────────────────
 
@@ -98,7 +98,7 @@ async function saveProgress(data: Partial<{
   step: WizardStep;
   selectedListingIds: string[];
   activatedListingIds: string[];
-  marketCode: string;
+  marketCode?: string;
   listings: Listing[];
   strategy: StrategyMode;
   pricingDefaults: PricingDefaults;
@@ -406,13 +406,38 @@ function StepSelect({ listings, onNext }: { listings: Listing[]; onNext: (ids: s
   );
 }
 
-function StepMarket({ initialMarket, onNext }: { initialMarket: string; onNext: (code: string) => void }) {
+function StepMarket({
+  initialMarket,
+  inferredMarket,
+  onNext,
+}: {
+  initialMarket: string;
+  inferredMarket: InferredMarket | null;
+  onNext: (code: string) => void;
+}) {
   const [selected, setSelected] = useState(initialMarket || "UAE_DXB");
 
   return (
     <div className="space-y-5">
+      {inferredMarket && inferredMarket.confidence !== "low" && (
+        <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-1">
+          <p className="text-xs font-bold text-primary uppercase tracking-wider">Detected from your properties</p>
+          <p className="text-sm text-zinc-200">
+            {inferredMarket.flag} <strong>{inferredMarket.displayName}</strong>
+            {inferredMarket.primaryShare > 0 && (
+              <span className="text-zinc-500">
+                {" "}· {Math.round(inferredMarket.primaryShare * 100)}% of listings in {inferredMarket.city}
+              </span>
+            )}
+          </p>
+          <p className="text-[11px] text-zinc-500">
+            Seasonal calendar, weekend pattern, and guardrails will be pre-loaded for this market.
+          </p>
+        </div>
+      )}
+
       <div className="space-y-1">
-        <p className="text-sm text-zinc-300 font-medium">Select your primary operating market</p>
+        <p className="text-sm text-zinc-300 font-medium">Confirm your operating market</p>
         <p className="text-xs text-zinc-500 leading-relaxed">
           This pre-loads a <strong className="text-zinc-300">city-specific pricing rulebook</strong> - public holidays, 
           peak seasons, local events, weekend pattern, and daily price-change guardrails.
@@ -1073,6 +1098,7 @@ export function OnboardingWizard({ initialStep = "connect" }: { initialStep?: Wi
   const [listings, setListings] = useState<Listing[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [marketCode, setMarketCode] = useState("UAE_DXB");
+  const [inferredMarket, setInferredMarket] = useState<InferredMarket | null>(null);
   const [strategy, setStrategy] = useState<StrategyMode>("conservative");
   const [pricingDefaults, setPricingDefaults] = useState<PricingDefaults>({
     weekendUpliftPct: 20,
@@ -1088,10 +1114,22 @@ export function OnboardingWizard({ initialStep = "connect" }: { initialStep?: Wi
   const goToStep = useCallback((next: WizardStep) => setStep(next), []);
 
   // Step 1 → 2
+  const applyInferredMarket = useCallback((items: Listing[]) => {
+    const inferred = inferMarketFromListings(
+      items.map((l) => ({ city: l.city, countryCode: l.countryCode })),
+      marketCode
+    );
+    setInferredMarket(inferred);
+    if (inferred.confidence !== "low") {
+      setMarketCode(inferred.marketCode);
+    }
+  }, [marketCode]);
+
   const handleConnect = useCallback((fetchedListings: Listing[]) => {
     setListings(fetchedListings);
+    applyInferredMarket(fetchedListings);
     goToStep("select");
-  }, [goToStep]);
+  }, [goToStep, applyInferredMarket]);
 
   // Step 2 → 3
   const handleSelect = useCallback(async (ids: string[]) => {
@@ -1105,9 +1143,16 @@ export function OnboardingWizard({ initialStep = "connect" }: { initialStep?: Wi
         color: ["#6366f1", "#8b5cf6", "#ec4899"][idx % 3],
       }))
     );
-    await saveProgress({ step: "market", selectedListingIds: ids });
+    const inferred = inferMarketFromListings(
+      selectedListings.map((l) => ({ city: l.city, countryCode: l.countryCode })),
+      marketCode
+    );
+    setInferredMarket(inferred);
+    const nextMarket = inferred.confidence !== "low" ? inferred.marketCode : marketCode;
+    setMarketCode(nextMarket);
+    await saveProgress({ step: "market", selectedListingIds: ids, marketCode: nextMarket });
     goToStep("market");
-  }, [goToStep, listings]);
+  }, [goToStep, listings, marketCode]);
 
   // Step 3 → 4
   const handleMarket = useCallback(async (code: string) => {
@@ -1209,7 +1254,13 @@ export function OnboardingWizard({ initialStep = "connect" }: { initialStep?: Wi
         <div className={cn("bg-zinc-950 border border-zinc-800/80 rounded-2xl shadow-2xl", step === "strategy" ? "p-5" : "p-7")}>
           {step === "connect"  && <StepConnect onNext={handleConnect} />}
           {step === "select"   && <StepSelect listings={listings} onNext={handleSelect} />}
-          {step === "market"   && <StepMarket initialMarket={marketCode} onNext={handleMarket} />}
+          {step === "market"   && (
+            <StepMarket
+              initialMarket={marketCode}
+              inferredMarket={inferredMarket}
+              onNext={handleMarket}
+            />
+          )}
           {step === "strategy" && (
             <StepStrategy
               listings={listings}

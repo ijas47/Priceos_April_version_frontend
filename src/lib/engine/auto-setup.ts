@@ -8,7 +8,7 @@
 import { connectDB, Listing, PricingRule, MarketTemplate } from "@/lib/db";
 import { resolveMarketId, getMarketContext } from "@/lib/airbtics/market-context";
 import { runPipeline } from "./pipeline";
-import { applyPricingPackToOrg } from "@/lib/pricing/apply-defaults";
+import { resolveAndApplyPricingPack } from "@/lib/market/resolve-pricing-pack";
 import {
   type Strategy,
   type StrategyPreset,
@@ -70,9 +70,7 @@ export async function runAutoSetup(input: AutoSetupInput): Promise<AutoSetupResu
 
   const orgOid = new mongoose.Types.ObjectId(input.orgId);
 
-  if (!input.marketCode || input.marketCode === "UAE_DXB") {
-    await applyPricingPackToOrg(input.orgId);
-  }
+  await resolveAndApplyPricingPack(input.orgId, input.marketCode || "UAE_DXB");
   const preset = resolveStrategyPreset(input.strategy, input.presetOverrides);
   const defaults = input.pricingDefaults;
 
@@ -282,8 +280,7 @@ async function configureListing(
   const org = await Organization.findById(orgOid)
     .select("pricingPackVersion marketCode")
     .lean();
-  const hasPricingPack =
-    !!org?.pricingPackVersion || org?.marketCode === "UAE_DXB" || !org?.marketCode;
+  const hasPricingPack = !!org?.pricingPackVersion;
 
   if (!hasPricingPack) {
     rulesCreated = await generateSeasonalRules(

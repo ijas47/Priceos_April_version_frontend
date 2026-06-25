@@ -6,18 +6,26 @@ import type { MarketPricingPack } from "./types";
 /**
  * Persist UAE PriceLabs pack on the org and materialize seasonal + LOS rules per listing.
  */
+function packRulePrefix(pack: MarketPricingPack): string {
+  if (pack.marketCode === "UAE_DXB") return "UAE";
+  const short = pack.marketCode.split("_").pop() || pack.marketCode;
+  return short.toUpperCase();
+}
+
 export async function applyPricingPackToOrg(
   orgId: mongoose.Types.ObjectId | string,
   pack: MarketPricingPack = UAE_PRICELABS_DEFAULTS
 ): Promise<{ listingsUpdated: number; rulesCreated: number }> {
   await connectDB();
   const oid = typeof orgId === "string" ? new mongoose.Types.ObjectId(orgId) : orgId;
+  const ruleTag = packRulePrefix(pack);
 
   await Organization.findByIdAndUpdate(oid, {
     $set: {
       pricingPack: pack,
       pricingPackVersion: pack.version,
-      eventPricingWeight: "low",
+      marketCode: pack.marketCode,
+      eventPricingWeight: pack.marketCode === "UAE_DXB" ? "low" : "medium",
     },
   });
 
@@ -53,7 +61,7 @@ export async function applyPricingPackToOrg(
     // switching replaces stacked SEASON priceAdjPct rules.
     await PricingRule.deleteMany({
       listingId: lid,
-      name: { $regex: /^\[(UAE|Auto)\]/ },
+      name: { $regex: /^\[(UAE|Auto|[A-Z]{2,4})\]/ },
       ruleType: "SEASON",
     });
 
@@ -66,7 +74,7 @@ export async function applyPricingPackToOrg(
           orgId: oid,
           listingId: lid,
           ruleType: "LOS_DISCOUNT",
-          name: "[UAE] Weekly discount (off-season)",
+          name: `[${ruleTag}] Weekly discount (off-season)`,
           enabled: true,
           priority: 5,
           minNights: 7,
@@ -81,7 +89,7 @@ export async function applyPricingPackToOrg(
           orgId: oid,
           listingId: lid,
           ruleType: "LOS_DISCOUNT",
-          name: "[UAE] Monthly discount (off-season)",
+          name: `[${ruleTag}] Monthly discount (off-season)`,
           enabled: true,
           priority: 5,
           minNights: 28,

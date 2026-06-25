@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { connectDB, Organization, Listing } from "@/lib/db";
+import { connectDB, Organization, Listing, MarketTemplate } from "@/lib/db";
+import { MARKET_TEMPLATES_SEED } from "@/lib/db/seed/market-templates";
 import { getSession, COOKIE_NAME } from "@/lib/auth/server";
 import { signAccessToken } from "@/lib/auth/jwt";
 import { runAutoSetup } from "@/lib/engine/auto-setup";
@@ -45,7 +46,22 @@ export async function PATCH(req: NextRequest) {
     // Persist step progress
     const updates: Record<string, unknown> = {};
     if (body.step) updates.onboardingStep = body.step;
-    if (body.marketCode) updates.marketCode = body.marketCode;
+    if (body.marketCode) {
+      updates.marketCode = body.marketCode;
+      const template =
+        (await MarketTemplate.findOne({ marketCode: body.marketCode }).lean()) ??
+        MARKET_TEMPLATES_SEED.find((m) => m.marketCode === body.marketCode);
+      if (template) {
+        updates.currency = template.currency;
+        updates.timezone = template.timezone;
+        if (template.guardrailDefaults) {
+          updates["settings.guardrails.maxSingleDayChangePct"] =
+            template.guardrailDefaults.maxSingleDayChangePct;
+          updates["settings.guardrails.autoApproveThreshold"] =
+            template.guardrailDefaults.autoApproveThreshold;
+        }
+      }
+    }
     if (body.strategy) {
       updates["settings.guardrails.maxSingleDayChangePct"] =
         body.strategy === "conservative" ? 10 : body.strategy === "aggressive" ? 25 : 15;
