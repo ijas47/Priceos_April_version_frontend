@@ -16,7 +16,8 @@
     "sync:lyzr-models:dry": "node scripts/sync-lyzr-agent-models.mjs --dry-run",
     "ingest:dubai-airroi": "node scripts/ingest-dubai-airroi.mjs",
     "db:seed": "tsx src/lib/db/seed/run.ts",
-    "db:seed:markets": "tsx src/lib/db/seed/markets-only.ts"
+    "db:seed:markets": "tsx src/lib/db/seed/markets-only.ts",
+    "bootstrap:market": "tsx scripts/bootstrap-market.ts"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",

@@ -6,56 +6,30 @@
  * Requires MONGODB_URI in environment (.env.local locally, or export from Vercel).
  */
 
-import "dotenv/config";
+import { config } from "dotenv";
+import { existsSync } from "fs";
 import mongoose from "mongoose";
-import { MarketTemplate } from "../models/MarketTemplate";
-import { MARKET_TEMPLATES_SEED } from "./market-templates";
+import { connectDB } from "../client";
+import { syncMarketTemplatesFromSeed } from "./sync-markets";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
-  console.error("❌ MONGODB_URI not set");
-  process.exit(1);
-}
+if (existsSync(".env.local")) config({ path: ".env.local" });
+else config();
 
 async function main() {
-  console.log("📍 PriceOS market template seed (markets only)\n");
-  await mongoose.connect(MONGODB_URI!);
-
-  let created = 0;
-  let updated = 0;
-
-  for (const tmpl of MARKET_TEMPLATES_SEED) {
-    const existing = await MarketTemplate.findOne({ marketCode: tmpl.marketCode });
-    if (existing) {
-      await MarketTemplate.findOneAndUpdate(
-        { marketCode: tmpl.marketCode },
-        {
-          $set: {
-            displayName: tmpl.displayName,
-            country: tmpl.country,
-            currency: tmpl.currency,
-            timezone: tmpl.timezone,
-            weekendDefinition: tmpl.weekendDefinition,
-            flag: tmpl.flag,
-            guardrailDefaults: tmpl.guardrailDefaults,
-            seasonalPatterns: tmpl.seasonalPatterns,
-            eventApiConfig: tmpl.eventApiConfig,
-            regulatoryFlags: tmpl.regulatoryFlags,
-            isActive: tmpl.isActive,
-          },
-        }
-      );
-      updated++;
-      console.log(`   ↻ ${tmpl.marketCode} — ${tmpl.displayName}`);
-    } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await MarketTemplate.create(tmpl as any);
-      created++;
-      console.log(`   + ${tmpl.marketCode} — ${tmpl.displayName}`);
-    }
+  if (!process.env.MONGODB_URI) {
+    console.error("❌ MONGODB_URI not set (.env.local or environment)");
+    process.exit(1);
   }
 
-  console.log(`\n✅ Done: ${created} created, ${updated} updated (${MARKET_TEMPLATES_SEED.length} total)`);
+  console.log("📍 PriceOS market template seed (markets only)\n");
+  await connectDB();
+
+  const result = await syncMarketTemplatesFromSeed();
+  for (const code of result.codes) {
+    console.log(`   ✓ ${code}`);
+  }
+
+  console.log(`\n✅ Done: ${result.created} created, ${result.updated} updated (${result.total} total)`);
   await mongoose.disconnect();
 }
 
