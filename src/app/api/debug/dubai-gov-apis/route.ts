@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/server";
+import { guardDebugRoute } from "@/lib/api/debug-guard";
 import { getDubaiGovApiKey } from "@/lib/research/dubai-gov/client";
 import {
   DUBAI_GOV_API_CATALOG,
@@ -16,7 +17,8 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = guardDebugRoute(session);
+  if (blocked) return blocked;
 
   const hasApiKey = Boolean(getDubaiGovApiKey());
   const integrated = getIntegratedDubaiGovApis();

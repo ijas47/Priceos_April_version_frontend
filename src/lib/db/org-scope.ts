@@ -16,7 +16,11 @@ export async function findListingsForOrg(
   if (!mongoose.Types.ObjectId.isValid(orgId)) return [];
 
   const orgOid = new mongoose.Types.ObjectId(orgId);
-  const repair = options?.repair !== false;
+  const repairAllowed =
+    options?.repair !== false &&
+    (process.env.ALLOW_ORG_SCOPE_REPAIR === "true" ||
+      process.env.NODE_ENV !== "production");
+  const repair = repairAllowed;
 
   let listings = await Listing.find({ orgId: orgOid }).sort({ name: 1 }).lean();
   if (listings.length > 0) return listings;

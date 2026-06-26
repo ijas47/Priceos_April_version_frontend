@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { connectDB, GuestSummary, HostawayConversation, Listing } from "@/lib/db";
+import { connectDB, GuestSummary, HostawayConversation } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { assertListingOwned, ListingAccessError } from "@/lib/db/assert-listing-owned";
 import mongoose from "mongoose";
 
 /**
@@ -19,10 +20,17 @@ export async function GET(request: Request) {
     console.log(`📋 [Summary] Checking cache for listing ${listingId}, ${dateFrom} → ${dateTo}`);
 
     try {
-        await connectDB();
+        const session = await getSession();
+        if (!session?.orgId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
-        const listingObjectId = new mongoose.Types.ObjectId(listingId);
+        await connectDB();
+        const listing = await assertListingOwned(session.orgId, listingId);
+        const listingObjectId = listing._id;
+
         const cached = await GuestSummary.findOne({
+            orgId: session.orgId,
             listingId: listingObjectId,
             dateFrom,
             dateTo,
@@ -36,6 +44,9 @@ export async function GET(request: Request) {
         console.log(`📭 [Summary] Cache MISS`);
         return NextResponse.json({ success: true, summary: null, cached: false });
     } catch (error) {
+        if (error instanceof ListingAccessError) {
+            return NextResponse.json({ error: error.message }, { status: 404 });
+        }
         console.error("❌ [Summary] Error:", error);
         return NextResponse.json({ error: "Failed to check summary" }, { status: 500 });
     }
@@ -54,18 +65,21 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "listingId, dateFrom, dateTo required" }, { status: 400 });
         }
 
-        await connectDB();
         const session = await getSession();
-        const orgId = session?.orgId
-            ? new mongoose.Types.ObjectId(session.orgId)
-            : new mongoose.Types.ObjectId();
+        if (!session?.orgId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
-        const listingObjectId = new mongoose.Types.ObjectId(listingId);
+        await connectDB();
+        const orgId = new mongoose.Types.ObjectId(session.orgId);
+        const listing = await assertListingOwned(session.orgId, listingId);
+        const listingObjectId = listing._id;
 
         console.log(`🤖 [Summary] Generating summary for listing ${listingId}, ${dateFrom} → ${dateTo}`);
 
         // Load cached conversations
         const conversations = await HostawayConversation.find({
+            orgId,
             listingId: listingObjectId,
             dateFrom: { $lte: dateTo },
             dateTo: { $gte: dateFrom },
@@ -86,9 +100,6 @@ export async function POST(request: Request) {
                 { status: 404 }
             );
         }
-
-        // Get property name
-        const listing = await Listing.findById(listingObjectId).select("name").lean();
 
         const CHUNK_SIZE = 15;
         const chunks: typeof uniqueConversations[] = [];

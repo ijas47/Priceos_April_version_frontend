@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/server";
+import { requireScopedSession } from "@/lib/agent-tools/utils";
 import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
-import { connectDB, Listing } from "@/lib/db";
+import { assertListingOwned } from "@/lib/db/assert-listing-owned";
 import { resolveBedroomsNumber } from "@/lib/pricing/bedrooms";
 import { format, addDays, parseISO, isWeekend } from "date-fns";
 
@@ -11,8 +11,7 @@ const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export async function GET(req: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const { orgId } = await requireScopedSession(req, "agent-tools/demand-pacing");
 
         const { searchParams } = new URL(req.url);
         let marketId = searchParams.get("marketId");
@@ -23,8 +22,7 @@ export async function GET(req: NextRequest) {
         let bedrooms = searchParams.get("bedrooms") ?? "2";
 
         if (listingId && !marketId) {
-            await connectDB();
-            const listing = await Listing.findById(listingId).lean();
+            const listing = await assertListingOwned(orgId, listingId);
             if (listing) {
                 bedrooms = String(resolveBedroomsNumber(listing.bedroomsNumber, 1));
                 const resolved = await resolveMarketId(

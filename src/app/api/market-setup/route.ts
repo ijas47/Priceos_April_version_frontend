@@ -8,6 +8,7 @@ import {
     Reservation,
 } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { assertListingOwned, ListingAccessError } from "@/lib/db/assert-listing-owned";
 import {
     MARKET_RESEARCH_ID,
     BENCHMARK_AGENT_ID,
@@ -84,19 +85,20 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Property ID is required" }, { status: 400 });
         }
 
-        await connectDB();
         const session = await getSession();
-        const orgId = session?.orgId
-            ? new mongoose.Types.ObjectId(session.orgId)
-            : new mongoose.Types.ObjectId();
+        if (!session?.orgId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
-        const listingObjectId = new mongoose.Types.ObjectId(listingId);
+        await connectDB();
+        const orgId = new mongoose.Types.ObjectId(session.orgId);
+        const listing = await assertListingOwned(session.orgId, listingId);
+        const listingObjectId = listing._id;
 
         console.log(`\n🚀 STARTING MARKET ANALYSIS FOR LISTING ${listingId}`);
         console.log(`📅 Date Range: ${dateRange.from} to ${dateRange.to}`);
 
         // 1. Fetch Property Context
-        const listing = await Listing.findById(listingObjectId).lean();
         const city = listing?.city || "Dubai";
         const area = listing?.area || city;
         const bedrooms = resolveBedroomsNumber(listing?.bedroomsNumber, 1);
@@ -476,6 +478,9 @@ Find 10-15 comparable short-term rental properties with the SAME bedroom count (
             } : { available: false },
         });
     } catch (error) {
+        if (error instanceof ListingAccessError) {
+            return NextResponse.json({ error: error.message }, { status: 404 });
+        }
         console.error("❌ Market Analysis failed:", error);
         return NextResponse.json(
             {

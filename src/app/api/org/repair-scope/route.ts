@@ -12,6 +12,14 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (
+      process.env.NODE_ENV === "production" &&
+      session.role !== "owner" &&
+      session.role !== "admin"
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const result = await repairOrgListingScope(session.orgId);
     return NextResponse.json({ success: true, ...result });
   } catch (error) {

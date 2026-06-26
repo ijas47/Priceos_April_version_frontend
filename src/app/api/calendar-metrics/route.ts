@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB, InventoryMaster, Listing, Reservation } from "@/lib/db";
+import { connectDB, InventoryMaster, Reservation } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { assertListingOwned, ListingAccessError, orgObjectId } from "@/lib/db/assert-listing-owned";
 import { refreshListingCalendarFromHostaway } from "@/lib/engine/calendar-rates";
 import { resolveDisplayRate } from "@/lib/pricing/display-rate";
 import { format } from "date-fns";
@@ -27,7 +28,9 @@ export async function GET(req: NextRequest) {
 
         await connectDB();
 
-        const lid = new mongoose.Types.ObjectId(listingId);
+        const listing = await assertListingOwned(session.orgId, listingId);
+        const lid = listing._id;
+        const orgOid = orgObjectId(session.orgId);
 
         try {
             await refreshListingCalendarFromHostaway(
@@ -41,7 +44,7 @@ export async function GET(req: NextRequest) {
 
         // Aggregate metrics from InventoryMaster
         const [agg] = await InventoryMaster.aggregate([
-            { $match: { listingId: lid, date: { $gte: from, $lte: to } } },
+            { $match: { orgId: orgOid, listingId: lid, date: { $gte: from, $lte: to } } },
             {
                 $group: {
                     _id: null,
@@ -66,8 +69,7 @@ export async function GET(req: NextRequest) {
         let blockedDays = Number(agg?.blockedDays || 0);
         const avgCalendarRate = agg?.avgPrice ? Number(agg.avgPrice) : null;
 
-        const listing = await Listing.findById(lid).select("price currencyCode").lean();
-        const listedPrice = Number(listing?.price ?? 0);
+        const listedPrice = Number(listing.price ?? 0);
 
         const bookableDays = totalDays - blockedDays;
         const occupancy =
@@ -75,6 +77,7 @@ export async function GET(req: NextRequest) {
 
         // Calendar days
         const calendarDocs = await InventoryMaster.find({
+            orgId: orgOid,
             listingId: lid,
             date: { $gte: from, $lte: to },
         })
@@ -138,6 +141,9 @@ export async function GET(req: NextRequest) {
             reservations,
         });
     } catch (error) {
+        if (error instanceof ListingAccessError) {
+            return NextResponse.json({ error: error.message }, { status: 404 });
+        }
         console.error("Calendar Metrics Error:", error);
         return NextResponse.json(
             { error: error instanceof Error ? error.message : "Internal Server Error" },

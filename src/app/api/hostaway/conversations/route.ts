@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { connectDB, HostawayConversation, Listing } from "@/lib/db";
+import { connectDB, HostawayConversation } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { assertListingOwned, ListingAccessError } from "@/lib/db/assert-listing-owned";
 import mongoose from "mongoose";
 
 /**
@@ -32,9 +33,10 @@ export async function GET(request: Request) {
         await connectDB();
 
         const session = await getSession();
-        const orgId = session?.orgId
-            ? new mongoose.Types.ObjectId(session.orgId)
-            : new mongoose.Types.ObjectId();
+        if (!session?.orgId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const orgId = new mongoose.Types.ObjectId(session.orgId);
 
         let listingObjectId: mongoose.Types.ObjectId;
         try {
@@ -48,10 +50,7 @@ export async function GET(request: Request) {
             throw new Error("Hostaway_Authorization_token is not set in .env");
         }
 
-        const listing = await Listing.findById(listingObjectId).select("hostawayId").lean();
-        if (!listing) {
-            return NextResponse.json({ error: "Listing not found" }, { status: 404 });
-        }
+        const listing = await assertListingOwned(session.orgId, listingObjectId);
 
         const hostawayListingId = listing.hostawayId;
         console.log(`📥 [Hostaway Sync] Fetching ALL conversations with includeResources=1...`);
@@ -220,6 +219,9 @@ export async function GET(request: Request) {
             cached: false,
         });
     } catch (error) {
+        if (error instanceof ListingAccessError) {
+            return NextResponse.json({ error: error.message }, { status: 404 });
+        }
         console.error("❌ [Hostaway Sync] Error:", error);
         return NextResponse.json(
             { error: error instanceof Error ? error.message : "Failed to sync" },

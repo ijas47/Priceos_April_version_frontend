@@ -1,4 +1,5 @@
-import { connectDB, GuestSummary, HostawayConversation, Listing } from "@/lib/db";
+import { connectDB, GuestSummary, HostawayConversation } from "@/lib/db";
+import { assertListingOwned, ListingAccessError } from "@/lib/db/assert-listing-owned";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { getSummarySchema, generateSummarySchema, formatZodErrors } from "@/lib/validators";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
@@ -27,11 +28,17 @@ export async function GET(request: Request) {
     const { listingId, from: dateFrom, to: dateTo } = validation.data;
 
     try {
-        await connectDB();
+        const session = await getSession();
+        if (!session?.orgId) {
+            return apiError("UNAUTHORIZED", "Unauthorized", 401);
+        }
 
-        const listingObjectId = new mongoose.Types.ObjectId(String(listingId));
+        await connectDB();
+        const listing = await assertListingOwned(session.orgId, String(listingId));
+
         const cached = await GuestSummary.findOne({
-            listingId: listingObjectId,
+            orgId: session.orgId,
+            listingId: listing._id,
             dateFrom,
             dateTo,
         }).lean();
@@ -42,6 +49,9 @@ export async function GET(request: Request) {
 
         return apiSuccess({ summary: null, cached: false });
     } catch (error) {
+        if (error instanceof ListingAccessError) {
+            return apiError("NOT_FOUND", error.message, 404);
+        }
         console.error("❌ [v1/guests/summary GET] Error:", error);
         return apiError("INTERNAL_ERROR", "Failed to check summary cache", 500);
     }
@@ -69,16 +79,18 @@ export async function POST(request: Request) {
     const { listingId, dateFrom, dateTo } = validation.data;
 
     try {
-        await connectDB();
-
         const session = await getSession();
-        const orgId = session?.orgId
-            ? new mongoose.Types.ObjectId(session.orgId)
-            : new mongoose.Types.ObjectId();
+        if (!session?.orgId) {
+            return apiError("UNAUTHORIZED", "Unauthorized", 401);
+        }
 
-        const listingObjectId = new mongoose.Types.ObjectId(String(listingId));
+        await connectDB();
+        const orgId = new mongoose.Types.ObjectId(session.orgId);
+        const listing = await assertListingOwned(session.orgId, String(listingId));
+        const listingObjectId = listing._id;
 
         const conversations = await HostawayConversation.find({
+            orgId,
             listingId: listingObjectId,
             dateFrom: { $lte: dateTo },
             dateTo: { $gte: dateFrom },
@@ -101,8 +113,6 @@ export async function POST(request: Request) {
             guestName: conv.guestName,
             messages: conv.messages as { sender: string; text: string; timestamp: string }[],
         }));
-
-        const listing = await Listing.findById(listingObjectId).select("name").lean();
 
         const CHUNK_SIZE = 15;
         const chunks: typeof enrichedConversations[] = [];
@@ -146,7 +156,7 @@ export async function POST(request: Request) {
                     return `--- Conversation with ${conv.guestName} ---\n${msgText}`;
                 }).join("\n\n");
 
-                const prompt = `You are a hospitality operations analyst. Analyze the following guest conversations for the property "${listing?.name || "Property"}" (Date range: ${dateFrom} to ${dateTo}).
+                const prompt = `You are a hospitality operations analyst. Analyze the following guest conversations for the property "${listing.name || "Property"}" (Date range: ${dateFrom} to ${dateTo}).
 
 For each conversation, create a one-line bullet point summary.
 Identify the overall sentiment: "Positive", "Neutral", or "Needs Attention".
@@ -183,7 +193,7 @@ Respond in this exact JSON format:
                         return `--- ${conv.guestName} ---\n${msgText}`;
                     }).join("\n\n");
 
-                    const mapPrompt = `Analyze these ${chunk.length} guest conversations for "${listing?.name || "Property"}".
+                    const mapPrompt = `Analyze these ${chunk.length} guest conversations for "${listing.name || "Property"}".
 For each, provide: guest name, one-line summary, sentiment (positive/neutral/negative), needs reply (yes/no).
 Also list any recurring themes and action items you notice.
 
@@ -204,7 +214,7 @@ Respond as a simple text summary, NOT JSON. Be concise.`;
                     }
                 }
 
-                const reducePrompt = `You are a hospitality operations analyst. Below are summaries of ${enrichedConversations.length} guest conversations for the property "${listing?.name || "Property"}" (${dateFrom} to ${dateTo}), analyzed in batches.
+                const reducePrompt = `You are a hospitality operations analyst. Below are summaries of ${enrichedConversations.length} guest conversations for the property "${listing.name || "Property"}" (${dateFrom} to ${dateTo}), analyzed in batches.
 
 Merge these batch summaries into ONE final analysis.
 
@@ -291,6 +301,9 @@ Respond in this exact JSON format:
             201
         );
     } catch (error) {
+        if (error instanceof ListingAccessError) {
+            return apiError("NOT_FOUND", error.message, 404);
+        }
         console.error("❌ [v1/guests/summary POST] Error:", error);
         return apiError(
             "INTERNAL_ERROR",

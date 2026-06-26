@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { connectDB, Listing, InventoryMaster } from "@/lib/db";
+import { connectDB, InventoryMaster } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { assertListingOwned, ListingAccessError, orgObjectId } from "@/lib/db/assert-listing-owned";
 import { format, addDays } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -25,16 +26,15 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
-    const lid = new mongoose.Types.ObjectId(listingId);
-    const listing = await Listing.findById(lid).lean();
-    if (!listing) {
-      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
-    }
+    const listing = await assertListingOwned(session.orgId, listingId);
+    const lid = listing._id;
+    const orgOid = orgObjectId(session.orgId);
 
     const today = format(new Date(), "yyyy-MM-dd");
     const endDate = format(addDays(new Date(), days), "yyyy-MM-dd");
 
     const inventory = await InventoryMaster.find({
+      orgId: orgOid,
       listingId: lid,
       date: { $gte: today, $lte: endDate },
     })
@@ -66,6 +66,9 @@ export async function GET(req: NextRequest) {
       days: calendarDays,
     });
   } catch (error) {
+    if (error instanceof ListingAccessError) {
+      return NextResponse.json({ error: error.message }, { status: 404 });
+    }
     console.error("[Inventory calendar GET]", error);
     return NextResponse.json({ error: "Failed to fetch calendar" }, { status: 500 });
   }

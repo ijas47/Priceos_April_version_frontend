@@ -8,7 +8,8 @@ import {
 } from "@/lib/elasticity/model";
 import type { BookingObservation } from "@/lib/elasticity/types";
 import { differenceInDays, parseISO, format, subDays, getDay } from "date-fns";
-import { connectDB, Listing } from "@/lib/db";
+import { connectDB } from "@/lib/db";
+import { assertListingOwned } from "@/lib/db/assert-listing-owned";
 import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
 
 const RAW_BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
@@ -56,7 +57,11 @@ export async function GET(req: NextRequest) {
     }
 
     const { listingId } = parsed.data;
-    const orgId = parsed.data.orgId ?? payload.orgId;
+    if (parsed.data.orgId && parsed.data.orgId !== payload.orgId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const orgId = payload.orgId;
+    await assertListingOwned(orgId, listingId);
 
     // Default date range: past 180 days (for historical booking data)
     const today = new Date();
@@ -100,11 +105,11 @@ export async function GET(req: NextRequest) {
     let airbticAdr: number | undefined;
     try {
       await connectDB();
-      const listing = await Listing.findById(listingId).lean();
-      const city = listing?.city || "Dubai";
-      const cc = listing?.countryCode || "AE";
+      const listing = await assertListingOwned(orgId, listingId);
+      const city = listing.city || "Dubai";
+      const cc = listing.countryCode || "AE";
       const { resolveBedroomsNumber } = await import("@/lib/pricing/bedrooms");
-      const br = String(resolveBedroomsNumber(listing?.bedroomsNumber, 1));
+      const br = String(resolveBedroomsNumber(listing.bedroomsNumber, 1));
       const mktId = await resolveMarketId(city, cc);
       if (mktId) {
         const ctx = await getMarketContext(mktId, br);

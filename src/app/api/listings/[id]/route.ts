@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB, Listing } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { pickListingClientUpdates } from "@/lib/api/listing-update-allowlist";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await connectDB();
     const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const query: Record<string, unknown> = { _id: id };
-    if (session?.orgId) query.orgId = session.orgId;
+    await connectDB();
 
-    const listing = await Listing.findOne(query).lean();
+    const listing = await Listing.findOne({ _id: id, orgId: session.orgId }).lean();
     if (!listing) return NextResponse.json({ error: "Listing not found" }, { status: 404 });
 
     return NextResponse.json({ success: true, listing });
@@ -29,10 +29,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     await connectDB();
     const body = await req.json();
+    const updates = pickListingClientUpdates(body as Record<string, unknown>);
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
 
     const listing = await Listing.findOneAndUpdate(
       { _id: id, orgId: session.orgId },
-      { $set: body },
+      { $set: updates },
       { new: true }
     ).lean();
 
@@ -52,12 +56,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     await connectDB();
     const body = await req.json();
-
-    // PATCH is for partial updates - typically price guardrails
-    const { priceFloor, priceCeiling, ...rest } = body;
-    const updates: Record<string, unknown> = { ...rest };
-    if (priceFloor !== undefined) updates.priceFloor = Number(priceFloor);
-    if (priceCeiling !== undefined) updates.priceCeiling = Number(priceCeiling);
+    const updates = pickListingClientUpdates(body as Record<string, unknown>);
+    if (updates.priceFloor !== undefined) updates.priceFloor = Number(updates.priceFloor);
+    if (updates.priceCeiling !== undefined) updates.priceCeiling = Number(updates.priceCeiling);
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
 
     const listing = await Listing.findOneAndUpdate(
       { _id: id, orgId: session.orgId },

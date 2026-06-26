@@ -4,7 +4,6 @@ import { getJob } from "@/lib/jobs/store";
 import {
     connectDB,
     ChatMessage,
-    Listing,
     InventoryMaster,
     Reservation,
     MarketEvent,
@@ -15,6 +14,9 @@ import {
 import { buildStlySummary, compactStlyDays, shiftIsoDate } from "@/lib/pricing/stly";
 import { getOrgPricingPack, summarizeActivePricingRules } from "@/lib/pricing/resolve";
 import { getSession } from "@/lib/auth/server";
+import { assertListingOwned, ListingAccessError } from "@/lib/db/assert-listing-owned";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
+import { withLegacyDashboardHeaders } from "@/lib/api/canonical-surface";
 import { ensureVerifiedMarketIntel } from "@/lib/research/ensure-market-intel";
 import {
     eventsOverlappingDate,
@@ -124,6 +126,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "AGENT_ID not configured" }, { status: 500 });
         }
 
+        const rateCheck = checkRateLimit(
+            `chat-post:${getClientIp(req)}`,
+            RATE_LIMITS.ai
+        );
+        if (!rateCheck.allowed) {
+            return NextResponse.json(
+                { error: `Rate limited — try again in ${Math.ceil(rateCheck.resetMs / 1000)}s` },
+                { status: 429 }
+            );
+        }
+
         const session = await getSession();
         if (!session?.orgId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -132,8 +145,14 @@ export async function POST(req: NextRequest) {
         // Run synchronously - Vercel serverless does not reliably finish
         // background work scheduled via after(), which left jobs stuck "running".
         const result = await runChat(body, session.orgId);
-        return NextResponse.json(result);
+        return withLegacyDashboardHeaders(
+            NextResponse.json(result),
+            "/api/v1/ai/chat"
+        );
     } catch (error) {
+        if (error instanceof ListingAccessError) {
+            return NextResponse.json({ error: error.message }, { status: 404 });
+        }
         console.error("[chat POST]", error);
         const message = toUserFacingAgentError(error);
         return NextResponse.json({ error: message }, { status: 500 });
@@ -193,8 +212,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
 
             console.log(`\n🔄 [Context Sync] Fetching fresh data for listing ${pid}...`);
 
-            const listing = await Listing.findById(pidObjectId).lean();
-            if (!listing) throw new Error("Property not found");
+            const listing = await assertListingOwned(orgId, pidObjectId);
 
             let intelRefresh: Awaited<ReturnType<typeof ensureVerifiedMarketIntel>> = {
                 refreshed: false,
@@ -269,7 +287,13 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     .sort({ createdAt: -1 })
                     .lean(),
                 InventoryMaster.aggregate([
-                    { $match: { listingId: pidObjectId, date: { $gte: dateFrom, $lte: dateTo } } },
+                    {
+                        $match: {
+                            orgId,
+                            listingId: pidObjectId,
+                            date: { $gte: dateFrom, $lte: dateTo },
+                        },
+                    },
                     {
                         $group: {
                             _id: null,
@@ -288,28 +312,33 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     },
                 ]),
                 Reservation.find({
+                    orgId,
                     listingId: pidObjectId,
                     checkIn: { $lte: dateTo },
                     checkOut: { $gte: dateFrom },
                 }).lean(),
                 GuestSummary.findOne({
+                    orgId,
                     listingId: pidObjectId,
                     dateTo: { $gte: dateFrom },
                     dateFrom: { $lte: dateTo },
                 }).lean(),
                 InventoryMaster.find({
+                    orgId,
                     listingId: pidObjectId,
                     date: { $gte: dateFrom, $lte: dateTo },
                 })
                     .sort({ date: 1 })
                     .lean(),
                 InventoryMaster.find({
+                    orgId,
                     listingId: pidObjectId,
                     date: { $gte: stlyFrom, $lte: stlyTo },
                 })
                     .select("date currentPrice status")
                     .lean(),
                 Reservation.find({
+                    orgId,
                     listingId: pidObjectId,
                     checkIn: { $lte: stlyTo },
                     checkOut: { $gte: stlyFrom },

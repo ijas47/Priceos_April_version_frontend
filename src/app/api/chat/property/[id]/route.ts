@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB, Listing, ChatMessage, InventoryMaster, MarketEvent } from "@/lib/db";
+import { connectDB, ChatMessage, InventoryMaster, MarketEvent } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { assertListingOwned, ListingAccessError } from "@/lib/db/assert-listing-owned";
 import { addDays, format } from "date-fns";
 import mongoose from "mongoose";
 
@@ -13,11 +14,13 @@ export async function POST(
         const body = await req.json();
         const { message, startDate: startStr, endDate: endStr } = body;
 
-        await connectDB();
         const session = await getSession();
-        const orgId = session?.orgId
-            ? new mongoose.Types.ObjectId(session.orgId)
-            : new mongoose.Types.ObjectId();
+        if (!session?.orgId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        await connectDB();
+        const orgId = new mongoose.Types.ObjectId(session.orgId);
 
         let listingObjectId: mongoose.Types.ObjectId;
         try {
@@ -31,20 +34,16 @@ export async function POST(
         const startDateStr = format(startDate, "yyyy-MM-dd");
         const endDateStr = format(endDate, "yyyy-MM-dd");
 
-        // 1. Fetch listing
-        const listing = await Listing.findById(listingObjectId).lean();
-        if (!listing) {
-            return NextResponse.json({ error: "Property not found" }, { status: 404 });
-        }
+        const listing = await assertListingOwned(session.orgId, listingObjectId);
 
-        // 2. Fetch calendar data
         const calendar = await InventoryMaster.find({
+            orgId,
             listingId: listingObjectId,
             date: { $gte: startDateStr, $lte: endDateStr },
         }).lean();
 
-        // 3. Fetch market events
         const events = await MarketEvent.find({
+            orgId,
             endDate: { $gte: startDateStr },
             startDate: { $lte: endDateStr },
             isActive: true,
@@ -119,6 +118,9 @@ export async function POST(
 
         return NextResponse.json({ message: responseMessage, proposals: [] });
     } catch (error) {
+        if (error instanceof ListingAccessError) {
+            return NextResponse.json({ error: error.message }, { status: 404 });
+        }
         console.error("Error in property chat:", error);
         return NextResponse.json({ error: "Failed to process chat message" }, { status: 500 });
     }

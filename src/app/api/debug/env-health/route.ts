@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/server";
+import { guardDebugRoute } from "@/lib/api/debug-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,8 @@ const EXPECTED_KEYS = [
 
 export async function GET() {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = guardDebugRoute(session);
+  if (blocked) return blocked;
 
   const health: Record<string, "SET" | "MISSING"> = {};
   for (const key of EXPECTED_KEYS) {

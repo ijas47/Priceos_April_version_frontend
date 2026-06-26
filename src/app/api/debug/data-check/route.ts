@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { getSession } from "@/lib/auth/server";
+import { guardDebugRoute } from "@/lib/api/debug-guard";
 import { connectDB, Listing, Reservation, InventoryMaster, Organization } from "@/lib/db";
 import { apiBase } from "@/lib/api/absolute-url";
 import { createPMSClient } from "@/lib/pms";
@@ -12,13 +13,14 @@ export async function GET() {
 
   try {
     const session = await getSession();
-    diagnostics.session = session
-      ? { orgId: session.orgId, email: session.email, role: session.role }
-      : "NO SESSION - not logged in";
+    const blocked = guardDebugRoute(session);
+    if (blocked) return blocked;
 
-    if (!session) {
-      return NextResponse.json(diagnostics, { status: 401 });
-    }
+    diagnostics.session = {
+      orgId: session!.orgId,
+      email: session!.email,
+      role: session!.role,
+    };
 
     diagnostics.apiBaseUrl = await apiBase();
     diagnostics.envApiUrl = process.env.NEXT_PUBLIC_API_URL ?? "(not set, defaults to /api)";
@@ -30,7 +32,7 @@ export async function GET() {
     await connectDB();
     diagnostics.mongoConnected = true;
 
-    const orgOid = new mongoose.Types.ObjectId(session.orgId);
+    const orgOid = new mongoose.Types.ObjectId(session!.orgId);
 
     const org = await Organization.findById(orgOid).select("name email").lean();
     diagnostics.orgExists = !!org;
@@ -70,7 +72,7 @@ export async function GET() {
       orgListings > 0
         ? `OK - ${orgListings} listings found for your org`
         : totalListings > 0
-          ? `BUG - ${totalListings} listings exist but none match your orgId (${session.orgId}). Likely orgId mismatch.`
+          ? `BUG - ${totalListings} listings exist but none match your orgId (${session!.orgId}). Likely orgId mismatch.`
           : "NO DATA - run Hostaway sync first (Sync page → Import from Hostaway)";
   } catch (err: unknown) {
     diagnostics.error = (err as Error).message;

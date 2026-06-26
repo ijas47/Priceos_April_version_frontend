@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB, Listing } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { runPipeline } from "@/lib/engine/pipeline";
 import mongoose from "mongoose";
 
@@ -19,6 +20,17 @@ import mongoose from "mongoose";
  */
 export async function POST(req: NextRequest) {
   try {
+    const rateCheck = checkRateLimit(
+      `engine-run-all:${getClientIp(req)}`,
+      RATE_LIMITS.heavy
+    );
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: `Rate limited — try again in ${Math.ceil(rateCheck.resetMs / 1000)}s` },
+        { status: 429 }
+      );
+    }
+
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

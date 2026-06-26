@@ -5,9 +5,9 @@ import {
     Reservation,
     MarketEvent,
     BenchmarkData,
-    Listing,
 } from "@/lib/db";
 import { getSession } from "@/lib/auth/server";
+import { assertListingOwned, ListingAccessError } from "@/lib/db/assert-listing-owned";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { chatRequestSchema, formatZodErrors } from "@/lib/validators";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
@@ -46,9 +46,10 @@ export async function POST(req: Request) {
         await connectDB();
 
         const session = await getSession();
-        const orgId = session?.orgId
-            ? new mongoose.Types.ObjectId(session.orgId)
-            : new mongoose.Types.ObjectId();
+        if (!session?.orgId) {
+            return apiError("UNAUTHORIZED", "Unauthorized", 401);
+        }
+        const orgId = new mongoose.Types.ObjectId(session.orgId);
 
         const lyzrSessionId = sessionId || (
             context.type === "portfolio"
@@ -75,16 +76,44 @@ export async function POST(req: Request) {
             const dateFrom = dateRange?.from || '1970-01-01';
             const dateTo = dateRange?.to || '9999-12-31';
 
-            const [listing, , benchmarkDoc, , rawInventory] = await Promise.all([
-                Listing.findById(pid).lean(),
-                MarketEvent.find({ listingId: pid, endDate: { $gte: dateFrom }, startDate: { $lte: dateTo } }).limit(50).lean(),
-                BenchmarkData.findOne({ listingId: pid, dateTo: { $gte: dateFrom }, dateFrom: { $lte: dateTo } }).lean(),
-                Reservation.find({ listingId: pid, checkOut: { $gte: dateFrom }, checkIn: { $lte: dateTo } }).lean(),
-                InventoryMaster.find({ listingId: pid, date: { $gte: dateFrom, $lte: dateTo } }).lean(),
+            const listing = await assertListingOwned(session.orgId, pid);
+
+            const [, benchmarkDoc, , rawInventory] = await Promise.all([
+                MarketEvent.find({
+                    orgId,
+                    listingId: pid,
+                    endDate: { $gte: dateFrom },
+                    startDate: { $lte: dateTo },
+                })
+                    .limit(50)
+                    .lean(),
+                BenchmarkData.findOne({
+                    orgId,
+                    listingId: pid,
+                    dateTo: { $gte: dateFrom },
+                    dateFrom: { $lte: dateTo },
+                }).lean(),
+                Reservation.find({
+                    orgId,
+                    listingId: pid,
+                    checkOut: { $gte: dateFrom },
+                    checkIn: { $lte: dateTo },
+                }).lean(),
+                InventoryMaster.find({
+                    orgId,
+                    listingId: pid,
+                    date: { $gte: dateFrom, $lte: dateTo },
+                }).lean(),
             ]);
 
             const [calResult] = await InventoryMaster.aggregate([
-                { $match: { listingId: pid, date: { $gte: dateFrom, $lte: dateTo } } },
+                {
+                    $match: {
+                        orgId,
+                        listingId: pid,
+                        date: { $gte: dateFrom, $lte: dateTo },
+                    },
+                },
                 {
                     $group: {
                         _id: null,
@@ -233,9 +262,13 @@ export async function POST(req: Request) {
 
         return apiSuccess({ message: agentReply, proposals });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        if (error instanceof ListingAccessError) {
+            return apiError("NOT_FOUND", error.message, 404);
+        }
         console.error("❌ [v1/ai/chat POST] Error:", error);
-        return apiError("INTERNAL_ERROR", error.message || "Failed to process chat", 500);
+        const message = error instanceof Error ? error.message : "Failed to process chat";
+        return apiError("INTERNAL_ERROR", message, 500);
     }
 }
 

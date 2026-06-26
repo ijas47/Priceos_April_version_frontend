@@ -16,6 +16,14 @@ export interface ScopedSession {
   orgId: ObjectIdString;
 }
 
+/** Mark responses from the canonical external agent API surface. */
+export function agentToolsJsonHeaders(): HeadersInit {
+  return {
+    "X-PriceOS-API-Surface": "agent-tools-v1",
+    "Cache-Control": "no-store",
+  };
+}
+
 export async function requireScopedSession(request?: Request, endpoint = "unknown"): Promise<ScopedSession> {
   if (request) {
     const url = new URL(request.url);
