@@ -1,12 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { verifyAccessToken, signAccessToken } from "@/lib/auth/jwt";
+import { verifyAccessToken } from "@/lib/auth/jwt";
 import { connectDB, Organization } from "@/lib/db";
-import {
-  resolveEffectiveOnboardingStep,
-  healOnboardingStepIfNeeded,
-} from "@/lib/auth/onboarding-step";
-import { COOKIE_NAME } from "@/lib/auth/server";
+import { resolveEffectiveOnboardingStep } from "@/lib/auth/onboarding-step";
 import { OnboardingWizard } from "@/components/onboarding/wizard";
 
 /**
@@ -39,24 +35,7 @@ export default async function OnboardingPage() {
 
   const step = await resolveEffectiveOnboardingStep(org);
   if (step === "complete") {
-    await healOnboardingStepIfNeeded(org._id.toString());
-    const refreshed = signAccessToken({
-      userId: payload.userId,
-      orgId: payload.orgId,
-      email: payload.email,
-      role: payload.role,
-      isApproved: true,
-      onboardingStep: "complete",
-      mustChangePassword: payload.mustChangePassword,
-    });
-    cookieStore.set(COOKIE_NAME, refreshed, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
-    redirect("/dashboard");
+    redirect("/api/onboarding/heal");
   }
 
   return <OnboardingWizard initialStep={step} />;

@@ -47,6 +47,7 @@ const ONBOARDING_ALLOWED_PATHS = [
   "/api/auth/logout",
   "/api/auth/me",
   "/api/onboarding/auto-setup",
+  "/api/onboarding/heal",
   "/api/markets",
 ];
 
