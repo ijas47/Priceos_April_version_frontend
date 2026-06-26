@@ -129,6 +129,51 @@ export function resolveListingPriceContext(input: {
   };
 }
 
+/**
+ * Hostaway often stores nonsense floor/ceiling derived from placeholder base prices
+ * (e.g. base 9999 → floor 6999). Clamp to sensible multiples of the live calendar rate.
+ */
+export function sanitizeStaticGuardrails(
+  priceFloor: number,
+  priceCeiling: number,
+  trustedListedPrice: number
+): { floor: number; ceiling: number; sanitized: boolean } {
+  const floor = Math.max(0, Number(priceFloor) || 0);
+  const ceiling = Math.max(0, Number(priceCeiling) || 0);
+  const listed = Math.max(0, Number(trustedListedPrice) || 0);
+
+  if (listed <= 0) {
+    return { floor, ceiling, sanitized: false };
+  }
+
+  let outFloor = floor;
+  let outCeiling = ceiling;
+  let sanitized = false;
+
+  if (outFloor > listed * 2.5) {
+    outFloor = Math.round(listed * 0.65);
+    sanitized = true;
+  }
+  if (outCeiling > listed * 4) {
+    outCeiling = Math.round(listed * 2.8);
+    sanitized = true;
+  }
+  if (outCeiling > 0 && outCeiling <= outFloor) {
+    outCeiling = Math.round(Math.max(outFloor + 1, listed * 2.5));
+    sanitized = true;
+  }
+  if (outFloor <= 0 && outCeiling > 0) {
+    outFloor = Math.round(listed * 0.65);
+    sanitized = true;
+  }
+  if (outCeiling <= 0 && outFloor > 0) {
+    outCeiling = Math.round(listed * 2.8);
+    sanitized = true;
+  }
+
+  return { floor: outFloor, ceiling: outCeiling, sanitized };
+}
+
 /** Pick the value that matches the chip label shown in the UI. */
 export function formatRateForLabel(
   rateLabel: RateLabel | string | undefined,

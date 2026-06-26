@@ -3,6 +3,7 @@ import {
   formatRateForLabel,
   resolveDisplayRate,
   resolveListingPriceContext,
+  sanitizeStaticGuardrails,
 } from "./display-rate";
 
 describe("resolveDisplayRate", () => {
@@ -63,6 +64,16 @@ describe("resolveListingPriceContext", () => {
     expect(result.pmsBasePrice).toBe(9999);
     expect(result.pmsPriceTrusted).toBe(false);
     expect(result.pmsDiffersFromCalendar).toBe(true);
+  });
+});
+
+describe("sanitizeStaticGuardrails", () => {
+  it("clamps Hostaway placeholder floor/ceiling to calendar-scale bands", () => {
+    const result = sanitizeStaticGuardrails(6999, 17998, 201);
+    expect(result.sanitized).toBe(true);
+    expect(result.floor).toBeLessThan(500);
+    expect(result.ceiling).toBeLessThan(800);
+    expect(result.ceiling).toBeGreaterThan(result.floor);
   });
 });
 

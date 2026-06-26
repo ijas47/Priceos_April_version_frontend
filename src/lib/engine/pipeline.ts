@@ -74,6 +74,10 @@ import {
 } from "@/lib/engine/calendar-rates";
 import { resolvePipelineListedPrice } from "@/lib/pricing/listing-price-sanity";
 import {
+    resolveListingPriceContext,
+    sanitizeStaticGuardrails,
+} from "@/lib/pricing/display-rate";
+import {
     applyStrategyPresetToConfig,
     resolveMonthlyGuardrailBand,
 } from "@/lib/pricing/strategy-runtime";
@@ -170,10 +174,10 @@ export async function runPipeline(
         }).lean();
         const weekendDays = resolveWeekendDays(orgTemplate?.weekendDefinition ?? "thu_fri");
 
-        const listingListedPrice = toNum(listing.price);
+        let listingListedPrice = toNum(listing.price);
         const validatedBasePrice = toNum(listing.validatedBasePrice);
-        const pmsPriceTrusted = listing.pmsPriceTrusted !== false;
-        const pipelineBasePrice =
+        let pmsPriceTrusted = listing.pmsPriceTrusted !== false;
+        let pipelineBasePrice =
             !pmsPriceTrusted && validatedBasePrice > 0
                 ? validatedBasePrice
                 : listingListedPrice;
@@ -401,6 +405,50 @@ export async function runPipeline(
             stlySummary.days.map((d) => [d.date, d.stly_rate])
         );
 
+        const calendarPrices = existingInventory.map((r) => toNum(r.currentPrice));
+        const positiveCalendar = calendarPrices.filter((p) => p > 0);
+        const calendarListedPrice =
+            toNum(existingInventory.find((r) => r.date === todayStr)?.currentPrice) ||
+            positiveCalendar[0] ||
+            0;
+        const avgCalFromInventory =
+            positiveCalendar.length > 0
+                ? positiveCalendar.reduce((s, p) => s + p, 0) / positiveCalendar.length
+                : null;
+
+        const priceContext = resolveListingPriceContext({
+            listingPrice: toNum(listing.price),
+            calendarPrices,
+            avgCalendarRate: avgCalFromInventory,
+            calendarListedPrice,
+            validatedBasePrice: validatedBasePrice > 0 ? validatedBasePrice : null,
+            pmsPriceTrusted: listing.pmsPriceTrusted,
+        });
+
+        listingListedPrice = priceContext.currentPrice;
+        pipelineBasePrice = priceContext.currentPrice;
+        pmsPriceTrusted = priceContext.pmsPriceTrusted;
+
+        const sanitizedGuardrails = sanitizeStaticGuardrails(
+            toNum(listing.priceFloor),
+            toNum(listing.priceCeiling),
+            priceContext.currentPrice
+        );
+        baseConfig.basePrice = pipelineBasePrice;
+        baseConfig.absoluteMinPrice = sanitizedGuardrails.floor;
+        baseConfig.absoluteMaxPrice = sanitizedGuardrails.ceiling;
+        Object.assign(strategyBaseConfig, {
+            basePrice: pipelineBasePrice,
+            absoluteMinPrice: sanitizedGuardrails.floor,
+            absoluteMaxPrice: sanitizedGuardrails.ceiling,
+        });
+
+        if (!priceContext.pmsPriceTrusted && listing.pmsPriceTrusted !== false) {
+            await Listing.findByIdAndUpdate(lid, { $set: { pmsPriceTrusted: false } }).catch(
+                () => undefined
+            );
+        }
+
         const forwardOccSamples: number[] = [];
         for (let i = 0; i < 30; i++) {
             const sig = marketSignals.get(dateStr(addDays(today, i)));
@@ -423,7 +471,7 @@ export async function runPipeline(
             month: today.getMonth() + 1,
             city,
             countryCode,
-            listedPrice: pipelineBasePrice,
+            listedPrice: listingListedPrice,
             pacingAdr: firstSignal?.pacingAdr ?? null,
         });
 
@@ -620,6 +668,26 @@ export async function runPipeline(
                 const eventAdj = applyEventUplift(optimizedPrice, dayEvents, eventWeight);
                 optimizedPrice = Math.min(eventAdj.price, effectiveCeiling);
                 if (eventAdj.reasoning) reasoningParts.push(eventAdj.reasoning);
+            }
+
+            if (
+                result.isAvailable === 1 &&
+                dayCalendarPrice > 0 &&
+                optimizedPrice > dayCalendarPrice &&
+                (demandRegime.regime === "distressed" ||
+                    demandRegime.regime === "soft" ||
+                    crisisRegime.tier >= 2)
+            ) {
+                const holdFactor =
+                    crisisRegime.tier >= 2
+                        ? 0.92
+                        : demandRegime.regime === "distressed"
+                          ? 0.95
+                          : 0.98;
+                optimizedPrice = Math.round(dayCalendarPrice * holdFactor);
+                reasoningParts.push(
+                    `[DEMAND] Crisis/distressed summer — no increase above calendar (${dayCalendarPrice} → ${optimizedPrice})`
+                );
             }
 
             const guardrailed = applyProposalGuardrails({
