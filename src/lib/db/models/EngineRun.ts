@@ -4,7 +4,7 @@ export interface IEngineRun extends Document {
   orgId: mongoose.Types.ObjectId;
   listingId: mongoose.Types.ObjectId;
   startedAt: Date;
-  status: "SUCCESS" | "FAILED" | "RUNNING";
+  status: "SUCCESS" | "FAILED" | "RUNNING" | "BLOCKED";
   errorMessage?: string;
   daysChanged?: number;
   durationMs?: number;
@@ -20,7 +20,7 @@ const EngineRunSchema = new Schema<IEngineRun>(
     startedAt: { type: Date, default: Date.now },
     status: {
       type: String,
-      enum: ["SUCCESS", "FAILED", "RUNNING"],
+      enum: ["SUCCESS", "FAILED", "RUNNING", "BLOCKED"],
       default: "RUNNING",
     },
     errorMessage: String,

@@ -32,10 +32,12 @@ export default async function PricingPage() {
   const listingsData = listingsRes?.ok ? await listingsRes.json() : { listings: [] };
   const proposalsData = proposalsRes?.ok ? await proposalsRes.json() : { proposals: [] };
 
-  const listings = (listingsData.listings ?? []).map((l: any) => ({
-    id: l.id,
-    name: l.name,
-    currencyCode: l.currencyCode || "AED",
+  const listings = (listingsData.listings ?? []).map((l: Record<string, unknown>) => ({
+    id: String(l.id ?? ""),
+    name: String(l.name ?? ""),
+    currencyCode: String(l.currencyCode || "AED"),
+    pricingDataStatus: (l.pricingDataStatus as string | null) ?? null,
+    pricingDataSummary: (l.pricingDataSummary as string | null) ?? null,
   }));
 
   return (

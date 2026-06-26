@@ -18,6 +18,11 @@ export interface IListing extends Document {
   basePriceSampleSize?: number;
   pmsPriceTrusted?: boolean;
   basePriceValidatedAt?: Date;
+  /** ready | advisory | blocked — set by pricing data-quality gate */
+  pricingDataStatus?: "ready" | "advisory" | "blocked";
+  pricingDataSummary?: string;
+  pricingDataIssues?: string[];
+  pricingDataCheckedAt?: Date;
   currencyCode: string;
   personCapacity?: number;
   amenities?: string[];
@@ -99,6 +104,13 @@ const ListingSchema = new Schema<IListing>(
     basePriceSampleSize: { type: Number, default: 0 },
     pmsPriceTrusted: { type: Boolean, default: true },
     basePriceValidatedAt: { type: Date },
+    pricingDataStatus: {
+      type: String,
+      enum: ["ready", "advisory", "blocked"],
+    },
+    pricingDataSummary: { type: String },
+    pricingDataIssues: [{ type: String }],
+    pricingDataCheckedAt: { type: Date },
     currencyCode: { type: String, default: "AED" },
     personCapacity: { type: Number },
     amenities: [{ type: String }],

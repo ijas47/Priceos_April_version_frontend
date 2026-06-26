@@ -39,10 +39,11 @@ export async function POST(
         const run = await runPipeline(id, body.triggerDetail || "Manual UI Trigger");
 
         return NextResponse.json({
-            success: true,
+            success: run.status !== "BLOCKED",
             runId: run._id?.toString(),
             daysChanged: run.daysChanged,
             status: run.status,
+            blockReason: run.status === "BLOCKED" ? run.errorMessage : undefined,
         });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Engine run failed";

@@ -414,9 +414,16 @@ export function PricingClient({
       setGraphStages(prev => prev.map(s => ({ ...s, status: "done" })));
       const changed = data.summary?.totalDaysChanged ?? 0;
       const succeeded = data.summary?.succeeded ?? 0;
-      toast.success("Proposal generation complete", {
-        description: `${succeeded} properties · ${changed} day-level proposals created`,
-      });
+      const blocked = data.summary?.blocked ?? 0;
+      if (blocked > 0) {
+        toast.warning("Engine run finished with data-quality blocks", {
+          description: `${succeeded} priced · ${blocked} blocked (fix Hostaway/calendar) · ${changed} proposal-days`,
+        });
+      } else {
+        toast.success("Proposal generation complete", {
+          description: `${succeeded} properties · ${changed} day-level proposals created`,
+        });
+      }
       emitEvent("Generation Complete", "output_generated", "done");
 
       setTimeout(() => {

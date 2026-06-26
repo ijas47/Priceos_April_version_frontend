@@ -68,11 +68,32 @@ export async function GET(request: Request) {
         const listings = await Listing.find({
             _id: { $in: listingIds.map((id) => new mongoose.Types.ObjectId(id)) },
         })
-            .select("_id name currencyCode")
+            .select("_id name currencyCode pricingDataStatus pricingDataSummary")
             .lean();
         const nameMap = new Map(listings.map((l) => [l._id.toString(), l]));
+        const blockedListingIds = new Set(
+            listings
+                .filter((l) => l.pricingDataStatus === "blocked")
+                .map((l) => l._id.toString())
+        );
 
-        const proposals = rows.map((r) => {
+        const MAX_PENDING_CHANGE_PCT = 25;
+
+        const proposals = rows
+            .filter((r) => {
+                const lid = r.listingId.toString();
+                if (blockedListingIds.has(lid) && r.proposalStatus === "pending") {
+                    return false;
+                }
+                if (
+                    r.proposalStatus === "pending" &&
+                    Math.abs(Number(r.changePct ?? 0)) > MAX_PENDING_CHANGE_PCT
+                ) {
+                    return false;
+                }
+                return true;
+            })
+            .map((r) => {
             const listing = nameMap.get(r.listingId.toString());
             const currentPrice = r.currentPrice ?? r.basePrice ?? 0;
             const proposedPrice = r.proposedPrice ?? currentPrice;
@@ -95,10 +116,20 @@ export async function GET(request: Request) {
                 proposalStatus: r.proposalStatus ?? "pending",
                 listingName: listing?.name ?? "Unknown",
                 currencyCode: (listing as any)?.currencyCode ?? "AED",
+                pricingDataStatus: listing?.pricingDataStatus ?? null,
+                pricingDataSummary: listing?.pricingDataSummary ?? null,
             };
         });
 
-        return NextResponse.json({ proposals, count: proposals.length });
+        const blockedListings = listings
+            .filter((l) => l.pricingDataStatus === "blocked")
+            .map((l) => ({
+                listingId: l._id.toString(),
+                name: l.name,
+                summary: l.pricingDataSummary ?? "Pricing data not ready",
+            }));
+
+        return NextResponse.json({ proposals, count: proposals.length, blockedListings });
     } catch (error: any) {
         console.error("[v1/revenue/proposals GET]", error);
         return NextResponse.json({ error: "Failed to fetch proposals" }, { status: 500 });

@@ -33,7 +33,14 @@ import {
     assessBenchmarkSanity,
     applyBenchmarkSanityToPayload,
 } from "@/lib/pricing/benchmark-sanity";
-import { resolveListingPriceContext } from "@/lib/pricing/display-rate";
+import {
+    resolveListingPriceContext,
+    sanitizeStaticGuardrails,
+} from "@/lib/pricing/display-rate";
+import {
+    assessPricingReadiness,
+    pricingReadinessForAgent,
+} from "@/lib/pricing/pricing-readiness";
 import { computeBookingPace } from "@/lib/pricing/booking-pace";
 import mongoose from "mongoose";
 import { fetchJsonWithRetry, toUserFacingAgentError } from "@/lib/lyzr/fetch-with-retry";
@@ -415,6 +422,24 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             });
             const trustedListedPrice = priceContext.currentPrice;
 
+            const pricingReadiness = assessPricingReadiness({
+                hostawayId: listing?.hostawayId,
+                name: listing?.name,
+                price: Number(listing?.price || 0),
+                priceFloor: Number(listing?.priceFloor || 0),
+                priceCeiling: Number(listing?.priceCeiling || 0),
+                isActive: listing?.isActive !== false,
+                priceContext,
+                calendarPrices,
+                hasMarketBenchmark: !!benchmark,
+                guardrailsWereSanitized:
+                    sanitizeStaticGuardrails(
+                        Number(listing?.priceFloor || 0),
+                        Number(listing?.priceCeiling || 0),
+                        priceContext.currentPrice
+                    ).sanitized,
+            });
+
             const demandRegime = resolveDemandRegime({
                 forwardOccupancy: null,
                 portfolioOccupancyPct: occupancy,
@@ -426,7 +451,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 listedPrice: trustedListedPrice,
             });
 
-            const engineProposals = rawInventory
+            const rawEngineProposals = rawInventory
                 .filter((inv) => inv.proposedPrice != null)
                 .map((inv) => ({
                     date: inv.date,
@@ -437,6 +462,9 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     reasoning: inv.reasoning ?? null,
                     elasticity_price: inv.elasticityPrice ?? null,
                 }));
+            const engineProposals = pricingReadiness.canRecommendPrices
+                ? rawEngineProposals
+                : [];
 
             const pricingPack = getOrgPricingPack(orgRow ?? {});
             const pricingRules = summarizeActivePricingRules(pricingPack, dateFrom, dateTo);
@@ -610,6 +638,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 },
                 engine_proposals: engineProposals,
                 pricing_rules: pricingRules,
+                pricing_readiness: pricingReadinessForAgent(pricingReadiness),
                 data_quality: {
                     has_benchmark: !!benchmark,
                     has_engine_proposals: engineProposals.length > 0,
@@ -617,7 +646,10 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     has_stly_data: stlySummary.data_coverage_pct > 0,
                     stly_coverage_pct: stlySummary.data_coverage_pct,
                     metrics_source: usingUIMetrics ? "ui" : "db",
-                    listed_price_is_reference_only: true,
+                    listed_price_is_reference_only: !pricingReadiness.canRecommendPrices,
+                    pricing_blocked: !pricingReadiness.canRecommendPrices,
+                    stale_engine_proposals_suppressed:
+                        !pricingReadiness.canRecommendPrices && rawEngineProposals.length > 0,
                 },
             };
 
@@ -668,6 +700,11 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             `If benchmark.benchmark_rejected is true, quote ONLY the corrected p25/p50/p75 and explain benchmark_rejection_reason — never the historical_p25/p50/p75 cache values.`,
             `Studios are bedrooms=0 (unit_type studio). Never compare a studio to 1BR comp percentiles.`,
             `Quote property.current_price as "Current Rate". If property.pms_price_trusted is false, do NOT mention pms_base_price as the live rate — label it "PMS config only" if needed.`,
+            `[PRICING DATA GATE - MANDATORY]`,
+            `Read pricing_readiness before any price recommendation.`,
+            `If pricing_readiness.level is "blocked": refuse to quote AED amounts, refuse engine-style proposals, and output a DATA QUALITY ALERT listing each issue with user_action. Tell the user pricing is paused until fixed.`,
+            `If pricing_readiness.level is "advisory": only use engine_proposals when present; caveat with issues; never invent precise prices from benchmark medians alone.`,
+            `If pricing_readiness.level is "ready": use engine_proposals as authoritative for numeric recommendations.`,
         ].join("\n");
 
         let anchoredMessage = message;

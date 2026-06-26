@@ -78,6 +78,10 @@ import {
     sanitizeStaticGuardrails,
 } from "@/lib/pricing/display-rate";
 import {
+    assessPricingReadiness,
+    pricingReadinessForAgent,
+} from "@/lib/pricing/pricing-readiness";
+import {
     applyStrategyPresetToConfig,
     resolveMonthlyGuardrailBand,
 } from "@/lib/pricing/strategy-runtime";
@@ -447,6 +451,70 @@ export async function runPipeline(
             await Listing.findByIdAndUpdate(lid, { $set: { pmsPriceTrusted: false } }).catch(
                 () => undefined
             );
+        }
+
+        const hasMarketBenchmark = !!(await BenchmarkData.findOne({
+            orgId: listing.orgId,
+            listingId: lid,
+        })
+            .select("_id")
+            .lean());
+
+        const pricingReadiness = assessPricingReadiness({
+            hostawayId: listing.hostawayId,
+            name: listing.name,
+            price: toNum(listing.price),
+            priceFloor: toNum(listing.priceFloor),
+            priceCeiling: toNum(listing.priceCeiling),
+            isActive: listing.isActive !== false,
+            priceContext,
+            calendarPrices,
+            hasMarketBenchmark,
+            guardrailsWereSanitized: sanitizedGuardrails.sanitized,
+        });
+
+        await Listing.findByIdAndUpdate(lid, {
+            $set: {
+                pricingDataStatus: pricingReadiness.level,
+                pricingDataSummary: pricingReadiness.summary,
+                pricingDataIssues: pricingReadiness.issues.map((i) => i.code),
+                pricingDataCheckedAt: new Date(),
+            },
+        });
+
+        if (!pricingReadiness.canGenerateProposals) {
+            await InventoryMaster.updateMany(
+                {
+                    listingId: lid,
+                    orgId: listing.orgId,
+                    proposalStatus: "pending",
+                    changePct: { $ne: 0 },
+                },
+                {
+                    $set: {
+                        proposalStatus: "rejected",
+                        reasoning: `[DATA_GATE] ${pricingReadiness.summary}`,
+                        changePct: 0,
+                    },
+                    $unset: { proposedPrice: 1, elasticityPrice: 1 },
+                }
+            );
+
+            const durationMs = Date.now() - startedAt.getTime();
+            const run = await EngineRun.create({
+                orgId: listing.orgId,
+                listingId: lid,
+                startedAt,
+                status: "BLOCKED",
+                errorMessage: pricingReadiness.summary,
+                daysChanged: 0,
+                durationMs,
+            });
+            console.warn(
+                `[runPipeline] BLOCKED ${listing.name}: ${pricingReadiness.summary}`,
+                pricingReadinessForAgent(pricingReadiness)
+            );
+            return run;
         }
 
         const forwardOccSamples: number[] = [];

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { FileText, Sliders, CalendarDays, BarChart3 } from "lucide-react";
+import { FileText, Sliders, CalendarDays, BarChart3, ShieldAlert } from "lucide-react";
 import { PricingClient, ProposalData } from "./pricing-client";
 import { PricingRulesStudio } from "@/components/pricing/pricing-rules-studio";
 import { PricingCalendarHeatmap } from "@/components/pricing/pricing-calendar-heatmap";
@@ -21,7 +21,13 @@ type TabId = typeof TABS[number]["id"];
 
 interface Props {
   initialProposals: ProposalData[];
-  listings: { id: string; name: string; currencyCode: string }[];
+  listings: {
+    id: string;
+    name: string;
+    currencyCode: string;
+    pricingDataStatus?: string | null;
+    pricingDataSummary?: string | null;
+  }[];
   orgId: string;
 }
 
@@ -32,6 +38,9 @@ export function PricingPageTabs({ initialProposals, listings, orgId }: Props) {
   const handleBulkAdjustApplied = () => {
     router.refresh();
   };
+
+  const blockedListings = listings.filter((l) => l.pricingDataStatus === "blocked");
+  const advisoryListings = listings.filter((l) => l.pricingDataStatus === "advisory");
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -47,6 +56,36 @@ export function PricingPageTabs({ initialProposals, listings, orgId }: Props) {
         <p className="text-muted-foreground text-sm max-w-2xl mb-4 sm:mb-6">
           365-day price calendar, AI proposals, and the rules driving every pricing decision.
         </p>
+
+        {blockedListings.length > 0 && (
+          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm">
+            <div className="flex items-start gap-2 font-medium text-red-200">
+              <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                {blockedListings.length} unit{blockedListings.length === 1 ? "" : "s"} blocked — pricing paused until data is fixed
+              </span>
+            </div>
+            <ul className="mt-2 ml-6 list-disc text-red-200/90 space-y-1">
+              {blockedListings.slice(0, 5).map((l) => (
+                <li key={l.id}>
+                  <span className="font-medium">{l.name}</span>
+                  {l.pricingDataSummary ? ` — ${l.pricingDataSummary}` : ""}
+                </li>
+              ))}
+            </ul>
+            {blockedListings.length > 5 && (
+              <p className="mt-1 ml-6 text-xs text-red-200/70">
+                +{blockedListings.length - 5} more. Re-run engine after fixing Hostaway data.
+              </p>
+            )}
+          </div>
+        )}
+
+        {advisoryListings.length > 0 && blockedListings.length === 0 && (
+          <div className="mb-4 rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            {advisoryListings.length} unit{advisoryListings.length === 1 ? "" : "s"} on advisory — proposals run but review PMS metadata warnings.
+          </div>
+        )}
 
         {/* Tab Bar */}
         <div className="flex items-center gap-1 border-b border-border-default overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">

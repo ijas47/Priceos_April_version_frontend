@@ -144,6 +144,8 @@ export async function GET() {
         propertyType: "Apartment",
         isActive: l.isActive !== false,
         isActivated: l.isActive !== false,
+        pricingDataStatus: (l as { pricingDataStatus?: string }).pricingDataStatus ?? null,
+        pricingDataSummary: (l as { pricingDataSummary?: string }).pricingDataSummary ?? null,
         occupancyPct,
         occupancy: occupancyPct,
         avgPrice: rateDisplay.displayRate,

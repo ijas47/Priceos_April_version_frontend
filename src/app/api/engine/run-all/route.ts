@@ -51,10 +51,11 @@ export async function POST(req: NextRequest) {
     type RunResult = {
       listingId: string;
       name: string;
-      status: "success" | "failed";
+      status: "success" | "failed" | "blocked";
       runId?: string;
       daysChanged?: number;
       error?: string;
+      blockReason?: string;
     };
 
     // Concurrency pool: process up to 5 listings in parallel.
@@ -71,12 +72,14 @@ export async function POST(req: NextRequest) {
         const listingIdStr = listing._id.toString();
         try {
           const run = await runPipeline(listingIdStr, `${trigger} - engine/run-all`);
+          const blocked = run.status === "BLOCKED";
           results.push({
             listingId: listingIdStr,
             name: listing.name || listingIdStr,
-            status: run.status === "FAILED" ? "failed" : "success",
+            status: blocked ? "blocked" : run.status === "FAILED" ? "failed" : "success",
             runId: run._id?.toString(),
             daysChanged: run.daysChanged || 0,
+            blockReason: blocked ? run.errorMessage : undefined,
           });
         } catch (err: any) {
           results.push({
@@ -93,6 +96,7 @@ export async function POST(req: NextRequest) {
 
     const succeeded = results.filter((r) => r.status === "success").length;
     const failed = results.filter((r) => r.status === "failed").length;
+    const blocked = results.filter((r) => r.status === "blocked").length;
     const totalDaysChanged = results.reduce((sum, r) => sum + (r.daysChanged || 0), 0);
 
     return NextResponse.json({
@@ -102,6 +106,7 @@ export async function POST(req: NextRequest) {
         totalListings: listings.length,
         succeeded,
         failed,
+        blocked,
         totalDaysChanged,
       },
       results,
