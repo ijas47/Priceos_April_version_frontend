@@ -41,11 +41,13 @@ const PUBLIC_PATHS = [
 const ONBOARDING_ALLOWED_PATHS = [
   "/onboarding",
   "/api/onboarding",
+  "/api/organizations",
   "/api/hostaway/metadata",
   "/api/sync/run",
   "/api/auth/logout",
   "/api/auth/me",
   "/api/onboarding/auto-setup",
+  "/api/markets",
 ];
 
 function isPublicPath(pathname: string): boolean {

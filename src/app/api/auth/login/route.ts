@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB, Organization } from "@/lib/db";
+import { healOnboardingStepIfNeeded } from "@/lib/auth/onboarding-step";
 import { signAccessToken, signRefreshToken } from "@/lib/auth/jwt";
 import { COOKIE_NAME } from "@/lib/auth/server";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/api/rate-limit";
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
       return apiError("UNAUTHORIZED", "Invalid credentials", 401);
     }
 
-    const onboardingStep = org.onboardingStep || "complete";
+    const onboardingStep = await healOnboardingStepIfNeeded(org._id.toString());
     const mustChangePassword = org.mustChangePassword === true;
 
     const payload = {
