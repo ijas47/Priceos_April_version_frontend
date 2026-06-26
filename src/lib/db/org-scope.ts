@@ -22,7 +22,7 @@ export async function findListingsForOrg(
       process.env.NODE_ENV !== "production");
   const repair = repairAllowed;
 
-  let listings = await Listing.find({ orgId: orgOid }).sort({ name: 1 }).lean();
+  const listings = await Listing.find({ orgId: orgOid }).sort({ name: 1 }).lean();
   if (listings.length > 0) return listings;
 
   // Legacy rows may have orgId stored as a raw string

@@ -49,7 +49,7 @@ function getDayOfWeekMultiplier(date: Date): number {
  */
 function seededRandom(seed: number): number {
   // Use a simple hash to produce varied values
-  let x = Math.sin(seed * 12.9898 + seed * 78.233) * 43758.5453;
+  const x = Math.sin(seed * 12.9898 + seed * 78.233) * 43758.5453;
   return x - Math.floor(x);
 }
 

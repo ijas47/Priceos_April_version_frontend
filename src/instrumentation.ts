@@ -12,7 +12,7 @@ export async function register() {
   if (maybeLocalStorage && typeof maybeLocalStorage.getItem !== "function") {
     try {
       // Prefer removing it so libs treat it as unavailable on the server.
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+       
       delete (globalThis as any).localStorage;
     } catch {
       (globalThis as any).localStorage = undefined;

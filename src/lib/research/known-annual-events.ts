@@ -100,7 +100,7 @@ export function getKnownAnnualEvents(
       );
       if (!cityMatch) continue;
 
-      let start = `${year}-${pad(ev.monthStart)}-${pad(ev.dayStart)}`;
+      const start = `${year}-${pad(ev.monthStart)}-${pad(ev.dayStart)}`;
       let endYearAdj = year;
       if (ev.monthEnd < ev.monthStart) endYearAdj = year + 1;
       let end = `${endYearAdj}-${pad(ev.monthEnd)}-${pad(ev.dayEnd)}`;

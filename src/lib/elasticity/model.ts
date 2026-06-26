@@ -174,7 +174,7 @@ export function fitElasticityModel(
   }
 
   // Initialize coefficients (warm start from cold-start defaults).
-  let beta = [COLD_START_DEFAULTS.beta0, COLD_START_DEFAULTS.beta1];
+  const beta = [COLD_START_DEFAULTS.beta0, COLD_START_DEFAULTS.beta1];
 
   // IRLS iterations
   for (let iter = 0; iter < MAX_ITER; iter++) {

@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 // so `next build` succeeds without runtime env vars present.
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var _mongooseCache: {
     conn: typeof mongoose | null;
     promise: Promise<typeof mongoose> | null;

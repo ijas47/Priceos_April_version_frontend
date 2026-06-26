@@ -101,7 +101,7 @@ const PROPERTY_BASE_PRICES: Record<number, number> = {
  * Simple seeded pseudo-random
  */
 function seededRand(seed: number): number {
-  let x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+  const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
   return x - Math.floor(x);
 }
 

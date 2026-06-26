@@ -249,7 +249,7 @@ export function computeDay(
 
     let price = basePrice;
     let minimumStay = config.defaultMinStay;
-    let maximumStay = config.defaultMaxStay;
+    const maximumStay = config.defaultMaxStay;
     let isAvailable = bookingCtx.isBooked ? 0 : 1;
     let closedToArrival = config.allowedCheckinDays[dow] === 0 ? 1 : 0;
     let closedToDeparture = config.allowedCheckoutDays[dow] === 0 ? 1 : 0;

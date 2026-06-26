@@ -63,10 +63,10 @@ export async function GET(req: NextRequest) {
             },
         ]);
 
-        let totalDays = Number(agg?.totalDays || 0);
-        let bookedDays = Number(agg?.bookedDays || 0);
-        let availableDays = Number(agg?.availableDays || 0);
-        let blockedDays = Number(agg?.blockedDays || 0);
+        const totalDays = Number(agg?.totalDays || 0);
+        const bookedDays = Number(agg?.bookedDays || 0);
+        const availableDays = Number(agg?.availableDays || 0);
+        const blockedDays = Number(agg?.blockedDays || 0);
         const avgCalendarRate = agg?.avgPrice ? Number(agg.avgPrice) : null;
 
         const listedPrice = Number(listing.price ?? 0);
