@@ -15,6 +15,7 @@ import { CRO_ROUTER_AGENT_ID } from "@/lib/agents/constants";
 import mongoose from "mongoose";
 import { resolveBedroomsNumber } from "@/lib/pricing/bedrooms";
 import { assessBenchmarkSanity } from "@/lib/pricing/benchmark-sanity";
+import { resolveListingPriceContext } from "@/lib/pricing/display-rate";
 
 const LYZR_API_URL = process.env.LYZR_API_URL || "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
 const LYZR_API_KEY = process.env.LYZR_API_KEY!;
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
             const dateFrom = dateRange?.from || '1970-01-01';
             const dateTo = dateRange?.to || '9999-12-31';
 
-            const [listing, , benchmarkDoc] = await Promise.all([
+            const [listing, , benchmarkDoc, , rawInventory] = await Promise.all([
                 Listing.findById(pid).lean(),
                 MarketEvent.find({ listingId: pid, endDate: { $gte: dateFrom }, startDate: { $lte: dateTo } }).limit(50).lean(),
                 BenchmarkData.findOne({ listingId: pid, dateTo: { $gte: dateFrom }, dateFrom: { $lte: dateTo } }).lean(),
@@ -104,6 +105,24 @@ export async function POST(req: Request) {
             const occupancy = uiMetrics?.occupancy ?? (bookableDays > 0 ? Math.round((bookedDays / bookableDays) * 100) : 0);
             const avgCalPrice = uiMetrics?.avgPrice ?? Number(calResult?.avgPrice || listing?.price || 0);
 
+            const calendarPrices = rawInventory.map((r) => Number(r.currentPrice || 0));
+            const todayStr = new Date().toISOString().split("T")[0];
+            const calendarListedPrice =
+                Number(rawInventory.find((r) => r.date === todayStr)?.currentPrice || 0) ||
+                Number(calendarPrices.find((p) => p > 0) || 0);
+
+            const priceContext = resolveListingPriceContext({
+                listingPrice: Number(listing?.price || 0),
+                calendarPrices,
+                avgCalendarRate: avgCalPrice > 0 ? avgCalPrice : null,
+                calendarListedPrice,
+                validatedBasePrice: listing?.validatedBasePrice
+                    ? Number(listing.validatedBasePrice)
+                    : null,
+                pmsPriceTrusted: listing?.pmsPriceTrusted,
+            });
+            const trustedListedPrice = priceContext.currentPrice;
+
             const resolvedBedrooms = resolveBedroomsNumber(listing?.bedroomsNumber, 1);
             const benchmarkSanity = benchmarkDoc
                 ? assessBenchmarkSanity({
@@ -111,7 +130,7 @@ export async function POST(req: Request) {
                       p50: Number(benchmarkDoc.p50Rate || 0),
                       p75: Number(benchmarkDoc.p75Rate || 0),
                       p90: Number(benchmarkDoc.p90Rate || 0),
-                      currentPrice: Number(listing?.price || avgCalPrice || 0),
+                      currentPrice: trustedListedPrice || avgCalPrice || 0,
                       bedrooms: resolvedBedrooms,
                   })
                 : null;
@@ -124,7 +143,9 @@ export async function POST(req: Request) {
                     name: listing?.name || context.propertyName || "Property",
                     bedrooms: resolvedBedrooms,
                     unit_type: resolvedBedrooms === 0 ? "studio" : `${resolvedBedrooms}BR`,
-                    current_price: Number(listing?.price || 0),
+                    current_price: trustedListedPrice,
+                    pms_base_price: priceContext.pmsBasePrice,
+                    pms_price_trusted: priceContext.pmsPriceTrusted,
                     floor_price: Number(listing?.priceFloor || 0),
                     ceiling_price: Number(listing?.priceCeiling || 0),
                 },

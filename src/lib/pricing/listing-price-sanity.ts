@@ -7,7 +7,7 @@ export type BasePriceSource = "history_1y" | "benchmark" | "hostaway";
 
 /** Common Hostaway / PMS default round numbers. */
 export const PLACEHOLDER_ROUND_PRICES = [
-  50, 75, 100, 150, 200, 250, 300, 500, 750, 1000, 1500, 2000,
+  50, 75, 100, 150, 200, 250, 300, 500, 750, 1000, 1500, 2000, 9999, 99999,
 ] as const;
 
 export const LISTED_PRICE_DEVIATION_THRESHOLD = 0.4;

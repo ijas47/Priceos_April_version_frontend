@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatRateForLabel, resolveDisplayRate } from "./display-rate";
+import {
+  formatRateForLabel,
+  resolveDisplayRate,
+  resolveListingPriceContext,
+} from "./display-rate";
 
 describe("resolveDisplayRate", () => {
   it("labels flat PMS calendar rates as Listed Rate", () => {
@@ -44,6 +48,21 @@ describe("resolveDisplayRate", () => {
     });
     expect(result.rateLabel).toBe("Listed Rate");
     expect(result.displayRate).toBe(350);
+  });
+});
+
+describe("resolveListingPriceContext", () => {
+  it("uses synced calendar rate when PMS base price is a stale placeholder", () => {
+    const result = resolveListingPriceContext({
+      listingPrice: 9999,
+      calendarPrices: [195, 210, 200],
+      avgCalendarRate: 201.67,
+      calendarListedPrice: 200,
+    });
+    expect(result.currentPrice).toBe(201.67);
+    expect(result.pmsBasePrice).toBe(9999);
+    expect(result.pmsPriceTrusted).toBe(false);
+    expect(result.pmsDiffersFromCalendar).toBe(true);
   });
 });
 

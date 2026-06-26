@@ -33,6 +33,7 @@ import {
     assessBenchmarkSanity,
     applyBenchmarkSanityToPayload,
 } from "@/lib/pricing/benchmark-sanity";
+import { resolveListingPriceContext } from "@/lib/pricing/display-rate";
 import { computeBookingPace } from "@/lib/pricing/booking-pace";
 import mongoose from "mongoose";
 import { fetchJsonWithRetry, toUserFacingAgentError } from "@/lib/lyzr/fetch-with-retry";
@@ -396,6 +397,24 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 })),
             });
 
+            const calendarPrices = rawInventory.map((r) => Number(r.currentPrice || 0));
+            const todayStr = new Date().toISOString().split("T")[0];
+            const calendarListedPrice =
+                Number(rawInventory.find((r) => r.date === todayStr)?.currentPrice || 0) ||
+                Number(calendarPrices.find((p) => p > 0) || 0);
+
+            const priceContext = resolveListingPriceContext({
+                listingPrice: Number(listing?.price || 0),
+                calendarPrices,
+                avgCalendarRate: avgCalPrice > 0 ? avgCalPrice : null,
+                calendarListedPrice,
+                validatedBasePrice: listing?.validatedBasePrice
+                    ? Number(listing.validatedBasePrice)
+                    : null,
+                pmsPriceTrusted: listing?.pmsPriceTrusted,
+            });
+            const trustedListedPrice = priceContext.currentPrice;
+
             const demandRegime = resolveDemandRegime({
                 forwardOccupancy: null,
                 portfolioOccupancyPct: occupancy,
@@ -404,14 +423,14 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 month: new Date(dateFrom).getMonth() + 1,
                 city: listing?.city || "Dubai",
                 countryCode: listing?.countryCode || "AE",
-                listedPrice: Number(listing?.price || 0),
+                listedPrice: trustedListedPrice,
             });
 
             const engineProposals = rawInventory
                 .filter((inv) => inv.proposedPrice != null)
                 .map((inv) => ({
                     date: inv.date,
-                    current_price: Number(inv.currentPrice || listing?.price || 0),
+                    current_price: Number(inv.currentPrice || trustedListedPrice || 0),
                     proposed_price: Number(inv.proposedPrice),
                     change_pct: inv.changePct ?? null,
                     proposal_status: inv.proposalStatus ?? "pending",
@@ -433,7 +452,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                       p50: Number(benchmark.p50Rate || 0),
                       p75: Number(benchmark.p75Rate || 0),
                       p90: Number(benchmark.p90Rate || 0),
-                      currentPrice: Number(listing?.price || avgCalPrice || 0),
+                      currentPrice: trustedListedPrice || avgCalPrice || 0,
                       bedrooms: resolvedBedrooms,
                       achievedAdr: avgDailyRate > 0 ? avgDailyRate : null,
                   })
@@ -454,7 +473,13 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     unit_type: resolvedBedrooms === 0 ? "studio" : `${resolvedBedrooms}BR`,
                     bathrooms: listing?.bathroomsNumber || 1,
                     personCapacity: listing?.personCapacity || 0,
-                    current_price: Number(listing?.price || 0),
+                    current_price: trustedListedPrice,
+                    rate_label: priceContext.rateLabel,
+                    listed_price: priceContext.listedPrice,
+                    pms_base_price: priceContext.pmsBasePrice,
+                    pms_price_trusted: priceContext.pmsPriceTrusted,
+                    pms_differs_from_calendar: priceContext.pmsDiffersFromCalendar,
+                    validated_base_price: priceContext.validatedBasePrice,
                     floor_price: Number(listing?.priceFloor || 0),
                     ceiling_price: Number(listing?.priceCeiling || 0),
                     currency: listing?.currencyCode || "AED",
@@ -523,6 +548,9 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                         ? "Never label the listing UNDERPRICED solely because listed rate is below historical p50 when portfolio occupancy is 0% and forward market occupancy is weak."
                         : "Compare listed rate to forward pacing and booking pickup, not only seasonal medians.",
                     "STLY and benchmark percentiles are historical seasonal references — not mandates to raise rates during demand slumps.",
+                    priceContext.pmsPriceTrusted
+                        ? "property.current_price is the synced calendar rate shown in the UI."
+                        : `property.current_price (${trustedListedPrice}) is the synced calendar rate. property.pms_base_price (${priceContext.pmsBasePrice}) is stale Hostaway metadata — NEVER quote it as the current rate.`,
                 ],
                 market_intel: {
                     refreshed: intelRefresh.refreshed,
@@ -548,14 +576,14 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     .filter((inv) => inv.status !== "blocked" && inv.status !== "booked")
                     .map((inv) => ({
                         date: inv.date,
-                        current_price: Number(inv.currentPrice || listing?.price || 0),
+                        current_price: Number(inv.currentPrice || trustedListedPrice || 0),
                         status: inv.status || "available",
                         min_stay: inv.minStay || 1,
                     })),
                 date_classifications: rawInventory.map((inv) => ({
                     date: inv.date,
                     status: inv.status || "available",
-                    current_price: Number(inv.currentPrice || listing?.price || 0),
+                    current_price: Number(inv.currentPrice || trustedListedPrice || 0),
                     is_weekend: [5, 6].includes(new Date(inv.date).getDay()),
                 })),
                 recent_reservations: resRows.map((r) => ({
@@ -639,6 +667,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             `Never claim UNDERPRICED when demand_regime is distressed and listed rate matches engine proposals.`,
             `If benchmark.benchmark_rejected is true, quote ONLY the corrected p25/p50/p75 and explain benchmark_rejection_reason — never the historical_p25/p50/p75 cache values.`,
             `Studios are bedrooms=0 (unit_type studio). Never compare a studio to 1BR comp percentiles.`,
+            `Quote property.current_price as "Current Rate". If property.pms_price_trusted is false, do NOT mention pms_base_price as the live rate — label it "PMS config only" if needed.`,
         ].join("\n");
 
         let anchoredMessage = message;

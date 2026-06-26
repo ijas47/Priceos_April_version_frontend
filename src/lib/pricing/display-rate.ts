@@ -69,6 +69,66 @@ export function resolveDisplayRate({
   };
 }
 
+export interface ListingPriceContext extends DisplayRateResult {
+  /** Authoritative rate for UI + agent chat (synced calendar when available). */
+  currentPrice: number;
+  /** Raw Listing.price from Hostaway — may be a stale placeholder. */
+  pmsBasePrice: number;
+  pmsPriceTrusted: boolean;
+  validatedBasePrice: number | null;
+  pmsDiffersFromCalendar: boolean;
+}
+
+/**
+ * Resolve the rate Aria should quote as "current price" — same logic as /api/properties.
+ */
+export function resolveListingPriceContext(input: {
+  listingPrice: number;
+  calendarPrices?: number[];
+  avgCalendarRate?: number | null;
+  calendarListedPrice?: number | null;
+  validatedBasePrice?: number | null;
+  pmsPriceTrusted?: boolean;
+}): ListingPriceContext {
+  const rate = resolveDisplayRate({
+    listedPrice: input.listingPrice,
+    calendarPrices: input.calendarPrices,
+    avgCalendarRate: input.avgCalendarRate,
+    calendarListedPrice: input.calendarListedPrice,
+  });
+
+  const pmsBasePrice = Math.max(0, Number(input.listingPrice) || 0);
+  const calendarRate = rate.displayRate;
+  const pmsDiffersFromCalendar =
+    pmsBasePrice > 0 &&
+    calendarRate > 0 &&
+    Math.abs(pmsBasePrice - calendarRate) / calendarRate > 0.35;
+
+  const pmsLooksLikePlaceholder =
+    pmsBasePrice > 0 && calendarRate > 0 && pmsBasePrice >= calendarRate * 3;
+
+  const pmsPriceTrusted =
+    input.pmsPriceTrusted !== false &&
+    !pmsDiffersFromCalendar &&
+    !pmsLooksLikePlaceholder;
+
+  const currentPrice =
+    calendarRate > 0
+      ? calendarRate
+      : input.validatedBasePrice && input.validatedBasePrice > 0
+        ? input.validatedBasePrice
+        : pmsBasePrice;
+
+  return {
+    ...rate,
+    currentPrice,
+    pmsBasePrice,
+    pmsPriceTrusted,
+    validatedBasePrice: input.validatedBasePrice ?? null,
+    pmsDiffersFromCalendar,
+  };
+}
+
 /** Pick the value that matches the chip label shown in the UI. */
 export function formatRateForLabel(
   rateLabel: RateLabel | string | undefined,
