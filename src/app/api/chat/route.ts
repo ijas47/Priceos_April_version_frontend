@@ -44,6 +44,12 @@ import {
     pricingReadinessForAgent,
 } from "@/lib/pricing/pricing-readiness";
 import { computeBookingPace } from "@/lib/pricing/booking-pace";
+import {
+    buildBookingIntelligenceBlock,
+    buildDemandPacingSnapshot,
+    buildMarketOverviewSnapshot,
+} from "@/lib/agents/booking-intelligence-payload";
+import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
 import mongoose from "mongoose";
 import { fetchJsonWithRetry, toUserFacingAgentError } from "@/lib/lyzr/fetch-with-retry";
 
@@ -185,7 +191,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
 
         const isSystemMsg = message.startsWith("[SYSTEM]");
 
-        // Check if this is the first real user message in this session
+        // Inject property data on first message, or when the analysis date range changes
         const prevDataMsgs = await ChatMessage.find({
             sessionId: lyzrSessionId,
             role: "user",
@@ -193,7 +199,31 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
         })
             .limit(1)
             .lean();
-        const needsDataInjection = prevDataMsgs.length === 0 && !isSystemMsg;
+        let needsDataInjection = prevDataMsgs.length === 0 && !isSystemMsg;
+        if (
+            !needsDataInjection &&
+            !isSystemMsg &&
+            context.type === "property" &&
+            dateRange?.from &&
+            dateRange?.to
+        ) {
+            const lastWithRange = await ChatMessage.findOne({
+                sessionId: lyzrSessionId,
+                role: "user",
+                "metadata.dateRange.from": { $exists: true },
+            })
+                .sort({ createdAt: -1 })
+                .lean();
+            const prevRange = lastWithRange?.metadata?.dateRange as
+                | { from?: string; to?: string }
+                | undefined;
+            if (
+                prevRange?.from !== dateRange.from ||
+                prevRange?.to !== dateRange.to
+            ) {
+                needsDataInjection = true;
+            }
+        }
 
         let propertyDataPayload: any = null;
         let marketEventsForGuardrails: MarketEventWindow[] = [];
@@ -265,6 +295,11 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
 
             const stlyFrom = shiftIsoDate(dateFrom, -1);
             const stlyTo = shiftIsoDate(dateTo, -1);
+            const resolvedBedrooms = resolveBedroomsNumber(listing?.bedroomsNumber, 1);
+            const marketId = await resolveMarketId(
+                listing?.city || "Dubai",
+                listing?.countryCode || "AE"
+            );
 
             const [
                 events,
@@ -276,6 +311,7 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 stlyInventory,
                 stlyReservations,
                 orgRow,
+                marketCtx,
             ] = await Promise.all([
                 MarketEvent.find(eventScope).limit(50).lean(),
                 BenchmarkData.findOne({
@@ -347,6 +383,9 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     .select("checkIn checkOut nights totalPrice status")
                     .lean(),
                 Organization.findById(orgId).select("pricingPack marketCode").lean(),
+                marketId
+                    ? getMarketContext(marketId, String(resolvedBedrooms))
+                    : Promise.resolve(null),
             ]);
 
             const calResult = calMetrics[0];
@@ -363,20 +402,19 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             const avgCalPrice =
                 uiMetrics?.avgPrice ?? Number(calResult?.avgPrice || listing?.price || 0);
 
-            const totalRevenue = resRows.reduce((s, r) => s + Number(r.totalPrice || 0), 0);
+            const activeResRows = resRows.filter((r) =>
+                ["confirmed", "pending", "checked_in", "checked_out"].includes(
+                    r.status ?? "confirmed"
+                )
+            );
             const avgDailyRate =
-                resRows.length > 0
-                    ? resRows.reduce(
+                activeResRows.length > 0
+                    ? activeResRows.reduce(
                           (s, r) =>
                               s + (r.nights > 0 ? r.totalPrice / r.nights : r.totalPrice),
                           0
-                      ) / resRows.length
+                      ) / activeResRows.length
                     : Number(listing?.price || 0);
-            const channelMix: Record<string, number> = {};
-            resRows.forEach((r) => {
-                const ch = r.channelName || "Direct";
-                channelMix[ch] = (channelMix[ch] || 0) + 1;
-            });
 
             console.log(
                 `📦 [Context Sync] Metrics source: ${usingUIMetrics ? "✅ UI /calendar-metrics" : "⚠️  DB fallback"}`
@@ -502,7 +540,28 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 (engineProposals.length / windowDayCount) * 100
             );
 
-            const resolvedBedrooms = resolveBedroomsNumber(listing?.bedroomsNumber, 1);
+            const calendarToday = new Date().toISOString().split("T")[0];
+            const analysisMonth = dateFrom.slice(0, 7);
+            const bookingIntelligence = buildBookingIntelligenceBlock({
+                asOfDate: calendarToday,
+                analysisFrom: dateFrom,
+                analysisTo: dateTo,
+                occupancyPct: occupancy,
+                bookedNights: bookedDays,
+                bookableNights: bookableDays,
+                currency: listing?.currencyCode || "AED",
+                bookingPace,
+                reservations: resRows.map((r) => ({
+                    checkIn: r.checkIn,
+                    checkOut: r.checkOut,
+                    nights: r.nights,
+                    totalPrice: Number(r.totalPrice || 0),
+                    channelName: r.channelName,
+                    status: r.status,
+                    createdAt: r.createdAt,
+                })),
+            });
+
             const benchmarkSanity = benchmark
                 ? assessBenchmarkSanity({
                       p25: Number(benchmark.p25Rate || 0),
@@ -548,7 +607,24 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     blocked_nights: blockedDays,
                     total_nights: totalDays,
                     avg_nightly_rate: avgCalPrice,
+                    achieved_adr: bookingIntelligence.revenue.avg_price_per_night,
+                    confirmed_gross_revenue: bookingIntelligence.revenue.confirmed_gross,
                 },
+                booking_intelligence: bookingIntelligence,
+                market_overview: marketCtx
+                    ? buildMarketOverviewSnapshot(marketCtx, analysisMonth)
+                    : null,
+                demand_pacing: marketCtx
+                    ? buildDemandPacingSnapshot(marketCtx, dateFrom, dateTo)
+                    : null,
+                guest_signals: guestSum
+                    ? {
+                          sentiment: guestSum.sentiment,
+                          themes: guestSum.themes ?? [],
+                          needs_reply_count: guestSum.needsReplyCount ?? 0,
+                          total_conversations: guestSum.totalConversations ?? 0,
+                      }
+                    : null,
                 benchmark: benchmark && benchmarkSanity
                     ? applyBenchmarkSanityToPayload(
                           {
@@ -683,7 +759,12 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             };
 
             marketEventsForGuardrails = propertyDataPayload.market_events;
-            console.log(`✅ [Context Sync] Payload ready for injection.`);
+            console.log(
+                `✅ [Context Sync] BI trend=${bookingIntelligence.velocity.trend} | ` +
+                    `pace=${bookingPace.primaryPaceRatio ?? "n/a"} | ` +
+                    `channels=${bookingIntelligence.channel_mix.length} | ` +
+                    `market=${marketCtx ? "airbtics" : "none"}`
+            );
         }
 
         // Save user message
@@ -734,6 +815,11 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             `If pricing_readiness.level is "blocked": refuse to quote AED amounts, refuse engine-style proposals, and output a DATA QUALITY ALERT listing each issue with user_action. Tell the user pricing is paused until fixed.`,
             `If pricing_readiness.level is "advisory": only use engine_proposals when present; caveat with issues; never invent precise prices from benchmark medians alone.`,
             `If pricing_readiness.level is "ready": use engine_proposals as authoritative for numeric recommendations.`,
+            ``,
+            `[BOOKING INTELLIGENCE - MANDATORY]`,
+            `For velocity, channel mix, LOS, lead time, revenue, and pace vs STLY: use booking_intelligence (pre-computed). Do not re-derive from recent_reservations.`,
+            `Compare property occupancy to market_overview.occupancy_pct and demand_pacing.avg_demand_score_in_window when discussing demand.`,
+            `booking_intelligence.velocity.trend is authoritative for accelerating/stable/decelerating.`,
         ].join("\n");
 
         let anchoredMessage = message;
