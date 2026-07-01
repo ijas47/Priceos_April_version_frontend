@@ -24,7 +24,7 @@ export type AnchorWeightKey = keyof typeof MONTH_FIRST_ANCHOR_WEIGHTS;
 
 export interface ResolvedAnchorWeights {
   weights: Partial<Record<AnchorWeightKey | "listedReference", number>>;
-  mode: "month_first" | "market_blend" | "listed_only";
+  mode: "month_first" | "market_blend" | "listed_only" | "comp_first";
   confidence: number;
 }
 
@@ -49,6 +49,13 @@ export function resolveAnchorWeights(signal?: MarketSignal): ResolvedAnchorWeigh
 
   const confidence = marketDataConfidence(signal);
   const hasMonth = !!(signal.monthAnchorAdr && signal.monthAnchorAdr > 0);
+  const compFirst =
+    signal.compFirst === true ||
+    (signal.compSetCount != null &&
+      signal.compSetCount >= 3 &&
+      !!signal.compSetP50 &&
+      signal.compSetP50 > 0);
+  const calendarUntrusted = signal.calendarUntrusted === true;
 
   if (hasMonth && confidence >= 0.45) {
     const weights: ResolvedAnchorWeights["weights"] = { ...MONTH_FIRST_ANCHOR_WEIGHTS };
@@ -64,7 +71,17 @@ export function resolveAnchorWeights(signal?: MarketSignal): ResolvedAnchorWeigh
       delete weights.compSetP50;
       weights.monthAnchorAdr = (weights.monthAnchorAdr ?? 0) + 0.15;
     }
-    return { weights, mode: "month_first", confidence };
+    if (compFirst || calendarUntrusted) {
+      const listedW = weights.listedReference ?? 0;
+      delete weights.listedReference;
+      weights.compSetP50 = (weights.compSetP50 ?? 0) + listedW * 0.6;
+      weights.monthAnchorAdr = (weights.monthAnchorAdr ?? 0) + listedW * 0.4;
+    }
+    return {
+      weights,
+      mode: compFirst ? "comp_first" : "month_first",
+      confidence,
+    };
   }
 
   const weights: Partial<Record<AnchorWeightKey | "listedReference", number>> = {
@@ -73,18 +90,28 @@ export function resolveAnchorWeights(signal?: MarketSignal): ResolvedAnchorWeigh
   if (!signal.monthAnchorAdr) delete weights.monthAnchorAdr;
   if (!signal.compSetP50) delete weights.compSetP50;
   if (!signal.pacingAdr) delete weights.pacingAdr;
-  if (confidence < 0.2) {
+  if (confidence < 0.2 && !compFirst) {
     weights.listedReference = 0.35;
+  }
+  if (compFirst || calendarUntrusted) {
+    const listedW = weights.listedReference ?? 0;
+    delete weights.listedReference;
+    if (weights.compSetP50) {
+      weights.compSetP50 = (weights.compSetP50 ?? 0) + listedW;
+    } else if (weights.monthAnchorAdr) {
+      weights.monthAnchorAdr = (weights.monthAnchorAdr ?? 0) + listedW;
+    }
   }
 
   const hasMarket = Object.keys(weights).some((k) => k !== "listedReference");
   return {
     weights,
-    mode: hasMarket ? "market_blend" : "listed_only",
+    mode: compFirst ? "comp_first" : hasMarket ? "market_blend" : "listed_only",
     confidence,
   };
 }
 
 export function usesMonthFirstAnchor(signal?: MarketSignal): boolean {
-  return resolveAnchorWeights(signal).mode === "month_first";
+  const mode = resolveAnchorWeights(signal).mode;
+  return mode === "month_first" || mode === "comp_first";
 }

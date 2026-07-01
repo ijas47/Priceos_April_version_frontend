@@ -73,11 +73,14 @@ import {
     buildCalendarPriceMap,
 } from "@/lib/engine/calendar-rates";
 import {
-    correctOutlierCalendarBase,
     computeTtmAdr,
     resolvePipelineListedPrice,
     ttmCutoffDate,
 } from "@/lib/pricing/listing-price-sanity";
+import {
+    buildCompAnchorReasoning,
+    resolveCompAnchoredBase,
+} from "@/lib/pricing/comp-first-base";
 import {
     resolveListingPriceContext,
     sanitizeStaticGuardrails,
@@ -458,7 +461,7 @@ export async function runPipeline(
             );
         }
 
-        const [benchmarkRow, ttmReservations] = await Promise.all([
+        const [benchmarkRow, ttmReservations, compPercentiles] = await Promise.all([
             BenchmarkData.findOne({
                 orgId: listing.orgId,
                 listingId: lid,
@@ -472,26 +475,41 @@ export async function runPipeline(
             })
                 .select("totalPrice nights")
                 .lean(),
+            resolveCompSetPercentiles(
+                listing,
+                city,
+                countryCode,
+                today,
+                pipelineEndDate
+            ),
         ]);
 
-        const { adr: ttmAdr } = computeTtmAdr(ttmReservations);
-        const calendarCorrection = correctOutlierCalendarBase({
+        const { adr: ttmAdr, count: ttmCount } = computeTtmAdr(ttmReservations);
+        const compAnchored = resolveCompAnchoredBase({
+            compPercentiles,
             calendarPrices: positiveCalendar,
-            bedrooms: listing.bedroomsNumber,
-            benchmarkP50: benchmarkRow ? toNum(benchmarkRow.p50Rate) : null,
             achievedAdr: ttmAdr,
+            achievedBookingCount: ttmCount,
+            bedrooms: listing.bedroomsNumber,
+            area: listing.area || city,
+            benchmarkP50: benchmarkRow ? toNum(benchmarkRow.p50Rate) : null,
         });
 
-        let calendarCorrectionNote: string | null = null;
-        if (calendarCorrection.corrected) {
-            pipelineBasePrice = calendarCorrection.trustedBase;
-            listingListedPrice = calendarCorrection.trustedBase;
-            pmsPriceTrusted = false;
-            calendarCorrectionNote = calendarCorrection.reason;
+        marketSignals = enrichMarketSignalsWithCompSet(marketSignals, compAnchored);
+
+        const calendarCorrectionNote: string | null = buildCompAnchorReasoning(compAnchored);
+        const shouldOverrideBase =
+            compAnchored.mode !== "calendar" ||
+            !compAnchored.pmsPriceTrusted;
+
+        if (shouldOverrideBase && compAnchored.trustedBase > 0) {
+            pipelineBasePrice = compAnchored.trustedBase;
+            listingListedPrice = compAnchored.trustedBase;
+            pmsPriceTrusted = compAnchored.pmsPriceTrusted;
             const reSanitized = sanitizeStaticGuardrails(
                 toNum(listing.priceFloor),
                 toNum(listing.priceCeiling),
-                calendarCorrection.trustedBase
+                compAnchored.trustedBase
             );
             baseConfig.basePrice = pipelineBasePrice;
             baseConfig.absoluteMinPrice = reSanitized.floor;
@@ -502,7 +520,7 @@ export async function runPipeline(
                 absoluteMaxPrice: reSanitized.ceiling,
             });
             console.warn(
-                `[runPipeline] Calendar outlier corrected for ${listing.name}: median ${calendarCorrection.medianCalendar} → base ${calendarCorrection.trustedBase}`
+                `[runPipeline] ${compAnchored.mode} base for ${listing.name}: calendar ${compAnchored.calendarMedian} → ${compAnchored.trustedBase} (${compAnchored.compCount} comps)`
             );
         }
 
@@ -519,16 +537,34 @@ export async function runPipeline(
             calendarPrices,
             hasMarketBenchmark,
             guardrailsWereSanitized: sanitizedGuardrails.sanitized,
-            calendarOutlierCorrected: calendarCorrection.corrected,
-            calendarOutlierReason: calendarCorrection.reason,
+            calendarOutlierCorrected:
+                compAnchored.mode === "calendar_corrected" || !compAnchored.calendarTrusted,
+            calendarOutlierReason: compAnchored.reason,
         });
+
+        const compSummary =
+            compAnchored.compCount > 0 && compAnchored.compP50
+                ? `Comp set: ${compAnchored.compCount} similar units, p50 ${compAnchored.compP50} (${compAnchored.compSource ?? "market"}).`
+                : null;
 
         await Listing.findByIdAndUpdate(lid, {
             $set: {
                 pricingDataStatus: pricingReadiness.level,
-                pricingDataSummary: pricingReadiness.summary,
-                pricingDataIssues: pricingReadiness.issues.map((i) => i.code),
+                pricingDataSummary: compSummary
+                    ? `${pricingReadiness.summary} ${compSummary}`
+                    : pricingReadiness.summary,
+                pricingDataIssues: [
+                    ...pricingReadiness.issues.map((i) => i.code),
+                    ...compAnchored.flags,
+                ],
                 pricingDataCheckedAt: new Date(),
+                ...(compAnchored.compFirst
+                    ? {
+                          validatedBasePrice: compAnchored.trustedBase,
+                          basePriceSource: "benchmark" as const,
+                          pmsPriceTrusted: compAnchored.pmsPriceTrusted,
+                      }
+                    : {}),
             },
         });
 
@@ -641,17 +677,18 @@ export async function runPipeline(
 
             const signal = marketSignals.get(ds);
             const pipelineValidatedBase =
-                calendarCorrection.corrected
-                    ? calendarCorrection.trustedBase
+                compAnchored.compFirst || !compAnchored.calendarTrusted
+                    ? compAnchored.trustedBase
                     : validatedBasePrice > 0
                       ? validatedBasePrice
                       : null;
+            const dayListedTrusted = compAnchored.calendarTrusted && pmsPriceTrusted;
             const dayCalendarPrice = resolvePipelineListedPrice({
                 date: ds,
                 calendarPriceByDate,
                 listingFallbackPrice: listingListedPrice,
                 validatedBasePrice: pipelineValidatedBase,
-                pmsPriceTrusted: calendarCorrection.corrected ? false : pmsPriceTrusted,
+                pmsPriceTrusted: dayListedTrusted,
             });
             let dayConfig: ListingConfig = {
                 ...strategyBaseConfig,
@@ -741,7 +778,11 @@ export async function runPipeline(
                 monthBand.note,
                 floorResult.note,
             ].filter(Boolean);
-            if (signal && usesMonthFirstAnchor(signal) && i === 0) {
+            if (signal?.compFirst && i === 0) {
+                reasoningParts.unshift(
+                    `[COMPS] Regional comp set (${signal.compSetCount ?? 0} units) drives base price`
+                );
+            } else if (signal && usesMonthFirstAnchor(signal) && i === 0) {
                 reasoningParts.unshift("[SEASON] Month-first market anchor (calendar profiles only)");
             }
             if (bookingPace.primaryPaceRatio != null && i === 0) {
@@ -763,7 +804,7 @@ export async function runPipeline(
                 );
             }
             if (i === 0 && calendarCorrectionNote) {
-                reasoningParts.unshift(`[SANITY] ${calendarCorrectionNote}`);
+                reasoningParts.unshift(calendarCorrectionNote);
             }
 
             // ── Revenue optimization ──────────────────────────────────────────
@@ -897,6 +938,26 @@ interface ListingMarketInput {
     countryCode?: string;
     area?: string;
     bedroomsNumber?: number;
+}
+
+function enrichMarketSignalsWithCompSet(
+    signals: Map<string, MarketSignal>,
+    compAnchored: ReturnType<typeof resolveCompAnchoredBase>
+): Map<string, MarketSignal> {
+    if (signals.size === 0) return signals;
+
+    const out = new Map<string, MarketSignal>();
+    for (const [ds, signal] of signals) {
+        out.set(ds, {
+            ...signal,
+            compSetCount: compAnchored.compCount,
+            compFirst: compAnchored.compFirst,
+            calendarUntrusted: !compAnchored.calendarTrusted,
+            compSetSource: signal.compSetSource ?? compAnchored.compSource ?? undefined,
+            compSetP50: signal.compSetP50 ?? compAnchored.compP50 ?? undefined,
+        });
+    }
+    return out;
 }
 
 /**

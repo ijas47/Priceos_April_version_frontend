@@ -130,6 +130,12 @@ export interface MarketSignal {
     supplyPressure?: number;
     /** Where comp-set p50 was sourced (for reasoning notes) */
     compSetSource?: string;
+    /** Number of similar listings in the resolved regional comp set */
+    compSetCount?: number;
+    /** Comp-first mode: listing-level comps drive base, not PMS calendar */
+    compFirst?: boolean;
+    /** Hostaway calendar excluded from anchor blend */
+    calendarUntrusted?: boolean;
     /** Booking pace vs STLY for this lead-time horizon (1.0 = on pace). */
     bookingPaceRatio?: number;
 }
