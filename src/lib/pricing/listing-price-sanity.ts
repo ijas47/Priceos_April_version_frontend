@@ -2,6 +2,8 @@ import { subDays, format } from "date-fns";
 import { resolveDisplayRate } from "@/lib/pricing/display-rate";
 import type { DemandRegime } from "@/lib/pricing/demand-regime";
 import { resolveDayCalendarPrice } from "@/lib/engine/calendar-rates";
+import { p50CeilingForBedrooms } from "@/lib/pricing/benchmark-sanity";
+import { resolveBedroomsNumber } from "@/lib/pricing/bedrooms";
 
 export type BasePriceSource = "history_1y" | "benchmark" | "hostaway";
 
@@ -270,4 +272,87 @@ export const TTM_LOOKBACK_DAYS = 365;
 
 export function ttmCutoffDate(from: Date = new Date()): string {
   return format(subDays(from, TTM_LOOKBACK_DAYS), "yyyy-MM-dd");
+}
+
+export interface CalendarOutlierCorrection {
+  corrected: boolean;
+  trustedBase: number;
+  medianCalendar: number;
+  marketAnchor: number | null;
+  reason: string | null;
+  flags: string[];
+}
+
+function medianPositive(prices: number[]): number {
+  const positive = prices.filter((p) => p > 0).sort((a, b) => a - b);
+  if (positive.length === 0) return 0;
+  return positive[Math.floor(positive.length / 2)];
+}
+
+/**
+ * When Hostaway calendar shows implausible nightly rates (e.g. 10k for a studio),
+ * replace the pipeline base with market anchor or bedroom-scaled cap.
+ */
+export function correctOutlierCalendarBase(params: {
+  calendarPrices: number[];
+  bedrooms?: number | null;
+  benchmarkP50?: number | null;
+  achievedAdr?: number | null;
+}): CalendarOutlierCorrection {
+  const medianCalendar = medianPositive(params.calendarPrices);
+  const flags: string[] = [];
+
+  if (medianCalendar <= 0) {
+    return {
+      corrected: false,
+      trustedBase: 0,
+      medianCalendar: 0,
+      marketAnchor: null,
+      reason: null,
+      flags,
+    };
+  }
+
+  const bedrooms = resolveBedroomsNumber(params.bedrooms, 1);
+  const bedroomCap = p50CeilingForBedrooms(bedrooms);
+  const achieved =
+    params.achievedAdr && params.achievedAdr > 0 ? params.achievedAdr : null;
+  const benchmark =
+    params.benchmarkP50 && params.benchmarkP50 > 0 ? params.benchmarkP50 : null;
+  const marketAnchor = achieved ?? benchmark;
+
+  const ratioLimit = marketAnchor ? marketAnchor * 3 : null;
+  const hardCap = Math.round(bedroomCap * 1.5);
+  const isOutlier =
+    (ratioLimit != null && medianCalendar > ratioLimit) ||
+    medianCalendar > hardCap;
+
+  if (!isOutlier) {
+    return {
+      corrected: false,
+      trustedBase: medianCalendar,
+      medianCalendar,
+      marketAnchor,
+      reason: null,
+      flags,
+    };
+  }
+
+  flags.push("calendar_outlier");
+  const trustedBase = marketAnchor
+    ? Math.round(marketAnchor)
+    : Math.round(bedroomCap * 0.65);
+
+  return {
+    corrected: true,
+    trustedBase,
+    medianCalendar,
+    marketAnchor,
+    reason: marketAnchor
+      ? `Synced calendar median (${medianCalendar}) exceeds 3× market anchor (${marketAnchor}) — proposals use ${trustedBase} until Hostaway is corrected.`
+      : `Synced calendar median (${medianCalendar}) exceeds ${hardCap} cap for ${
+          bedrooms === 0 ? "studio" : `${bedrooms}BR`
+        } — proposals use ${trustedBase}.`,
+    flags,
+  };
 }

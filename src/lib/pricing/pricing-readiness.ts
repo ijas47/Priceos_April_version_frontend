@@ -33,6 +33,9 @@ export interface AssessPricingReadinessInput {
   hasMarketBenchmark?: boolean;
   guardrailsWereSanitized?: boolean;
   minCalendarDays?: number;
+  /** Pipeline detected synced calendar median far above market anchor. */
+  calendarOutlierCorrected?: boolean;
+  calendarOutlierReason?: string | null;
 }
 
 const DEFAULT_MIN_CALENDAR_DAYS = 14;
@@ -211,6 +214,19 @@ export function assessPricingReadiness(
         "Floor/ceiling corrected",
         `PMS floor/ceiling (${input.priceFloor}/${input.priceCeiling}) were clamped to match live calendar scale.`,
         "Update floor and ceiling in Hostaway to realistic values for this unit type."
+      )
+    );
+  }
+
+  if (input.calendarOutlierCorrected) {
+    issues.push(
+      issue(
+        "CALENDAR_OUTLIER",
+        "warn",
+        "Calendar rate outlier",
+        input.calendarOutlierReason ??
+          "Synced Hostaway nightly rates are far above market comps for this unit type.",
+        "Fix nightly rates in Hostaway for this listing, then re-sync calendar and re-run the engine."
       )
     );
   }

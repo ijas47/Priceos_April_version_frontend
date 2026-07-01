@@ -33,6 +33,20 @@ describe("assessBenchmarkSanity", () => {
     expect(result.flags).toContain("benchmark_replaced");
   });
 
+  it("trusts benchmark when listed/calendar is implausibly high vs comps", () => {
+    const result = assessBenchmarkSanity({
+      p25: 380,
+      p50: 450,
+      p75: 520,
+      currentPrice: 10000,
+      bedrooms: 0,
+    });
+    expect(result.trusted).toBe(true);
+    expect(result.rejected).toBe(false);
+    expect(result.p50).toBe(450);
+    expect(result.flags).toContain("listed_outlier");
+  });
+
   it("accepts aligned studio benchmark", () => {
     const result = assessBenchmarkSanity({
       p25: 380,

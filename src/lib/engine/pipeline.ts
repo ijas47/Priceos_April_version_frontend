@@ -72,7 +72,12 @@ import {
     refreshListingCalendarFromHostaway,
     buildCalendarPriceMap,
 } from "@/lib/engine/calendar-rates";
-import { resolvePipelineListedPrice } from "@/lib/pricing/listing-price-sanity";
+import {
+    correctOutlierCalendarBase,
+    computeTtmAdr,
+    resolvePipelineListedPrice,
+    ttmCutoffDate,
+} from "@/lib/pricing/listing-price-sanity";
 import {
     resolveListingPriceContext,
     sanitizeStaticGuardrails,
@@ -453,12 +458,55 @@ export async function runPipeline(
             );
         }
 
-        const hasMarketBenchmark = !!(await BenchmarkData.findOne({
-            orgId: listing.orgId,
-            listingId: lid,
-        })
-            .select("_id")
-            .lean());
+        const [benchmarkRow, ttmReservations] = await Promise.all([
+            BenchmarkData.findOne({
+                orgId: listing.orgId,
+                listingId: lid,
+            })
+                .sort({ createdAt: -1 })
+                .lean(),
+            Reservation.find({
+                listingId: lid,
+                status: { $in: ["confirmed", "pending", "checked_in", "checked_out"] },
+                checkOut: { $gte: ttmCutoffDate() },
+            })
+                .select("totalPrice nights")
+                .lean(),
+        ]);
+
+        const { adr: ttmAdr } = computeTtmAdr(ttmReservations);
+        const calendarCorrection = correctOutlierCalendarBase({
+            calendarPrices: positiveCalendar,
+            bedrooms: listing.bedroomsNumber,
+            benchmarkP50: benchmarkRow ? toNum(benchmarkRow.p50Rate) : null,
+            achievedAdr: ttmAdr,
+        });
+
+        let calendarCorrectionNote: string | null = null;
+        if (calendarCorrection.corrected) {
+            pipelineBasePrice = calendarCorrection.trustedBase;
+            listingListedPrice = calendarCorrection.trustedBase;
+            pmsPriceTrusted = false;
+            calendarCorrectionNote = calendarCorrection.reason;
+            const reSanitized = sanitizeStaticGuardrails(
+                toNum(listing.priceFloor),
+                toNum(listing.priceCeiling),
+                calendarCorrection.trustedBase
+            );
+            baseConfig.basePrice = pipelineBasePrice;
+            baseConfig.absoluteMinPrice = reSanitized.floor;
+            baseConfig.absoluteMaxPrice = reSanitized.ceiling;
+            Object.assign(strategyBaseConfig, {
+                basePrice: pipelineBasePrice,
+                absoluteMinPrice: reSanitized.floor,
+                absoluteMaxPrice: reSanitized.ceiling,
+            });
+            console.warn(
+                `[runPipeline] Calendar outlier corrected for ${listing.name}: median ${calendarCorrection.medianCalendar} → base ${calendarCorrection.trustedBase}`
+            );
+        }
+
+        const hasMarketBenchmark = !!benchmarkRow;
 
         const pricingReadiness = assessPricingReadiness({
             hostawayId: listing.hostawayId,
@@ -471,6 +519,8 @@ export async function runPipeline(
             calendarPrices,
             hasMarketBenchmark,
             guardrailsWereSanitized: sanitizedGuardrails.sanitized,
+            calendarOutlierCorrected: calendarCorrection.corrected,
+            calendarOutlierReason: calendarCorrection.reason,
         });
 
         await Listing.findByIdAndUpdate(lid, {
@@ -590,12 +640,18 @@ export async function runPipeline(
             };
 
             const signal = marketSignals.get(ds);
+            const pipelineValidatedBase =
+                calendarCorrection.corrected
+                    ? calendarCorrection.trustedBase
+                    : validatedBasePrice > 0
+                      ? validatedBasePrice
+                      : null;
             const dayCalendarPrice = resolvePipelineListedPrice({
                 date: ds,
                 calendarPriceByDate,
                 listingFallbackPrice: listingListedPrice,
-                validatedBasePrice: validatedBasePrice > 0 ? validatedBasePrice : null,
-                pmsPriceTrusted,
+                validatedBasePrice: pipelineValidatedBase,
+                pmsPriceTrusted: calendarCorrection.corrected ? false : pmsPriceTrusted,
             });
             let dayConfig: ListingConfig = {
                 ...strategyBaseConfig,
@@ -705,6 +761,9 @@ export async function runPipeline(
                 reasoningParts.unshift(
                     `[DEMAND] ${demandRegime.regime.toUpperCase()} (score ${demandRegime.score}) - ${demandRegime.reasons.join(", ")}`
                 );
+            }
+            if (i === 0 && calendarCorrectionNote) {
+                reasoningParts.unshift(`[SANITY] ${calendarCorrectionNote}`);
             }
 
             // ── Revenue optimization ──────────────────────────────────────────

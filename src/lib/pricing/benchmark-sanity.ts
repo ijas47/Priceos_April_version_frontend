@@ -62,7 +62,24 @@ export function assessBenchmarkSanity(input: BenchmarkSanityInput): BenchmarkSan
   if (inverseReject) flags.push("listed_exceeds_p50_3x");
   if (ceilingReject) flags.push("p50_exceeds_bedroom_ceiling");
 
-  const rejected = ratioReject || inverseReject || ceilingReject;
+  /** Listed/calendar is implausibly high — benchmark comps are the anchor, not the bad PMS rate. */
+  if (inverseReject && !ratioReject && !ceilingReject && p50 > 0) {
+    return {
+      p25: p25 || Math.round(p50 * 0.85),
+      p50,
+      p75: p75 || Math.round(p50 * 1.15),
+      p90: p90 || Math.round(p50 * 1.3),
+      trusted: true,
+      rejected: false,
+      reason: `Listed/calendar rate (${current}) exceeds 3× market p50 (${p50}) for ${
+        bedrooms === 0 ? "studio" : `${bedrooms}BR`
+      } — calendar likely misconfigured; using market comps.`,
+      source: "benchmark",
+      flags: [...flags, "listed_outlier"],
+    };
+  }
+
+  const rejected = ratioReject || ceilingReject;
 
   if (!rejected && p50 > 0) {
     return {
