@@ -10,6 +10,7 @@ interface Props {
   isActive: boolean;
   onClick: () => void;
   occupancy?: number;
+  occupancyLabel?: string;
   unreadCount?: number;
 }
 
@@ -18,6 +19,7 @@ export function CompactPropertyCard({
   isActive,
   onClick,
   occupancy = 0,
+  occupancyLabel = "Occupancy",
   unreadCount = 0,
 }: Props) {
   return (
@@ -74,7 +76,7 @@ export function CompactPropertyCard({
         {/* Metrics Grid */}
         <div className="grid grid-cols-2 gap-3 mt-1 pt-2 border-t border-border/30">
           <div className="flex flex-col">
-            <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-[0.1em] mb-0.5">Occupancy</span>
+            <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-[0.1em] mb-0.5">{occupancyLabel}</span>
             <div className="flex items-center gap-1.5">
               <div className={cn(
                 "h-1.5 w-1.5 rounded-full animate-pulse",

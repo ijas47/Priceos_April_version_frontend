@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth/server";
 import { assertListingOwned, ListingAccessError, orgObjectId } from "@/lib/db/assert-listing-owned";
 import { refreshListingCalendarFromHostaway } from "@/lib/engine/calendar-rates";
 import { resolveDisplayRate } from "@/lib/pricing/display-rate";
+import { computeOccupancyMetrics } from "@/lib/pricing/occupancy-metrics";
 import { format } from "date-fns";
 import mongoose from "mongoose";
 
@@ -42,40 +43,6 @@ export async function GET(req: NextRequest) {
             console.warn("[calendar-metrics] Hostaway refresh skipped:", (err as Error).message);
         }
 
-        // Aggregate metrics from InventoryMaster
-        const [agg] = await InventoryMaster.aggregate([
-            { $match: { orgId: orgOid, listingId: lid, date: { $gte: from, $lte: to } } },
-            {
-                $group: {
-                    _id: null,
-                    totalDays: { $sum: 1 },
-                    bookedDays: {
-                        $sum: { $cond: [{ $eq: ["$status", "booked"] }, 1, 0] },
-                    },
-                    availableDays: {
-                        $sum: { $cond: [{ $eq: ["$status", "available"] }, 1, 0] },
-                    },
-                    blockedDays: {
-                        $sum: { $cond: [{ $eq: ["$status", "blocked"] }, 1, 0] },
-                    },
-                    avgPrice: { $avg: "$currentPrice" },
-                },
-            },
-        ]);
-
-        const totalDays = Number(agg?.totalDays || 0);
-        const bookedDays = Number(agg?.bookedDays || 0);
-        const availableDays = Number(agg?.availableDays || 0);
-        const blockedDays = Number(agg?.blockedDays || 0);
-        const avgCalendarRate = agg?.avgPrice ? Number(agg.avgPrice) : null;
-
-        const listedPrice = Number(listing.price ?? 0);
-
-        const bookableDays = totalDays - blockedDays;
-        const occupancy =
-            bookableDays > 0 ? Math.round((bookedDays / bookableDays) * 100) : 0;
-
-        // Calendar days
         const calendarDocs = await InventoryMaster.find({
             orgId: orgOid,
             listingId: lid,
@@ -84,6 +51,45 @@ export async function GET(req: NextRequest) {
             .sort({ date: 1 })
             .select("date status currentPrice")
             .lean();
+
+        const resDocs = await Reservation.find({
+            orgId: orgOid,
+            listingId: lid,
+            checkIn: { $lte: to },
+            checkOut: { $gte: from },
+        })
+            .select("checkIn checkOut status")
+            .lean();
+
+        const occupancyMetrics = computeOccupancyMetrics(
+            calendarDocs.map((d) => ({
+                date: d.date,
+                status: d.status,
+                currentPrice: d.currentPrice,
+            })),
+            resDocs.map((r) => ({
+                checkIn: r.checkIn,
+                checkOut: r.checkOut,
+                status: r.status,
+            }))
+        );
+
+        const {
+            totalDays,
+            bookedDays,
+            availableDays,
+            blockedDays,
+            bookableDays,
+            occupancyPct: occupancy,
+        } = occupancyMetrics;
+
+        const avgCalendarRate =
+            calendarDocs.length > 0
+                ? calendarDocs.reduce((s, d) => s + Number(d.currentPrice || 0), 0) /
+                  calendarDocs.length
+                : null;
+
+        const listedPrice = Number(listing.price ?? 0);
 
         const calendarDays = calendarDocs.map((d) => ({
             date: d.date,
@@ -104,13 +110,6 @@ export async function GET(req: NextRequest) {
             calendarListedPrice,
         });
 
-        // Reservations overlapping the range
-        const resDocs = await Reservation.find({
-            listingId: lid,
-            checkIn: { $lte: to },
-            checkOut: { $gte: from },
-        }).lean();
-
         const reservations = resDocs.map((r) => ({
             guestName: r.guestName,
             startDate: r.checkIn,
@@ -124,6 +123,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({
             listingId,
+            occupancyPeriod: { from, to },
             dateRange: { from, to },
             totalDays,
             bookedDays,

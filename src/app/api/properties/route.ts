@@ -5,6 +5,7 @@ import { findListingsForOrg } from "@/lib/db/org-scope";
 import { getSession } from "@/lib/auth/server";
 import { refreshListingCalendarFromHostaway } from "@/lib/engine/calendar-rates";
 import { resolveDisplayRate } from "@/lib/pricing/display-rate";
+import { computeOccupancyMetrics } from "@/lib/pricing/occupancy-metrics";
 import { format, addDays } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,7 @@ export async function GET() {
             listingId: { $in: listingIds },
             status: { $ne: "cancelled" },
           })
-            .select("listingId totalPrice channelName")
+            .select("listingId totalPrice channelName checkIn checkOut status")
             .lean()
         : [],
       listingIds.length > 0
@@ -91,8 +92,27 @@ export async function GET() {
     const properties = listings.map((l) => {
       const lid = l._id.toString();
       const inv = inventory.filter((r) => r.listingId?.toString() === lid);
-      const booked = inv.filter((r) => r.status === "booked" || r.status === "pending");
-      const occupancyPct = inv.length > 0 ? Math.round((booked.length / inv.length) * 100) : 0;
+      const listingRes = reservations.filter((r) => r.listingId?.toString() === lid);
+      const occupancyMetrics = computeOccupancyMetrics(
+        inv.map((r) => ({
+          date: r.date,
+          status: r.status,
+          currentPrice: r.currentPrice,
+        })),
+        listingRes
+          .filter(
+            (r) =>
+              r.checkIn <= plus29 &&
+              r.checkOut >= today &&
+              r.status !== "cancelled"
+          )
+          .map((r) => ({
+            checkIn: r.checkIn,
+            checkOut: r.checkOut,
+            status: r.status,
+          }))
+      );
+      const occupancyPct = occupancyMetrics.occupancyPct;
       const listedPrice = Number(l.price ?? 0);
       const calendarPrices = inv.map((r) => Number(r.currentPrice || 0));
       const todayInv = inv.find((r) => r.date === today);
@@ -110,7 +130,7 @@ export async function GET() {
         calendarListedPrice,
       });
 
-      const res = reservations.filter((r) => r.listingId?.toString() === lid);
+      const res = listingRes;
       const totalRevenue = res.reduce((s, r) => s + (r.totalPrice || 0), 0);
       const byChannel = new Map<string, { revenue: number; count: number }>();
       for (const r of res) {
@@ -148,6 +168,7 @@ export async function GET() {
         pricingDataSummary: (l as { pricingDataSummary?: string }).pricingDataSummary ?? null,
         occupancyPct,
         occupancy: occupancyPct,
+        occupancyPeriod: { from: today, to: plus29 },
         avgPrice: rateDisplay.displayRate,
         pendingProposals: 0,
         totalReservations: res.length,

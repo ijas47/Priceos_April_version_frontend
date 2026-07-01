@@ -49,6 +49,9 @@ import {
     buildDemandPacingSnapshot,
     buildMarketOverviewSnapshot,
 } from "@/lib/agents/booking-intelligence-payload";
+import { buildGapAnalysis } from "@/lib/pricing/gap-analysis";
+import { computeOccupancyMetrics } from "@/lib/pricing/occupancy-metrics";
+import { buildMarketIntelPayload } from "@/lib/agents/market-intel-payload";
 import { getMarketContext, resolveMarketId } from "@/lib/airbtics/market-context";
 import mongoose from "mongoose";
 import { fetchJsonWithRetry, toUserFacingAgentError } from "@/lib/lyzr/fetch-with-retry";
@@ -304,7 +307,6 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             const [
                 events,
                 benchmark,
-                calMetrics,
                 resRows,
                 guestSum,
                 rawInventory,
@@ -322,31 +324,6 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 })
                     .sort({ createdAt: -1 })
                     .lean(),
-                InventoryMaster.aggregate([
-                    {
-                        $match: {
-                            orgId,
-                            listingId: pidObjectId,
-                            date: { $gte: dateFrom, $lte: dateTo },
-                        },
-                    },
-                    {
-                        $group: {
-                            _id: null,
-                            totalDays: { $sum: 1 },
-                            bookedDays: {
-                                $sum: { $cond: [{ $eq: ["$status", "booked"] }, 1, 0] },
-                            },
-                            availableDays: {
-                                $sum: { $cond: [{ $eq: ["$status", "available"] }, 1, 0] },
-                            },
-                            blockedDays: {
-                                $sum: { $cond: [{ $eq: ["$status", "blocked"] }, 1, 0] },
-                            },
-                            avgPrice: { $avg: "$currentPrice" },
-                        },
-                    },
-                ]),
                 Reservation.find({
                     orgId,
                     listingId: pidObjectId,
@@ -388,19 +365,34 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     : Promise.resolve(null),
             ]);
 
-            const calResult = calMetrics[0];
+            const dbOccupancy = computeOccupancyMetrics(
+                rawInventory.map((r) => ({
+                    date: r.date,
+                    status: r.status,
+                    currentPrice: r.currentPrice,
+                })),
+                resRows.map((r) => ({
+                    checkIn: r.checkIn,
+                    checkOut: r.checkOut,
+                    status: r.status,
+                }))
+            );
             const uiMetrics = context.metrics;
             const usingUIMetrics = !!uiMetrics;
 
-            const totalDays = uiMetrics?.totalDays ?? Number(calResult?.totalDays || 0);
-            const bookedDays = uiMetrics?.bookedDays ?? Number(calResult?.bookedDays || 0);
-            const blockedDays = uiMetrics?.blockedDays ?? Number(calResult?.blockedDays || 0);
-            const bookableDays = uiMetrics?.bookableDays ?? totalDays - blockedDays;
-            const occupancy =
-                uiMetrics?.occupancy ??
-                (bookableDays > 0 ? Math.round((bookedDays / bookableDays) * 100) : 0);
+            const totalDays = uiMetrics?.totalDays ?? dbOccupancy.totalDays;
+            const bookedDays = uiMetrics?.bookedDays ?? dbOccupancy.bookedDays;
+            const blockedDays = uiMetrics?.blockedDays ?? dbOccupancy.blockedDays;
+            const bookableDays = uiMetrics?.bookableDays ?? dbOccupancy.bookableDays;
+            const occupancy = uiMetrics?.occupancy ?? dbOccupancy.occupancyPct;
             const avgCalPrice =
-                uiMetrics?.avgPrice ?? Number(calResult?.avgPrice || listing?.price || 0);
+                uiMetrics?.avgPrice ??
+                (rawInventory.length > 0
+                    ? rawInventory.reduce(
+                          (s, r) => s + Number(r.currentPrice || 0),
+                          0
+                      ) / rawInventory.length
+                    : Number(listing?.price || 0));
 
             const activeResRows = resRows.filter((r) =>
                 ["confirmed", "pending", "checked_in", "checked_out"].includes(
@@ -542,6 +534,24 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
 
             const calendarToday = new Date().toISOString().split("T")[0];
             const analysisMonth = dateFrom.slice(0, 7);
+            const inventoryRows = rawInventory.map((inv) => ({
+                date: inv.date,
+                status:
+                    inv.status === "booked" || inv.status === "pending"
+                        ? "occupied"
+                        : inv.status || "available",
+                current_price: Number(inv.currentPrice || trustedListedPrice || 0),
+                is_weekend: [5, 6].includes(new Date(inv.date).getDay()),
+            }));
+            const gapAnalysis = buildGapAnalysis(
+                rawInventory.map((inv) => ({
+                    date: inv.date,
+                    status: inv.status,
+                    min_stay: inv.minStay,
+                    current_price: Number(inv.currentPrice || trustedListedPrice || 0),
+                })),
+                { gapFillDiscountPct: Number(listing?.gapFillDiscountPct ?? 15) }
+            );
             const bookingIntelligence = buildBookingIntelligenceBlock({
                 asOfDate: calendarToday,
                 analysisFrom: dateFrom,
@@ -562,6 +572,19 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                 })),
             });
 
+            const marketIntel = buildMarketIntelPayload(
+                events.map((e) => ({
+                    name: e.name,
+                    startDate: e.startDate,
+                    endDate: e.endDate,
+                    impactLevel: e.impactLevel,
+                    upliftPct: e.upliftPct,
+                    confidence: e.confidence,
+                    description: e.description,
+                    source: e.source,
+                }))
+            );
+
             const benchmarkSanity = benchmark
                 ? assessBenchmarkSanity({
                       p25: Number(benchmark.p25Rate || 0),
@@ -580,6 +603,18 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     ? new Date(benchmark.createdAt).toISOString()
                     : new Date().toISOString(),
                 analysis_window: { from: dateFrom, to: dateTo },
+                market_context: {
+                    market_template:
+                        (listing?.city || "Dubai").toLowerCase().includes("abu")
+                            ? "abu_dhabi"
+                            : "dubai",
+                    currency: listing?.currencyCode || "AED",
+                    weekend_definition: "fri_sat",
+                    guardrail_profile: "uae_gcc",
+                    city: listing?.city || "Dubai",
+                    country_code: listing?.countryCode || "AE",
+                    market_code: orgRow?.marketCode || pricingPack.marketCode || "UAE_DXB",
+                },
                 property: {
                     listingId: pid,
                     name: listing?.name || context.propertyName || "Unknown Property",
@@ -690,21 +725,11 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                     cache_reason: intelRefresh.assessment.reason,
                     verified_events_in_window: intelRefresh.assessment.verifiedEventCount,
                 },
-                market_events: events.map((e) => ({
-                    title: e.name,
-                    start_date: e.startDate,
-                    end_date: e.endDate,
-                    impact: e.impactLevel,
-                    source: e.source,
-                    description: e.description || "",
-                    suggested_premium_pct: e.upliftPct || 0,
-                })),
-                demand_outlook: {
-                    trend: "moderate",
-                    reason: "Aggregated from market intelligence.",
-                    negative_factors: [],
-                    positive_factors: [],
-                },
+                market_events: marketIntel.market_events,
+                news: marketIntel.news,
+                daily_events: marketIntel.daily_events,
+                holidays: marketIntel.holidays,
+                demand_outlook: marketIntel.demand_outlook,
                 available_dates: rawInventory
                     .filter((inv) => inv.status !== "blocked" && inv.status !== "booked")
                     .map((inv) => ({
@@ -713,12 +738,9 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
                         status: inv.status || "available",
                         min_stay: inv.minStay || 1,
                     })),
-                date_classifications: rawInventory.map((inv) => ({
-                    date: inv.date,
-                    status: inv.status || "available",
-                    current_price: Number(inv.currentPrice || trustedListedPrice || 0),
-                    is_weekend: [5, 6].includes(new Date(inv.date).getDay()),
-                })),
+                inventory: inventoryRows,
+                date_classifications: inventoryRows,
+                gap_analysis: gapAnalysis,
                 recent_reservations: resRows.map((r) => ({
                     guestName: r.guestName || "Guest",
                     startDate: r.checkIn,
@@ -820,6 +842,14 @@ async function runChat(body: ChatRequest, orgIdStr: string): Promise<ChatRespons
             `For velocity, channel mix, LOS, lead time, revenue, and pace vs STLY: use booking_intelligence (pre-computed). Do not re-derive from recent_reservations.`,
             `Compare property occupancy to market_overview.occupancy_pct and demand_pacing.avg_demand_score_in_window when discussing demand.`,
             `booking_intelligence.velocity.trend is authoritative for accelerating/stable/decelerating.`,
+            ``,
+            `[PROPERTY ANALYST - MANDATORY]`,
+            `For gap nights, LOS restrictions, and calendar structure: use gap_analysis and inventory (not date_classifications alone).`,
+            `metrics.occupancy_pct is authoritative — never recompute occupancy from inventory rows.`,
+            ``,
+            `[MARKET RESEARCH - MANDATORY]`,
+            `Use news, daily_events, holidays, and market_events from injected data — never invent headlines or events.`,
+            `demand_outlook.net_news_factor_pct is the net news premium; cite negative_factors when demand_outlook.trend is weak.`,
         ].join("\n");
 
         let anchoredMessage = message;

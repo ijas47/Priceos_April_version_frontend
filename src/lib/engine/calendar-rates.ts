@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { format } from "date-fns";
 import { createHostawayClient } from "@/lib/hostaway/client";
+import type { HostawayCalendarDay } from "@/lib/hostaway/types";
 import { getHostawayApiKey } from "@/lib/env";
 import { resolveHostawayApiKey } from "@/lib/listing-content/hostaway-key";
 import { connectDB, InventoryMaster, Listing } from "@/lib/db";
@@ -11,10 +12,10 @@ function toNum(val: string | number | null | undefined): number {
 }
 
 function mapCalendarStatus(
-  status: string
+  day: HostawayCalendarDay
 ): "available" | "booked" | "blocked" | "pending" {
-  if (status === "booked") return "booked";
-  if (status === "blocked") return "blocked";
+  if (day.status === "booked") return "booked";
+  if (day.status === "blocked") return "blocked";
   return "available";
 }
 
@@ -64,7 +65,7 @@ export async function refreshListingCalendarFromHostaway(
             orgId,
             listingId: lid,
             date: day.date,
-            status: mapCalendarStatus(day.status),
+            status: mapCalendarStatus(day),
             currentPrice: day.price,
             minStay: day.minimumStay || 1,
             maxStay: day.maximumStay || 30,

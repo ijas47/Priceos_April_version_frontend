@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { format } from "date-fns";
 import { CompactPropertyCard } from "./compact-property-card";
 import { useContextStore } from "@/stores/context-store";
 import { getOrgId } from "@/lib/auth/client";
@@ -16,6 +17,8 @@ export function ContextPanel({ properties }: Props) {
   const {
     contextType,
     propertyId,
+    calendarMetrics,
+    dateRange,
     setPortfolioContext,
     setPropertyContext,
   } = useContextStore();
@@ -58,6 +61,11 @@ export function ContextPanel({ properties }: Props) {
     switchContext({ type: "portfolio" });
   };
 
+  const selectedPeriodLabel = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) return "Selected period";
+    return `${format(dateRange.from, "MMM d")}–${format(dateRange.to, "MMM d")}`;
+  }, [dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
+
   const handlePropertyClick = (property: PropertyWithMetrics) => {
     if (contextType === "property" && propertyId === property.id) {
       // Deselect: clicking the active property returns to portfolio view
@@ -94,7 +102,20 @@ export function ContextPanel({ properties }: Props) {
                 contextType === "property" && propertyId === property.id
               }
               onClick={() => handlePropertyClick(property)}
-              occupancy={property.occupancy || 0}
+              occupancy={
+                contextType === "property" &&
+                propertyId === property.id &&
+                calendarMetrics?.occupancy != null
+                  ? calendarMetrics.occupancy
+                  : property.occupancy || 0
+              }
+              occupancyLabel={
+                contextType === "property" &&
+                propertyId === property.id &&
+                calendarMetrics?.occupancy != null
+                  ? selectedPeriodLabel
+                  : "Next 30d"
+              }
               unreadCount={unreadCounts[property.id] ?? 0}
             />
           ))}

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/server";
+import { connectDB } from "@/lib/db";
+import { assertListingOwned, ListingAccessError } from "@/lib/db/assert-listing-owned";
 
 interface HistoryMsg {
     sender?: "guest" | "admin";
@@ -30,12 +32,14 @@ export async function POST(request: Request) {
             message,
             guestName,
             propertyName,
+            listingId,
             additionalContext,
         }: {
             messages?: HistoryMsg[];
             message?: string;
             guestName?: string;
             propertyName?: string;
+            listingId?: string;
             additionalContext?: string;
         } = body;
 
@@ -64,12 +68,34 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, reply: fallbackReply, source: "fallback" });
         }
 
+        let propertyContextBlock = "";
+        if (listingId && session.orgId) {
+            try {
+                await connectDB();
+                const listing = await assertListingOwned(session.orgId, listingId);
+                propertyContextBlock = `
+Property context:
+- Name: ${listing.name}
+- Area: ${listing.area || listing.city || "Dubai"}
+- Bedrooms: ${listing.bedroomsNumber ?? "N/A"}
+- Capacity: ${listing.personCapacity ?? "N/A"} guests
+- Currency: ${listing.currencyCode || "AED"}
+- Standard check-in: 15:00 / check-out: 11:00 (unless guest message states otherwise)
+Use this context for amenities, timing, and location answers. Do not quote internal IDs.`;
+            } catch (err) {
+                if (!(err instanceof ListingAccessError)) {
+                    console.warn("[suggest-reply] listing context skipped:", err);
+                }
+            }
+        }
+
         const transcript = history
             .map((m) => `${m.sender === "admin" ? "Host" : "Guest"}: ${m.text ?? ""}`)
             .join("\n");
 
         const prompt = `Property: "${propertyName || "Our Property"}"
 Guest name: ${guestName || "Guest"}
+${propertyContextBlock}
 
 Conversation so far:
 ${transcript}

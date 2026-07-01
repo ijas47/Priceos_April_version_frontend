@@ -397,8 +397,10 @@ export function UnifiedChatInterface({ properties: _properties, orgId }: Props) 
             availableDays: data.availableDays,
             blockedDays: data.blockedDays,
             totalDays: data.totalDays,
+            bookableDays: data.bookableDays,
             calendarDays: data.calendarDays,
             reservations: data.reservations,
+            occupancyPeriod: data.occupancyPeriod ?? data.dateRange,
           };
           setCalendarMetrics(metrics);
           setGlobalMetrics(metrics);

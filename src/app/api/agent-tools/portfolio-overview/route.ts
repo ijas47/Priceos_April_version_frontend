@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { connectDB, Listing, InventoryMaster } from "@/lib/db";
+import { connectDB, Listing, InventoryMaster, Reservation } from "@/lib/db";
 import { requireScopedSession, agentToolsJsonHeaders } from "@/lib/agent-tools/utils";
+import { computeOccupancyMetrics } from "@/lib/pricing/occupancy-metrics";
 import { format, addDays } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -17,16 +18,26 @@ export async function GET(req: NextRequest) {
     const dateTo = searchParams.get("dateTo") ?? format(addDays(new Date(), 29), "yyyy-MM-dd");
 
     const orgOid = new mongoose.Types.ObjectId(orgId);
-    const [listingCount, inventory] = await Promise.all([
+    const [listingCount, inventory, reservations] = await Promise.all([
       Listing.countDocuments({ orgId: orgOid }),
       InventoryMaster.find({ orgId: orgOid, date: { $gte: dateFrom, $lte: dateTo } })
-        .select("status currentPrice")
+        .select("date status currentPrice")
+        .lean(),
+      Reservation.find({
+        orgId: orgOid,
+        checkIn: { $lte: dateTo },
+        checkOut: { $gte: dateFrom },
+        status: { $ne: "cancelled" },
+      })
+        .select("checkIn checkOut status")
         .lean(),
     ]);
 
-    const booked = inventory.filter((d) => d.status === "booked");
-    const avgOccupancyPct =
-      inventory.length > 0 ? Math.round((booked.length / inventory.length) * 100) : 0;
+    const occ = computeOccupancyMetrics(inventory, reservations);
+    const booked = inventory.filter(
+      (d) => d.status === "booked" || d.status === "pending"
+    );
+    const avgOccupancyPct = occ.occupancyPct;
     const avgNightlyRate =
       inventory.length > 0
         ? Math.round(inventory.reduce((s, d) => s + (d.currentPrice || 0), 0) / inventory.length)
