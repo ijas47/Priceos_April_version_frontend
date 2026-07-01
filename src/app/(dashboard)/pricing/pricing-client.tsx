@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ import {
   Maximize2,
   Activity,
   Info,
+  Loader2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -323,9 +324,32 @@ export function PricingClient({
 }) {
   const router = useRouter();
   const [proposals, setProposals] = useState<ProposalData[]>(initialProposals);
+  const [loadingProposals, setLoadingProposals] = useState(initialProposals.length === 0);
   const [activeTab, setActiveTab] = useState<StatusTab>("pending");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (initialProposals.length > 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/v1/revenue/proposals?status=all");
+        if (!res.ok) return;
+        const data = (await res.json()) as { proposals?: ProposalData[] };
+        if (!cancelled) setProposals(data.proposals ?? []);
+      } catch {
+        if (!cancelled) setProposals([]);
+      } finally {
+        if (!cancelled) setLoadingProposals(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialProposals.length]);
 
   // ── Live Graph State ───────────────────────────────────────────────────────
   const [showLiveGraph, setShowLiveGraph] = useState(false);
@@ -426,9 +450,18 @@ export function PricingClient({
       }
       emitEvent("Generation Complete", "output_generated", "done");
 
-      setTimeout(() => {
+      setTimeout(async () => {
         setIsGraphProcessing(false);
         setShowLiveGraph(false);
+        try {
+          const res = await fetch("/api/v1/revenue/proposals?status=all");
+          if (res.ok) {
+            const payload = (await res.json()) as { proposals?: ProposalData[] };
+            setProposals(payload.proposals ?? []);
+          }
+        } catch {
+          // keep existing rows if refresh fails
+        }
         router.refresh();
       }, 1500);
     } catch (error) {
@@ -855,7 +888,12 @@ export function PricingClient({
       )}
 
       {/* Proposal List */}
-      {displayProposals.length === 0 ? (
+      {loadingProposals ? (
+        <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground rounded-2xl border border-border/70 bg-card shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="text-sm">Loading proposals…</span>
+        </div>
+      ) : displayProposals.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-2xl border border-border/70 bg-card shadow-sm dark:border-white/10 dark:bg-white/[0.03]">
           <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
           <p className="text-muted-foreground text-sm">

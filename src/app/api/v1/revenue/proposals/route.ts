@@ -108,7 +108,10 @@ export async function GET(request: Request) {
                 elasticityWeight: r.elasticityWeight ?? null,
                 pBook: r.pBook ?? null,
                 changePct: r.changePct ?? 0,
-                reasoning: r.reasoning ?? "",
+                reasoning:
+                    typeof r.reasoning === "string"
+                        ? r.reasoning.slice(0, 1200)
+                        : "",
                 minStay: r.minStay ?? null,
                 maxStay: r.maxStay ?? null,
                 closedToArrival: r.closedToArrival ?? false,

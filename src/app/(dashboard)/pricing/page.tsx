@@ -1,50 +1,51 @@
 import { getSession } from "@/lib/auth/server";
 import { PricingPageTabs } from "./pricing-page-tabs";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { apiBase } from "@/lib/api/absolute-url";
 
 export const dynamic = "force-dynamic";
 
+function asString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
 
 export default async function PricingPage() {
-  const API = await apiBase();
   const session = await getSession();
   if (!session?.orgId) {
-    return null;
+    redirect("/login");
   }
 
+  const API = await apiBase();
   const cookieStore = await cookies();
   const token = cookieStore.get("priceos-session")?.value;
+  const authHeaders = { Authorization: `Bearer ${token ?? ""}` };
 
-  // Fetch listings and proposals in parallel
-  const [listingsRes, proposalsRes] = await Promise.all([
-    fetch(`${API}/listings/?orgId=${session.orgId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    }),
-    fetch(`${API}/v1/revenue/proposals?orgId=${session.orgId}&status=all`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    }),
+  // Listings only on the server — proposals load client-side to avoid RSC
+  // payload limits when hundreds of rows carry long [COMPS] reasoning text.
+  const listingsRes = await fetch(`${API}/listings/?orgId=${session.orgId}`, {
+    headers: authHeaders,
+    cache: "no-store",
+  }).catch(() => null);
 
-  ]).catch(() => [null, null]);
+  const listingsPayload =
+    listingsRes?.ok
+      ? ((await listingsRes.json().catch(() => ({}))) as Record<string, unknown>)
+      : {};
 
-  const listingsData = listingsRes?.ok ? await listingsRes.json() : { listings: [] };
-  const proposalsData = proposalsRes?.ok ? await proposalsRes.json() : { proposals: [] };
-
-  const listings = (listingsData.listings ?? []).map((l: Record<string, unknown>) => ({
-    id: String(l.id ?? ""),
+  const listings = ((listingsPayload.listings as Record<string, unknown>[]) ?? []).map((l) => ({
+    id: String(l.id ?? l._id ?? ""),
     name: String(l.name ?? ""),
     currencyCode: String(l.currencyCode || "AED"),
-    pricingDataStatus: (l.pricingDataStatus as string | null) ?? null,
-    pricingDataSummary: (l.pricingDataSummary as string | null) ?? null,
+    pricingDataStatus: asString(l.pricingDataStatus),
+    pricingDataSummary: asString(l.pricingDataSummary),
   }));
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <PricingPageTabs 
-        initialProposals={proposalsData.proposals ?? []} 
-        listings={listings} 
+      <PricingPageTabs
+        initialProposals={[]}
+        listings={listings}
         orgId={session.orgId}
       />
     </div>
