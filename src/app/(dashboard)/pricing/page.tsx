@@ -33,13 +33,19 @@ export default async function PricingPage() {
       ? ((await listingsRes.json().catch(() => ({}))) as Record<string, unknown>)
       : {};
 
-  const listings = ((listingsPayload.listings as Record<string, unknown>[]) ?? []).map((l) => ({
-    id: String(l.id ?? l._id ?? ""),
-    name: String(l.name ?? ""),
-    currencyCode: String(l.currencyCode || "AED"),
-    pricingDataStatus: asString(l.pricingDataStatus),
-    pricingDataSummary: asString(l.pricingDataSummary),
-  }));
+  const listings = ((listingsPayload.listings as Record<string, unknown>[]) ?? [])
+    .map((l) => ({
+      id: String(l.id ?? l._id ?? ""),
+      name: String(l.name ?? ""),
+      currencyCode: String(l.currencyCode || "AED"),
+      pricingDataStatus: asString(l.pricingDataStatus),
+      pricingDataSummary: asString(l.pricingDataSummary),
+    }))
+    // The Pricing Command Center only surfaces priceable inventory. Units the
+    // data-quality gate flagged as "blocked" (unconnected PMS, dummy/test names,
+    // flat placeholder calendars) are excluded here so the command center stays
+    // clean; they still surface for remediation in Properties.
+    .filter((l) => l.pricingDataStatus !== "blocked");
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
